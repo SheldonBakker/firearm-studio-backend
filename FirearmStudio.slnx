@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FirearmStudio.Application/FirearmStudio.Application.csproj" />
+    <Project Path="src/FirearmStudio.Domain/FirearmStudio.Domain.csproj" />
+    <Project Path="src/FirearmStudio.Infrastructure/FirearmStudio.Infrastructure.csproj" />
+    <Project Path="src/FirearmStudio.WebApi/FirearmStudio.WebApi.csproj" />
+  </Folder>
+</Solution>

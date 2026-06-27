@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- TargetFramework / Nullable / ImplicitUsings come from Directory.Build.props -->
+
+  <ItemGroup>
+    <!-- Gives access to DI, Options, Configuration and Http abstractions without NuGet packages -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="ErrorOr" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FirearmStudio.Domain\FirearmStudio.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

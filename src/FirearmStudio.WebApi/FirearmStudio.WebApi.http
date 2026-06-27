@@ -1,0 +1,20 @@
+@FirearmStudio.WebApi_HostAddress = http://localhost:5146
+
+# Supabase access token (omit the "Bearer " prefix here; it's added below).
+@token = PASTE_SUPABASE_ACCESS_TOKEN_HERE
+
+### Unauthenticated -> 401
+GET {{FirearmStudio.WebApi_HostAddress}}/api/v1/me
+Accept: application/json
+
+### Authenticated -> 200 { id, email, roles }
+GET {{FirearmStudio.WebApi_HostAddress}}/api/v1/me
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### Admin-only -> 200 if token has the "admin" role, else 403
+GET {{FirearmStudio.WebApi_HostAddress}}/api/v1/me/admin-check
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
