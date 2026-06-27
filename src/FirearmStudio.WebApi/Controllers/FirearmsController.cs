@@ -19,7 +19,7 @@ public sealed class FirearmsController(IApplicationDbContext db) : ControllerBas
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<FirearmResponse>>> List(CancellationToken ct) =>
         await db.Firearms.OrderBy(f => f.SerialNumber)
-            .Select(f => new FirearmResponse(f.Id, f.CustomerId, f.Make, f.Model, f.Calibre, f.FirearmType, f.SerialNumber, f.Status))
+            .Select(f => new FirearmResponse(f.Id, f.CustomerId, f.Make, f.Model, f.Calibre, f.FirearmType, f.SerialNumber, f.Status, f.Notes))
             .ToListAsync(ct);
 
     [HttpGet("{id:guid}")]
@@ -102,10 +102,10 @@ public sealed class FirearmsController(IApplicationDbContext db) : ControllerBas
     }
 
     private static FirearmResponse ToResponse(Firearm f) =>
-        new(f.Id, f.CustomerId, f.Make, f.Model, f.Calibre, f.FirearmType, f.SerialNumber, f.Status);
+        new(f.Id, f.CustomerId, f.Make, f.Model, f.Calibre, f.FirearmType, f.SerialNumber, f.Status, f.Notes);
 
     public sealed record FirearmResponse(
-        Guid Id, Guid CustomerId, string Make, string? Model, string? Calibre, string? FirearmType, string SerialNumber, FirearmStatus Status);
+        Guid Id, Guid CustomerId, string Make, string? Model, string? Calibre, string? FirearmType, string SerialNumber, FirearmStatus Status, string? Notes);
 
     public sealed record CreateFirearmRequest(
         Guid CustomerId, string Make, string? Model, string? Calibre, string? FirearmType,

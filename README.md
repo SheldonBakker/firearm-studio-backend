@@ -124,9 +124,13 @@ Finally, **enable the hook** in the Supabase dashboard → **Authentication → 
 Access Token (JWT) Claims** → select `public.custom_access_token_hook`. The hook is inert until
 enabled — without it, tokens carry no `company_id` or roles and tenant isolation will not engage.
 
-## Running
+## Building & running
 
 ```bash
+# Restore dependencies and build the whole solution
+dotnet build
+
+# Run the API
 dotnet run --project src/FirearmStudio.WebApi
 ```
 
