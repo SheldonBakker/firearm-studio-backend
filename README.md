@@ -113,6 +113,11 @@ end; $$;
 grant execute on function public.custom_access_token_hook(jsonb) to supabase_auth_admin;
 revoke execute on function public.custom_access_token_hook(jsonb) from authenticated, anon, public;
 grant select on public.app_users to supabase_auth_admin;
+
+-- app_users has RLS enabled. The hook runs as supabase_auth_admin (a non-BYPASSRLS role), so it
+-- needs an explicit read policy or it will see zero rows and inject no claims.
+create policy "Allow auth admin to read app_users" on public.app_users
+  as permissive for select to supabase_auth_admin using (true);
 ```
 
 Finally, **enable the hook** in the Supabase dashboard → **Authentication → Hooks → Customize
