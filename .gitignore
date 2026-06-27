@@ -481,6 +481,11 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
+# Environment files (keep the example template tracked)
+.env
+.env.*
+!.env.example
+
 # Claude Code / AI assistant files
 .claude/
 .agents/

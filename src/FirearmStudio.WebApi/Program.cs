@@ -4,6 +4,8 @@ using FirearmStudio.WebApi.Extensions;
 using FirearmStudio.WebApi.Extensions.Authentication;
 using Serilog;
 
+DotNetEnv.Env.TraversePath().Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog((context, loggerConfig) =>

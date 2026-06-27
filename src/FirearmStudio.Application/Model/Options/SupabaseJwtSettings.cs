@@ -6,11 +6,13 @@ public sealed class SupabaseJwtSettings
 
     public required string Authority { get; init; }
 
-    public required string Issuer { get; init; }
+    public string? Issuer { get; init; }
 
-    public required string Audience { get; init; }
+    public string Audience { get; init; } = "authenticated";
 
     public string[] ValidAlgorithms { get; init; } = ["ES256"];
 
     public string? MetadataAddress { get; init; }
+
+    public string EffectiveIssuer => string.IsNullOrWhiteSpace(Issuer) ? Authority : Issuer;
 }

@@ -38,7 +38,7 @@ public static class AuthenticationExtensions
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = settings.Issuer,
+                    ValidIssuer = settings.EffectiveIssuer,
 
                     ValidateAudience = true,
                     ValidAudience = settings.Audience,

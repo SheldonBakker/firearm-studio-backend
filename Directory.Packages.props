@@ -19,6 +19,9 @@
     <!-- Logging -->
     <PackageVersion Include="Serilog.AspNetCore" Version="9.0.0" />
 
+    <!-- .env file loading -->
+    <PackageVersion Include="DotNetEnv" Version="3.2.0" />
+
     <!-- Data access (EF Core 10 + PostgreSQL) -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
