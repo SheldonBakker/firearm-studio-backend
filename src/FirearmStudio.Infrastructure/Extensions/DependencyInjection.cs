@@ -1,5 +1,4 @@
 using FirearmStudio.Application.Abstractions;
-using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Application.Invoices;
 using FirearmStudio.Application.Onboarding;
 using FirearmStudio.Application.Users;
@@ -23,11 +22,15 @@ public static class DependencyInjection
         services.AddScoped<TenantContext>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
 
-        var dbSettings = configuration.GetSection(DatabaseSettings.SectionName).Get<DatabaseSettings>()
-            ?? throw new InvalidOperationException(
-                $"Missing required configuration section '{DatabaseSettings.SectionName}'.");
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "No database connection string found. Set ConnectionStrings:DefaultConnection " +
+                "(e.g. ConnectionStrings__DefaultConnection in .env or user-secrets).");
+        }
 
-        var dataSource = SupabaseDataSourceFactory.Build(dbSettings.ConnectionString);
+        var dataSource = SupabaseDataSourceFactory.Build(connectionString);
 
         services.AddScoped<TenantAndAuditInterceptor>();
 

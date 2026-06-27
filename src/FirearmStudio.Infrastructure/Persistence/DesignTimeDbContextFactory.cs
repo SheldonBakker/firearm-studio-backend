@@ -1,4 +1,3 @@
-using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Infrastructure.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -9,16 +8,17 @@ public sealed class DesignTimeDbContextFactory : Microsoft.EntityFrameworkCore.D
 {
     public ApplicationDbContext CreateDbContext(string[] args)
     {
+        DotNetEnv.Env.TraversePath().Load();
+
         var configuration = new ConfigurationBuilder()
             .AddUserSecrets("firearm-studio-backend")
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString =
-            configuration[$"{DatabaseSettings.SectionName}:ConnectionString"]
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException(
-                "No connection string found. Set DatabaseSettings:ConnectionString via user-secrets " +
-                "or the DatabaseSettings__ConnectionString environment variable.");
+                "No connection string found. Set ConnectionStrings:DefaultConnection via the .env " +
+                "(ConnectionStrings__DefaultConnection), user-secrets, or an environment variable.");
 
         var dataSource = SupabaseDataSourceFactory.Build(connectionString);
 
