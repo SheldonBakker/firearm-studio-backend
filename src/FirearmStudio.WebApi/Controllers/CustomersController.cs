@@ -18,7 +18,7 @@ public sealed class CustomersController(IApplicationDbContext db) : ControllerBa
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<CustomerResponse>>> List(CancellationToken ct) =>
         await db.Customers.OrderBy(c => c.FullName)
-            .Select(c => new CustomerResponse(c.Id, c.CustomerType, c.FullName, c.CompanyName, c.Email, c.Phone, c.IsActive))
+            .Select(c => new CustomerResponse(c.Id, c.CustomerType, c.FullName, c.CompanyName, c.Email, c.Phone, c.Notes, c.IsActive))
             .ToListAsync(ct);
 
     [HttpGet("{id:guid}")]
@@ -90,10 +90,10 @@ public sealed class CustomersController(IApplicationDbContext db) : ControllerBa
     }
 
     private static CustomerResponse ToResponse(Customer c) =>
-        new(c.Id, c.CustomerType, c.FullName, c.CompanyName, c.Email, c.Phone, c.IsActive);
+        new(c.Id, c.CustomerType, c.FullName, c.CompanyName, c.Email, c.Phone, c.Notes, c.IsActive);
 
     public sealed record CustomerResponse(
-        Guid Id, CustomerType CustomerType, string? FullName, string? CompanyName, string? Email, string? Phone, bool IsActive);
+        Guid Id, CustomerType CustomerType, string? FullName, string? CompanyName, string? Email, string? Phone, string? Notes, bool IsActive);
 
     public sealed record CreateCustomerRequest(
         CustomerType CustomerType, string? FullName, string? CompanyName, string? RegistrationNumber,
