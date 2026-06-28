@@ -1,13 +1,26 @@
+using System.Text.Json;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Domain.Common;
+using FirearmStudio.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace FirearmStudio.Infrastructure.Persistence.Interceptors;
 
-public sealed class TenantAndAuditInterceptor(ITenantContext tenant) : SaveChangesInterceptor
+public sealed class TenantAndAuditInterceptor(
+    ITenantContext tenant,
+    ICurrentUserService currentUserService) : SaveChangesInterceptor
 {
+    private static readonly HashSet<Type> AuditedTypes =
+    [
+        typeof(Customer),
+        typeof(Firearm),
+        typeof(StorageRecord),
+        typeof(Invoice),
+        typeof(Payment),
+    ];
+
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData, InterceptionResult<int> result)
     {
@@ -25,22 +38,18 @@ public sealed class TenantAndAuditInterceptor(ITenantContext tenant) : SaveChang
     private void Apply(DbContext? context)
     {
         if (context is null)
-        {
             return;
-        }
 
         var now = DateTime.UtcNow;
+        var auditLogs = new List<AuditLog>();
 
-        foreach (var entry in context.ChangeTracker.Entries<BaseEntity>())
+        foreach (var entry in context.ChangeTracker.Entries<BaseEntity>().ToList())
         {
             switch (entry.State)
             {
                 case EntityState.Added:
                     if (entry.Entity.Id == Guid.Empty)
-                    {
                         entry.Entity.Id = Guid.CreateVersion7();
-                    }
-
                     entry.Entity.CreatedAt = now;
                     StampTenantOnInsert(entry);
                     break;
@@ -50,38 +59,87 @@ public sealed class TenantAndAuditInterceptor(ITenantContext tenant) : SaveChang
                     GuardTenantNotChanged(entry);
                     break;
             }
+
+            if (AuditedTypes.Contains(entry.Entity.GetType()) &&
+                entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+            {
+                auditLogs.Add(BuildAuditLog(entry));
+            }
         }
+
+        // Skip audit logs when there is no company context (background/system operations).
+        if (tenant.CompanyId is not { } companyId)
+            return;
+
+        var userId = currentUserService.User.IsAuthenticated
+            ? currentUserService.User.Id
+            : (Guid?)null;
+
+        foreach (var log in auditLogs)
+        {
+            log.Id = Guid.CreateVersion7();
+            log.CreatedAt = now;
+            log.CompanyId = companyId;
+            log.AppUserId = userId;
+            context.Add(log);
+        }
+    }
+
+    private static AuditLog BuildAuditLog(EntityEntry<BaseEntity> entry)
+    {
+        var props = entry.Properties.Where(p => !p.Metadata.IsPrimaryKey());
+
+        string? oldValue = null;
+        string? newValue = null;
+
+        if (entry.State is EntityState.Modified or EntityState.Deleted)
+        {
+            oldValue = JsonSerializer.Serialize(
+                props.ToDictionary(p => p.Metadata.Name, p => p.OriginalValue));
+        }
+
+        if (entry.State is not EntityState.Deleted)
+        {
+            newValue = JsonSerializer.Serialize(
+                props.ToDictionary(p => p.Metadata.Name, p => p.CurrentValue));
+        }
+
+        var action = entry.State switch
+        {
+            EntityState.Added => "Created",
+            EntityState.Deleted => "Deleted",
+            _ => "Updated",
+        };
+
+        return new AuditLog
+        {
+            EntityType = entry.Entity.GetType().Name,
+            EntityId = entry.Entity.Id,
+            Action = action,
+            OldValue = oldValue,
+            NewValue = newValue,
+        };
     }
 
     private void StampTenantOnInsert(EntityEntry<BaseEntity> entry)
     {
         if (entry.Entity is not ITenantEntity tenantEntity)
-        {
             return;
-        }
 
         if (tenantEntity.CompanyId != Guid.Empty)
-        {
             return;
-        }
 
         if (tenant.CompanyId is { } companyId)
-        {
             tenantEntity.CompanyId = companyId;
-        }
         else if (!tenant.BypassFilter)
-        {
             throw new InvalidOperationException(
                 $"Cannot insert tenant entity '{entry.Entity.GetType().Name}' without a current company.");
-        }
     }
 
     private static void GuardTenantNotChanged(EntityEntry<BaseEntity> entry)
     {
         if (entry.Entity is not ITenantEntity)
-        {
             return;
-        }
 
         var companyIdProp = entry.Property(nameof(ITenantEntity.CompanyId));
         if (companyIdProp.IsModified &&

@@ -14,11 +14,6 @@ public sealed class RecordPaymentCommandHandler(IApplicationDbContext db)
     {
         var request = command.Request;
 
-        if (request.Amount <= 0)
-        {
-            return Error.Validation(ErrorCodes.InvalidAmount, "Payment amount must be greater than zero.");
-        }
-
         var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == command.Id, cancellationToken);
         if (invoice is null)
         {
@@ -30,14 +25,14 @@ public sealed class RecordPaymentCommandHandler(IApplicationDbContext db)
             return Error.Conflict(ErrorCodes.Cancelled, "Cannot record a payment against a cancelled invoice.");
         }
 
-        var alreadyPaid = await db.Payments
-            .Where(p => p.InvoiceId == command.Id)
-            .SumAsync(p => p.Amount, cancellationToken);
-
-        if (alreadyPaid >= invoice.Total)
+        if (invoice.Status == InvoiceStatus.Paid)
         {
             return Error.Conflict(ErrorCodes.AlreadyPaid, "Invoice has already been fully paid.");
         }
+
+        var alreadyPaid = await db.Payments
+            .Where(p => p.InvoiceId == command.Id)
+            .SumAsync(p => p.Amount, cancellationToken);
 
         var remaining = invoice.Total - alreadyPaid;
         if (request.Amount > remaining)
@@ -60,17 +55,25 @@ public sealed class RecordPaymentCommandHandler(IApplicationDbContext db)
             invoice.Status = InvoiceStatus.Paid;
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Error.Conflict(ErrorCodes.ConcurrentModification,
+                "The invoice was modified by another request. Please retry.");
+        }
 
         return Result.Updated;
     }
 
     public static class ErrorCodes
     {
-        public const string InvalidAmount = "RecordPaymentCommand.InvalidAmount";
         public const string NotFound = "RecordPaymentCommand.NotFound";
         public const string Cancelled = "RecordPaymentCommand.Cancelled";
         public const string AlreadyPaid = "RecordPaymentCommand.AlreadyPaid";
         public const string ExceedsBalance = "RecordPaymentCommand.ExceedsBalance";
+        public const string ConcurrentModification = "RecordPaymentCommand.ConcurrentModification";
     }
 }

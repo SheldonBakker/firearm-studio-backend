@@ -20,6 +20,11 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.HasIndex(x => new { x.CompanyId, x.InvoiceNumber }).IsUnique();
         builder.HasIndex(x => new { x.CompanyId, x.CustomerId, x.InvoiceMonth }).IsUnique();
 
+        builder.Property<uint>("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
+
         builder.HasOne(i => i.Customer)
             .WithMany(c => c.Invoices)
             .HasForeignKey(i => i.CustomerId)
