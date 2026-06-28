@@ -8,9 +8,12 @@ public sealed class DesignTimeDbContextFactory : Microsoft.EntityFrameworkCore.D
 {
     public ApplicationDbContext CreateDbContext(string[] args)
     {
-        if (File.Exists(".env"))
+        try
         {
-            DotNetEnv.Env.Load();
+            DotNetEnv.Env.TraversePath().Load();
+        }
+        catch (Exception)
+        {
         }
 
         var configuration = new ConfigurationBuilder()

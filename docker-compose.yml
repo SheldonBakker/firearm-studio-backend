@@ -7,5 +7,6 @@ services:
       ASPNETCORE_HTTP_PORTS: "5146"
       ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
       SupabaseJwtSettings__Authority: ${SupabaseJwtSettings__Authority}
+      ApiKeySettings__Key: ${ApiKeySettings__Key}
     ports:
       - "5146:5146"

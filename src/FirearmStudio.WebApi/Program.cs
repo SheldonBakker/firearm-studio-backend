@@ -2,12 +2,17 @@ using FirearmStudio.Application.Extensions;
 using FirearmStudio.Infrastructure.Extensions;
 using FirearmStudio.WebApi.Extensions;
 using FirearmStudio.WebApi.Extensions.Authentication;
+using FirearmStudio.WebApi.Middleware;
 using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 
-if (File.Exists(".env"))
+try
 {
-    DotNetEnv.Env.Load();
+    DotNetEnv.Env.TraversePath().Load();
+}
+catch (Exception)
+{
+    // No readable/parseable .env (e.g. in the container) — fall back to environment variables.
 }
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,6 +34,7 @@ builder.Services.AddHealthChecks();
 
 builder.Services
     .AddWebApi()
+    .AddApiKey(builder.Configuration)
     .AddInfrastructure(builder.Configuration)
     .AddWebAuthentication(builder.Configuration)
     .AddApplication();
@@ -46,6 +52,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 app.UseSerilogRequestLogging();
+
+app.UseMiddleware<ApiKeyMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();

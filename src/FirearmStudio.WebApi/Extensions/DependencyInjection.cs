@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using FirearmStudio.Application.Model.Options;
 using FirearmStudio.WebApi.Common;
 using Microsoft.OpenApi.Models;
 
@@ -51,6 +52,15 @@ public static class DependencyInjection
                 Description = "Paste a Supabase access token (without the 'Bearer ' prefix).",
             });
 
+            const string apiKeyScheme = "ApiKey";
+            options.AddSecurityDefinition(apiKeyScheme, new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.ApiKey,
+                In = ParameterLocation.Header,
+                Name = ApiKeySettings.DefaultHeaderName,
+                Description = "Shared API key required on all /api endpoints.",
+            });
+
             options.AddSecurityRequirement(new OpenApiSecurityRequirement
             {
                 {
@@ -60,6 +70,17 @@ public static class DependencyInjection
                         {
                             Type = ReferenceType.SecurityScheme,
                             Id = bearerScheme,
+                        },
+                    },
+                    []
+                },
+                {
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.SecurityScheme,
+                            Id = apiKeyScheme,
                         },
                     },
                     []
