@@ -1,6 +1,10 @@
 using Asp.Versioning;
-using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Application.Me;
+using FirearmStudio.Application.Me.GetAdminCheck;
+using FirearmStudio.Application.Me.GetCurrentUser;
 using FirearmStudio.Domain.Authentication;
+using FirearmStudio.WebApi.Common;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,23 +14,20 @@ namespace FirearmStudio.WebApi.Controllers;
 [ApiVersion(1)]
 [Route("api/v{version:apiVersion}/me")]
 [Authorize]
-public sealed class MeController(ICurrentUserService currentUserService) : ControllerBase
+public sealed class MeController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    public ActionResult<CurrentUserResponse> Get()
+    public async Task<ActionResult<CurrentUserResponse>> Get(CancellationToken ct)
     {
-        var user = currentUserService.User;
-        return Ok(new CurrentUserResponse(user.Id, user.Email, user.Roles));
+        var result = await mediator.Send(new GetCurrentUserQuery(), ct);
+        return result.ToActionResult();
     }
 
     [HttpGet("admin-check")]
     [Authorize(Roles = AppRoles.Admin)]
-    public ActionResult<AdminCheckResponse> AdminCheck()
+    public async Task<ActionResult<AdminCheckResponse>> AdminCheck(CancellationToken ct)
     {
-        return Ok(new AdminCheckResponse(true, currentUserService.User.Id));
+        var result = await mediator.Send(new GetAdminCheckQuery(), ct);
+        return result.ToActionResult();
     }
-
-    public sealed record CurrentUserResponse(Guid Id, string? Email, IReadOnlyList<string> Roles);
-
-    public sealed record AdminCheckResponse(bool IsAdmin, Guid Id);
 }

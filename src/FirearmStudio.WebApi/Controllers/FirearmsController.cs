@@ -1,12 +1,16 @@
 using Asp.Versioning;
-using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Application.Firearms;
+using FirearmStudio.Application.Firearms.CreateFirearm;
+using FirearmStudio.Application.Firearms.GetActiveStorageFirearms;
+using FirearmStudio.Application.Firearms.GetFirearm;
+using FirearmStudio.Application.Firearms.GetFirearmLicences;
+using FirearmStudio.Application.Firearms.GetFirearms;
+using FirearmStudio.Application.Firearms.UpdateFirearm;
 using FirearmStudio.Domain.Authentication;
-using FirearmStudio.Domain.Entities;
-using FirearmStudio.Domain.Enums;
 using FirearmStudio.WebApi.Common;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.WebApi.Controllers;
 
@@ -14,103 +18,51 @@ namespace FirearmStudio.WebApi.Controllers;
 [ApiVersion(1)]
 [Route("api/v{version:apiVersion}/firearms")]
 [Authorize(Roles = AppRoles.Policy.AnyAuthenticatedRole)]
-public sealed class FirearmsController(IApplicationDbContext db) : ControllerBase
+public sealed class FirearmsController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<FirearmResponse>>> List(CancellationToken ct) =>
-        await db.Firearms.OrderBy(f => f.SerialNumber)
-            .Select(f => new FirearmResponse(f.Id, f.CustomerId, f.Make, f.Model, f.Calibre, f.FirearmType, f.SerialNumber, f.Status, f.Notes))
-            .ToListAsync(ct);
+    public async Task<ActionResult<IReadOnlyList<FirearmResponse>>> List(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetFirearmsQuery(), ct);
+        return result.ToActionResult();
+    }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<FirearmResponse>> Get(Guid id, CancellationToken ct)
     {
-        var f = await db.Firearms.FirstOrDefaultAsync(x => x.Id == id, ct);
-        return f is null ? NotFound() : ToResponse(f);
+        var result = await mediator.Send(new GetFirearmQuery(id), ct);
+        return result.ToActionResult();
     }
 
     [HttpGet("storage/active")]
-    public async Task<ActionResult> ActiveStorage(CancellationToken ct) =>
-        Ok(await db.StorageRecords
-            .ActiveOpen()
-            .Select(s => new
-            {
-                s.FirearmId,
-                s.Firearm!.SerialNumber,
-                s.Firearm.Make,
-                s.Firearm.Model,
-                s.MonthlyRate,
-                s.StorageLocation,
-                s.StoredFrom,
-            })
-            .ToListAsync(ct));
+    public async Task<ActionResult> ActiveStorage(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetActiveStorageFirearmsQuery(), ct);
+        return result.ToActionResult();
+    }
 
     [HttpGet("{id:guid}/licences")]
-    public async Task<ActionResult> Licences(Guid id, CancellationToken ct) =>
-        Ok(await db.FirearmLicences.Where(l => l.FirearmId == id)
-            .Select(l => new { l.Id, l.LicenceNumber, l.IssuedOn, l.ExpiresOn, l.RenewalDueOn, l.Status })
-            .ToListAsync(ct));
+    public async Task<ActionResult> Licences(Guid id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetFirearmLicencesQuery(id), ct);
+        return result.ToActionResult();
+    }
 
     [HttpPost]
     [Authorize(Roles = AppRoles.Policy.ManagerOrAbove)]
     public async Task<ActionResult<FirearmResponse>> Create(CreateFirearmRequest request, CancellationToken ct)
     {
-        var customerExists = await db.Customers.AnyAsync(c => c.Id == request.CustomerId, ct);
-        if (!customerExists)
-        {
-            return Problem(detail: "Customer not found.", statusCode: StatusCodes.Status404NotFound);
-        }
-
-        var firearm = new Firearm
-        {
-            CustomerId = request.CustomerId,
-            Make = request.Make,
-            Model = request.Model,
-            Calibre = request.Calibre,
-            FirearmType = request.FirearmType,
-            SerialNumber = request.SerialNumber,
-            InternalReference = request.InternalReference,
-            Notes = request.Notes,
-        };
-        await db.Firearms.AddAsync(firearm, ct);
-        await db.SaveChangesAsync(ct);
-
-        return CreatedAtAction(nameof(Get), new { id = firearm.Id, version = "1" }, ToResponse(firearm));
+        var result = await mediator.Send(new CreateFirearmCommand(request), ct);
+        return result.IsError
+            ? result.ToActionResult()
+            : CreatedAtAction(nameof(Get), new { id = result.Value.Id, version = "1" }, result.Value);
     }
 
     [HttpPatch("{id:guid}")]
     [Authorize(Roles = AppRoles.Policy.ManagerOrAbove)]
     public async Task<ActionResult> Update(Guid id, UpdateFirearmRequest request, CancellationToken ct)
     {
-        var firearm = await db.Firearms.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (firearm is null)
-        {
-            return NotFound();
-        }
-
-        firearm.Model = request.Model ?? firearm.Model;
-        firearm.Calibre = request.Calibre ?? firearm.Calibre;
-        firearm.FirearmType = request.FirearmType ?? firearm.FirearmType;
-        firearm.Notes = request.Notes ?? firearm.Notes;
-        if (request.Status is { } status)
-        {
-            firearm.Status = status;
-        }
-
-        await db.SaveChangesAsync(ct);
-        return NoContent();
+        var result = await mediator.Send(new UpdateFirearmCommand(id, request), ct);
+        return result.ToActionResult();
     }
-
-    private static FirearmResponse ToResponse(Firearm f) =>
-        new(f.Id, f.CustomerId, f.Make, f.Model, f.Calibre, f.FirearmType, f.SerialNumber, f.Status, f.Notes);
-
-    public sealed record FirearmResponse(
-        Guid Id, Guid CustomerId, string Make, string? Model, string? Calibre, string? FirearmType, string SerialNumber, FirearmStatus Status, string? Notes);
-
-    public sealed record CreateFirearmRequest(
-        Guid CustomerId, string Make, string? Model, string? Calibre, string? FirearmType,
-        string SerialNumber, string? InternalReference, string? Notes);
-
-    public sealed record UpdateFirearmRequest(
-        string? Model, string? Calibre, string? FirearmType, string? Notes, FirearmStatus? Status);
 }

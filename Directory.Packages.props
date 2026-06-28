@@ -32,6 +32,9 @@
     <!-- Validation + result types -->
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageVersion Include="ErrorOr" Version="2.1.1" />
+
+    <!-- CQRS mediator (12.x is the last MIT-licensed line; 13+ is commercial) -->
+    <PackageVersion Include="MediatR" Version="12.5.0" />
   </ItemGroup>
 
 </Project>

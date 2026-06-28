@@ -1,7 +1,7 @@
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 
-namespace FirearmStudio.WebApi.Common;
+namespace FirearmStudio.Application.Common;
 
 public static class StorageRecordQueryExtensions
 {

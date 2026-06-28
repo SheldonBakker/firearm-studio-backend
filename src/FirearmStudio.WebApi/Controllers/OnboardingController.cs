@@ -1,6 +1,8 @@
 using Asp.Versioning;
 using FirearmStudio.Application.Onboarding;
+using FirearmStudio.Application.Onboarding.CreateCompanyOnboarding;
 using FirearmStudio.WebApi.Common;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,15 +12,15 @@ namespace FirearmStudio.WebApi.Controllers;
 [ApiVersion(1)]
 [Route("api/v{version:apiVersion}/onboarding")]
 [Authorize]
-public sealed class OnboardingController(IOnboardingService onboardingService) : ControllerBase
+public sealed class OnboardingController(IMediator mediator) : ControllerBase
 {
     [HttpPost("company")]
     public async Task<ActionResult> CreateCompany(CreateCompanyRequest request, CancellationToken ct)
     {
-        var result = await onboardingService.CreateCompanyAsync(request, ct);
+        var result = await mediator.Send(new CreateCompanyOnboardingCommand(request), ct);
         if (result.IsError)
         {
-            return this.ToProblem(result);
+            return result.ToActionResult();
         }
 
         return Created($"/api/v1/companies/{result.Value.Id}", new
