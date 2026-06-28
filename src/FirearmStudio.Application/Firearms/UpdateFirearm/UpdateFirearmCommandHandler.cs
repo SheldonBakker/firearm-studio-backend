@@ -17,13 +17,29 @@ public sealed class UpdateFirearmCommandHandler(IApplicationDbContext db)
         }
 
         var request = command.Request;
-        firearm.Model = request.Model ?? firearm.Model;
-        firearm.Calibre = request.Calibre ?? firearm.Calibre;
-        firearm.FirearmType = request.FirearmType ?? firearm.FirearmType;
-        firearm.Notes = request.Notes ?? firearm.Notes;
-        if (request.Status is { } status)
+        if (request.Model.IsSet)
         {
-            firearm.Status = status;
+            firearm.Model = request.Model.Value;
+        }
+
+        if (request.Calibre.IsSet)
+        {
+            firearm.Calibre = request.Calibre.Value;
+        }
+
+        if (request.FirearmType.IsSet)
+        {
+            firearm.FirearmType = request.FirearmType.Value;
+        }
+
+        if (request.Notes.IsSet)
+        {
+            firearm.Notes = request.Notes.Value;
+        }
+
+        if (request.Status.IsSet)
+        {
+            firearm.Status = request.Status.Value;
         }
 
         await db.SaveChangesAsync(cancellationToken);

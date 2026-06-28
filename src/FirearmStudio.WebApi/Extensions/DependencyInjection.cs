@@ -39,6 +39,8 @@ public static class DependencyInjection
                 Version = "v1",
             });
 
+            options.SchemaFilter<OptionalSchemaFilter>();
+
             const string bearerScheme = "Bearer";
             options.AddSecurityDefinition(bearerScheme, new OpenApiSecurityScheme
             {

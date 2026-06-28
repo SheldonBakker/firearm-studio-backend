@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 
@@ -53,4 +54,9 @@ public sealed record CreateCustomerRequest(
     string? Province, string? PostalCode, string? Notes);
 
 public sealed record UpdateCustomerRequest(
-    string? FullName, string? CompanyName, string? Email, string? Phone, string? Notes, bool? IsActive);
+    Optional<string> FullName,
+    Optional<string?> CompanyName,
+    Optional<string> Email,
+    Optional<string> Phone,
+    Optional<string?> Notes,
+    Optional<bool> IsActive);

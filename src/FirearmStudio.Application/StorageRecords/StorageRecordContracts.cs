@@ -1,3 +1,4 @@
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.StorageRecords;
@@ -27,4 +28,12 @@ public sealed record CustomerStorageRecordDto(
 public sealed record StartStorageRequest(
     DateOnly StoredFrom, decimal MonthlyRate, string? StorageLocation, string? RackNumber, string? SafeNumber, string? Notes);
 
-public sealed record ReleaseStorageRequest(DateOnly? StoredUntil);
+public sealed record UpdateStorageRecordRequest(
+    Optional<DateOnly> StoredFrom,
+    Optional<DateOnly?> StoredUntil,
+    Optional<decimal> MonthlyRate,
+    Optional<StorageStatus> StorageStatus,
+    Optional<string?> StorageLocation,
+    Optional<string?> RackNumber,
+    Optional<string?> SafeNumber,
+    Optional<string?> Notes);

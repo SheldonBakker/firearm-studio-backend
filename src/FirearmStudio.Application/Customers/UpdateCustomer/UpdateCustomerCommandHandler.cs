@@ -17,14 +17,34 @@ public sealed class UpdateCustomerCommandHandler(IApplicationDbContext db)
         }
 
         var request = command.Request;
-        customer.FullName = request.FullName ?? customer.FullName;
-        customer.CompanyName = request.CompanyName ?? customer.CompanyName;
-        customer.Email = request.Email ?? customer.Email;
-        customer.Phone = request.Phone ?? customer.Phone;
-        customer.Notes = request.Notes ?? customer.Notes;
-        if (request.IsActive is { } active)
+        if (request.FullName.IsSet)
         {
-            customer.IsActive = active;
+            customer.FullName = request.FullName.Value;
+        }
+
+        if (request.CompanyName.IsSet)
+        {
+            customer.CompanyName = request.CompanyName.Value;
+        }
+
+        if (request.Email.IsSet)
+        {
+            customer.Email = request.Email.Value;
+        }
+
+        if (request.Phone.IsSet)
+        {
+            customer.Phone = request.Phone.Value;
+        }
+
+        if (request.Notes.IsSet)
+        {
+            customer.Notes = request.Notes.Value;
+        }
+
+        if (request.IsActive.IsSet)
+        {
+            customer.IsActive = request.IsActive.Value;
         }
 
         await db.SaveChangesAsync(cancellationToken);

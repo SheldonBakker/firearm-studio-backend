@@ -3,8 +3,8 @@ using FirearmStudio.Application.StorageRecords;
 using FirearmStudio.Application.StorageRecords.GetStorageRecords;
 using FirearmStudio.Domain.Enums;
 using FirearmStudio.Application.StorageRecords.GetCustomerStorageRecords;
-using FirearmStudio.Application.StorageRecords.ReleaseStorage;
 using FirearmStudio.Application.StorageRecords.StartStorage;
+using FirearmStudio.Application.StorageRecords.UpdateStorageRecord;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.WebApi.Common;
 using MediatR;
@@ -47,11 +47,11 @@ public sealed class StorageRecordsController(IMediator mediator) : ControllerBas
             : Created($"/api/v1/storage/{result.Value}", new { Id = result.Value });
     }
 
-    [HttpPatch("storage-records/{id:guid}/release")]
+    [HttpPatch("storage-records/{id:guid}")]
     [Authorize(Roles = AppRoles.Policy.StaffOrAbove)]
-    public async Task<ActionResult> Release(Guid id, ReleaseStorageRequest? request, CancellationToken ct)
+    public async Task<ActionResult> Update(Guid id, UpdateStorageRecordRequest request, CancellationToken ct)
     {
-        var result = await mediator.Send(new ReleaseStorageCommand(id, request), ct);
+        var result = await mediator.Send(new UpdateStorageRecordCommand(id, request), ct);
         return result.ToActionResult();
     }
 }

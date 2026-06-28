@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Entities;
 
 namespace FirearmStudio.Application.Companies;
@@ -26,13 +27,13 @@ public sealed record CompanyDetailsResponse(
 }
 
 public sealed record UpdateCompanyRequest(
-    string? Name,
-    string? RegistrationNumber,
-    string? VatNumber,
-    string? Email,
-    string? Phone,
-    string? AddressLine1,
-    string? AddressLine2,
-    string? City,
-    string? Province,
-    string? PostalCode);
+    Optional<string> Name,
+    Optional<string?> RegistrationNumber,
+    Optional<string?> VatNumber,
+    Optional<string?> Email,
+    Optional<string?> Phone,
+    Optional<string?> AddressLine1,
+    Optional<string?> AddressLine2,
+    Optional<string?> City,
+    Optional<string?> Province,
+    Optional<string?> PostalCode);

@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 
@@ -50,4 +51,8 @@ public sealed record CreateFirearmRequest(
     string SerialNumber, string? InternalReference, string? Notes);
 
 public sealed record UpdateFirearmRequest(
-    string? Model, string? Calibre, string? FirearmType, string? Notes, FirearmStatus? Status);
+    Optional<string?> Model,
+    Optional<string?> Calibre,
+    Optional<string?> FirearmType,
+    Optional<string?> Notes,
+    Optional<FirearmStatus> Status);

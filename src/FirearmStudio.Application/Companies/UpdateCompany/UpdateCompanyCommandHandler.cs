@@ -24,16 +24,55 @@ public sealed class UpdateCompanyCommandHandler(
         }
 
         var request = command.Request;
-        company.Name = request.Name ?? company.Name;
-        company.RegistrationNumber = request.RegistrationNumber ?? company.RegistrationNumber;
-        company.VatNumber = request.VatNumber ?? company.VatNumber;
-        company.Email = request.Email ?? company.Email;
-        company.Phone = request.Phone ?? company.Phone;
-        company.AddressLine1 = request.AddressLine1 ?? company.AddressLine1;
-        company.AddressLine2 = request.AddressLine2 ?? company.AddressLine2;
-        company.City = request.City ?? company.City;
-        company.Province = request.Province ?? company.Province;
-        company.PostalCode = request.PostalCode ?? company.PostalCode;
+        if (request.Name.IsSet)
+        {
+            company.Name = request.Name.Value;
+        }
+
+        if (request.RegistrationNumber.IsSet)
+        {
+            company.RegistrationNumber = request.RegistrationNumber.Value;
+        }
+
+        if (request.VatNumber.IsSet)
+        {
+            company.VatNumber = request.VatNumber.Value;
+        }
+
+        if (request.Email.IsSet)
+        {
+            company.Email = request.Email.Value;
+        }
+
+        if (request.Phone.IsSet)
+        {
+            company.Phone = request.Phone.Value;
+        }
+
+        if (request.AddressLine1.IsSet)
+        {
+            company.AddressLine1 = request.AddressLine1.Value;
+        }
+
+        if (request.AddressLine2.IsSet)
+        {
+            company.AddressLine2 = request.AddressLine2.Value;
+        }
+
+        if (request.City.IsSet)
+        {
+            company.City = request.City.Value;
+        }
+
+        if (request.Province.IsSet)
+        {
+            company.Province = request.Province.Value;
+        }
+
+        if (request.PostalCode.IsSet)
+        {
+            company.PostalCode = request.PostalCode.Value;
+        }
 
         await db.SaveChangesAsync(cancellationToken);
 
