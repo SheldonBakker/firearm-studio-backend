@@ -24,6 +24,8 @@ public sealed record FirearmResponse(
 
 public sealed record ActiveStorageFirearmDto(
     Guid FirearmId,
+    Guid CustomerId,
+    string? CustomerName,
     string SerialNumber,
     string Make,
     string? Model,

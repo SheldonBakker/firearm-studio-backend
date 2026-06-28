@@ -10,8 +10,26 @@ public sealed class GetFirearmsQueryHandler(IApplicationDbContext db)
 {
     public async Task<ErrorOr<IReadOnlyList<FirearmResponse>>> Handle(GetFirearmsQuery query, CancellationToken cancellationToken)
     {
-        IReadOnlyList<FirearmResponse> firearms = await db.Firearms
-            .AsNoTracking()
+        var queryable = db.Firearms.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(query.SerialNumber))
+        {
+            var term = query.SerialNumber.Trim().ToLower();
+            queryable = queryable.Where(f => f.SerialNumber.ToLower().Contains(term));
+        }
+
+        if (query.Status.HasValue)
+            queryable = queryable.Where(f => f.Status == query.Status.Value);
+
+        if (!string.IsNullOrWhiteSpace(query.CustomerName))
+        {
+            var term = query.CustomerName.Trim().ToLower();
+            queryable = queryable.Where(f =>
+                (f.Customer!.FullName != null && f.Customer.FullName.ToLower().Contains(term)) ||
+                (f.Customer!.CompanyName != null && f.Customer.CompanyName.ToLower().Contains(term)));
+        }
+
+        IReadOnlyList<FirearmResponse> firearms = await queryable
             .OrderBy(f => f.SerialNumber)
             .Select(FirearmResponse.QueryProjection)
             .ToListAsync(cancellationToken);

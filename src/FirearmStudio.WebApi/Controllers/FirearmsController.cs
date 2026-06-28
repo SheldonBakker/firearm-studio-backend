@@ -5,6 +5,7 @@ using FirearmStudio.Application.Firearms.GetActiveStorageFirearms;
 using FirearmStudio.Application.Firearms.GetFirearm;
 using FirearmStudio.Application.Firearms.GetFirearmLicences;
 using FirearmStudio.Application.Firearms.GetFirearms;
+using FirearmStudio.Domain.Enums;
 using FirearmStudio.Application.Firearms.UpdateFirearm;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.WebApi.Common;
@@ -21,9 +22,13 @@ namespace FirearmStudio.WebApi.Controllers;
 public sealed class FirearmsController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<FirearmResponse>>> List(CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<FirearmResponse>>> List(
+        [FromQuery] string? serialNumber,
+        [FromQuery] FirearmStatus? status,
+        [FromQuery] string? customerName,
+        CancellationToken ct)
     {
-        var result = await mediator.Send(new GetFirearmsQuery(), ct);
+        var result = await mediator.Send(new GetFirearmsQuery(serialNumber, status, customerName), ct);
         return result.ToActionResult();
     }
 
@@ -35,9 +40,14 @@ public sealed class FirearmsController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("storage/active")]
-    public async Task<ActionResult> ActiveStorage(CancellationToken ct)
+    public async Task<ActionResult> ActiveStorage(
+        [FromQuery] string? serialNumber,
+        [FromQuery] string? customerName,
+        [FromQuery] StorageStatus? storageStatus,
+        CancellationToken ct)
     {
-        var result = await mediator.Send(new GetActiveStorageFirearmsQuery(), ct);
+        var result = await mediator.Send(
+            new GetActiveStorageFirearmsQuery(serialNumber, customerName, storageStatus), ct);
         return result.ToActionResult();
     }
 
