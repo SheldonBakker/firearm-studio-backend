@@ -152,30 +152,28 @@ non-root `aspnet:10.0-noble-chiseled`) plus a `docker-compose.yml` for a Portain
   chiseled runtime has no shell, so a container-level `HEALTHCHECK` is intentionally omitted.
 - Database migrations are **not** run from the container; the Supabase schema is managed separately.
 
-### Deploying (prebuilt image)
+### Deploying (Portainer builds from the repository)
 
-Build the image on a machine with Docker (or CI) and push it to a registry — don't build on the
-Portainer host (the .NET compile needs more RAM than small hosts have). `docker-compose.yml`
-references the GHCR image:
+`docker-compose.yml` builds the image via the `Dockerfile`. In Portainer →
+**Stacks → Add stack → Repository**, point it at this repo (with a fine-grained PAT that has
+`Contents: Read` for private access), set the compose path to `docker-compose.yml`, add the env vars
+above, and deploy.
 
-```bash
-echo "$GITHUB_PAT" | docker login ghcr.io -u sheldonbakker --password-stdin
-docker build -t ghcr.io/sheldonbakker/firearm-studio-api:latest .
-docker push ghcr.io/sheldonbakker/firearm-studio-api:latest
-```
+The build is tuned to fit **low-memory hosts**: the `Dockerfile` forces workstation GC
+(`DOTNET_gcServer=0` — server GC otherwise reserves heap per CPU core, the usual cause of build
+OOM on small/many-core hosts), disables MSBuild node reuse, and serialises the compile
+(`/m:1 /p:BuildInParallel=false /p:UseSharedCompilation=false`). The runtime also runs workstation
+GC for a smaller footprint. If a build still OOMs, add ~2 GB of swap to the host or pre-build the
+image elsewhere and switch the compose service to `image:`.
 
-Then in Portainer → **Stacks → Add stack** (Repository or Web editor), add the env vars above and
-deploy. If the GHCR package is private, add a Registry in Portainer with a PAT that has
-`read:packages`. Pull updates with `docker compose pull && docker compose up -d` (or Portainer's
-re-pull / webhook).
-
-To run locally:
+To build/run locally:
 
 ```bash
+docker build -t firearm-studio-api .
 docker run -p 5146:5146 \
   -e ConnectionStrings__DefaultConnection="Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;Trust Server Certificate=true" \
   -e SupabaseJwtSettings__Authority="https://yqayiyhixfjyhkykbbsa.supabase.co/auth/v1" \
-  ghcr.io/sheldonbakker/firearm-studio-api:latest
+  firearm-studio-api
 ```
 
 ## API overview
