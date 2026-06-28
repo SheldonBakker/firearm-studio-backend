@@ -152,21 +152,24 @@ non-root `aspnet:10.0-noble-chiseled`) plus a `docker-compose.yml` for a Portain
   chiseled runtime has no shell, so a container-level `HEALTHCHECK` is intentionally omitted.
 - Database migrations are **not** run from the container; the Supabase schema is managed separately.
 
-### Deploying (Portainer builds from the repository)
+### Deploying (image built in CI, Portainer pulls it)
 
-`docker-compose.yml` builds the image via the `Dockerfile`. In Portainer →
-**Stacks → Add stack → Repository**, point it at this repo (with a fine-grained PAT that has
-`Contents: Read` for private access), set the compose path to `docker-compose.yml`, add the env vars
-above, and deploy.
+The image is **built by GitHub Actions** (`.github/workflows/docker-publish.yml`) on every push to
+`main` and pushed to **GHCR** as `ghcr.io/sheldonbakker/firearm-studio-api:latest`. The Portainer
+host never compiles — it only pulls the prebuilt image — so a low-memory server is fine and nothing
+on it needs changing.
 
-The build is tuned to fit **low-memory hosts**: the `Dockerfile` forces workstation GC
-(`DOTNET_gcServer=0` — server GC otherwise reserves heap per CPU core, the usual cause of build
-OOM on small/many-core hosts), disables MSBuild node reuse, and serialises the compile
-(`/m:1 /p:BuildInParallel=false /p:UseSharedCompilation=false`). The runtime also runs workstation
-GC for a smaller footprint. If a build still OOMs, add ~2 GB of swap to the host or pre-build the
-image elsewhere and switch the compose service to `image:`.
+`docker-compose.yml` references that image. In Portainer → **Stacks → Add stack** (Web editor or
+Repository), add the env vars above and deploy. Update with **Pull and redeploy** (or a Portainer
+webhook / `docker compose pull && up -d`).
 
-To build/run locally:
+GHCR auth:
+- The CI build uses the built-in `GITHUB_TOKEN` (no secrets to configure).
+- The package starts **private**. Either make it public (GitHub → Packages → the package → *Package
+  settings* → change visibility) **or** add a Registry in Portainer (`ghcr.io`, your username, a PAT
+  with `read:packages`) so it can pull.
+
+To build/run locally instead:
 
 ```bash
 docker build -t firearm-studio-api .
