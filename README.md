@@ -137,6 +137,32 @@ dotnet run --project src/FirearmStudio.WebApi
 Swagger UI (Development): `http://localhost:5146/swagger`. Paste a Supabase access token via the
 **Authorize** button to call protected endpoints.
 
+## Deployment (Docker / Portainer)
+
+The repo is container-ready: a multi-stage `Dockerfile` (build on `sdk:10.0`, run on the distroless,
+non-root `aspnet:10.0-noble-chiseled`) plus a `docker-compose.yml` for a Portainer stack.
+
+- The container serves **plain HTTP on port 8080** — TLS is terminated by your reverse proxy.
+- Configuration comes from **environment variables** (no `.env` is baked into the image). Set these as
+  **stack environment variables in Portainer** (Stacks → your stack → Environment variables), using the
+  `Section__Key` convention:
+  - `ConnectionStrings__DefaultConnection` — Supabase session-pooler connection string (required secret).
+  - `SupabaseJwtSettings__Authority` — `https://<ref>.supabase.co/auth/v1`.
+- Liveness endpoint: `GET /health` (anonymous). Point your reverse proxy's health check there — the
+  chiseled runtime has no shell, so a container-level `HEALTHCHECK` is intentionally omitted.
+- Database migrations are **not** run from the container; the Supabase schema is managed separately.
+
+To deploy: Portainer → **Stacks → Add stack** → from this Git repository (Build method: Repository) or
+from a prebuilt registry image, add the env vars above, then deploy. To build/run locally:
+
+```bash
+docker build -t firearm-studio-api .
+docker run -p 8080:8080 \
+  -e ConnectionStrings__DefaultConnection="Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;Trust Server Certificate=true" \
+  -e SupabaseJwtSettings__Authority="https://yqayiyhixfjyhkykbbsa.supabase.co/auth/v1" \
+  firearm-studio-api
+```
+
 ## API overview
 
 All routes are versioned under `api/v1`. Reads require any authenticated role; writes are gated per

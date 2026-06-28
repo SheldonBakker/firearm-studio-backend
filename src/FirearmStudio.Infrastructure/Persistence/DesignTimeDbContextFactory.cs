@@ -8,7 +8,10 @@ public sealed class DesignTimeDbContextFactory : Microsoft.EntityFrameworkCore.D
 {
     public ApplicationDbContext CreateDbContext(string[] args)
     {
-        DotNetEnv.Env.TraversePath().Load();
+        if (File.Exists(".env"))
+        {
+            DotNetEnv.Env.Load();
+        }
 
         var configuration = new ConfigurationBuilder()
             .AddUserSecrets("firearm-studio-backend")

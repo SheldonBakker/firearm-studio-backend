@@ -1,0 +1,27 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY Directory.Build.props Directory.Packages.props ./
+
+COPY src/FirearmStudio.Domain/FirearmStudio.Domain.csproj                 src/FirearmStudio.Domain/
+COPY src/FirearmStudio.Application/FirearmStudio.Application.csproj         src/FirearmStudio.Application/
+COPY src/FirearmStudio.Infrastructure/FirearmStudio.Infrastructure.csproj  src/FirearmStudio.Infrastructure/
+COPY src/FirearmStudio.WebApi/FirearmStudio.WebApi.csproj                  src/FirearmStudio.WebApi/
+
+RUN dotnet restore src/FirearmStudio.WebApi/FirearmStudio.WebApi.csproj
+
+COPY . .
+
+RUN dotnet publish src/FirearmStudio.WebApi/FirearmStudio.WebApi.csproj \
+    -c Release -o /app/publish --no-restore /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+
+EXPOSE 8080
+ENV ASPNETCORE_HTTP_PORTS=8080 \
+    ASPNETCORE_ENVIRONMENT=Production
+
+USER $APP_UID
+ENTRYPOINT ["dotnet", "FirearmStudio.WebApi.dll"]
