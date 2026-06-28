@@ -16,7 +16,6 @@ public static class SupabaseDataSourceFactory
         builder.MapEnum<StorageStatus>("storage_status");
         builder.MapEnum<InvoiceStatus>("invoice_status");
         builder.MapEnum<PaymentMethod>("payment_method");
-        builder.MapEnum<AppRole>("app_role");
 
         return builder.Build();
     }
@@ -29,6 +28,5 @@ public static class SupabaseDataSourceFactory
         options.MapEnum<StorageStatus>("storage_status");
         options.MapEnum<InvoiceStatus>("invoice_status");
         options.MapEnum<PaymentMethod>("payment_method");
-        options.MapEnum<AppRole>("app_role");
     }
 }

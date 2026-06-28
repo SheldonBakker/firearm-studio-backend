@@ -1,4 +1,3 @@
-using FirearmStudio.Domain.Authentication;
 using FluentValidation;
 
 namespace FirearmStudio.Application.Users;
@@ -9,9 +8,7 @@ public sealed class InviteUserRequestValidator : AbstractValidator<InviteUserReq
     {
         RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(320);
         RuleFor(x => x.FullName).MaximumLength(200);
-        RuleFor(x => x.Role)
-            .Must(AppRoles.IsKnownRole)
-            .WithMessage($"Role must be one of: {string.Join(", ", AppRoles.All)}.");
+        RuleFor(x => x.Role).IsInEnum().WithMessage("Unknown role.");
     }
 }
 
@@ -19,8 +16,6 @@ public sealed class UpdateUserRoleRequestValidator : AbstractValidator<UpdateUse
 {
     public UpdateUserRoleRequestValidator()
     {
-        RuleFor(x => x.Role)
-            .Must(AppRoles.IsKnownRole)
-            .WithMessage($"Role must be one of: {string.Join(", ", AppRoles.All)}.");
+        RuleFor(x => x.Role).IsInEnum().WithMessage("Unknown role.");
     }
 }

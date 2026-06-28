@@ -1,16 +1,17 @@
 using ErrorOr;
+using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Users;
 
-public sealed record InviteUserRequest(string Email, string? FullName, string Role);
+public sealed record InviteUserRequest(string Email, string? FullName, AppRole Role);
 
-public sealed record UpdateUserRoleRequest(string Role);
+public sealed record UpdateUserRoleRequest(AppRole Role);
 
 public sealed record AppUserResponse(
     Guid Id,
     string Email,
     string? FullName,
-    string Role,
+    AppRole Role,
     bool IsActive,
     bool IsLinked);
 

@@ -1,7 +1,6 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Users;
-using FirearmStudio.Domain.Authentication;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +20,7 @@ public sealed class UserManagementService(IApplicationDbContext db) : IUserManag
 
     public async Task<ErrorOr<AppUserResponse>> InviteUserAsync(InviteUserRequest request, CancellationToken ct = default)
     {
-        if (!AppRoles.TryParseRole(request.Role, out var role))
+        if (!Enum.IsDefined(request.Role))
         {
             return Error.Validation("Role", "Unknown role.");
         }
@@ -38,7 +37,7 @@ public sealed class UserManagementService(IApplicationDbContext db) : IUserManag
         {
             Email = email,
             FullName = request.FullName,
-            Role = role,
+            Role = request.Role,
             IsActive = true,
             InvitedAt = DateTime.UtcNow,
         };
@@ -51,10 +50,12 @@ public sealed class UserManagementService(IApplicationDbContext db) : IUserManag
 
     public async Task<ErrorOr<AppUserResponse>> ChangeRoleAsync(Guid userId, UpdateUserRoleRequest request, CancellationToken ct = default)
     {
-        if (!AppRoles.TryParseRole(request.Role, out var newRole))
+        if (!Enum.IsDefined(request.Role))
         {
             return Error.Validation("Role", "Unknown role.");
         }
+
+        var newRole = request.Role;
 
         var user = await db.AppUsers.FirstOrDefaultAsync(u => u.Id == userId, ct);
         if (user is null)
@@ -99,5 +100,5 @@ public sealed class UserManagementService(IApplicationDbContext db) : IUserManag
     }
 
     private static AppUserResponse Map(AppUser u) =>
-        new(u.Id, u.Email, u.FullName, u.Role.ToRoleString(), u.IsActive, u.AuthUserId is not null);
+        new(u.Id, u.Email, u.FullName, u.Role, u.IsActive, u.AuthUserId is not null);
 }
