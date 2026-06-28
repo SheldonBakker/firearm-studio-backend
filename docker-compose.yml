@@ -6,8 +6,8 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ASPNETCORE_HTTP_PORTS: "8080"
+      ASPNETCORE_HTTP_PORTS: "5146"
       ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
       SupabaseJwtSettings__Authority: ${SupabaseJwtSettings__Authority}
     ports:
-      - "8080:8080"
+      - "5146:5146"

@@ -19,8 +19,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
-EXPOSE 8080
-ENV ASPNETCORE_HTTP_PORTS=8080 \
+EXPOSE 5146
+ENV ASPNETCORE_HTTP_PORTS=5146 \
     ASPNETCORE_ENVIRONMENT=Production
 
 USER $APP_UID

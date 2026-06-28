@@ -142,7 +142,7 @@ Swagger UI (Development): `http://localhost:5146/swagger`. Paste a Supabase acce
 The repo is container-ready: a multi-stage `Dockerfile` (build on `sdk:10.0`, run on the distroless,
 non-root `aspnet:10.0-noble-chiseled`) plus a `docker-compose.yml` for a Portainer stack.
 
-- The container serves **plain HTTP on port 8080** — TLS is terminated by your reverse proxy.
+- The container serves **plain HTTP on port 5146** — TLS is terminated by your reverse proxy.
 - Configuration comes from **environment variables** (no `.env` is baked into the image). Set these as
   **stack environment variables in Portainer** (Stacks → your stack → Environment variables), using the
   `Section__Key` convention:
@@ -157,7 +157,7 @@ from a prebuilt registry image, add the env vars above, then deploy. To build/ru
 
 ```bash
 docker build -t firearm-studio-api .
-docker run -p 8080:8080 \
+docker run -p 5146:5146 \
   -e ConnectionStrings__DefaultConnection="Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;Trust Server Certificate=true" \
   -e SupabaseJwtSettings__Authority="https://yqayiyhixfjyhkykbbsa.supabase.co/auth/v1" \
   firearm-studio-api
