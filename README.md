@@ -152,15 +152,30 @@ non-root `aspnet:10.0-noble-chiseled`) plus a `docker-compose.yml` for a Portain
   chiseled runtime has no shell, so a container-level `HEALTHCHECK` is intentionally omitted.
 - Database migrations are **not** run from the container; the Supabase schema is managed separately.
 
-To deploy: Portainer → **Stacks → Add stack** → from this Git repository (Build method: Repository) or
-from a prebuilt registry image, add the env vars above, then deploy. To build/run locally:
+### Deploying (prebuilt image)
+
+Build the image on a machine with Docker (or CI) and push it to a registry — don't build on the
+Portainer host (the .NET compile needs more RAM than small hosts have). `docker-compose.yml`
+references the GHCR image:
 
 ```bash
-docker build -t firearm-studio-api .
+echo "$GITHUB_PAT" | docker login ghcr.io -u sheldonbakker --password-stdin
+docker build -t ghcr.io/sheldonbakker/firearm-studio-api:latest .
+docker push ghcr.io/sheldonbakker/firearm-studio-api:latest
+```
+
+Then in Portainer → **Stacks → Add stack** (Repository or Web editor), add the env vars above and
+deploy. If the GHCR package is private, add a Registry in Portainer with a PAT that has
+`read:packages`. Pull updates with `docker compose pull && docker compose up -d` (or Portainer's
+re-pull / webhook).
+
+To run locally:
+
+```bash
 docker run -p 5146:5146 \
   -e ConnectionStrings__DefaultConnection="Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;Trust Server Certificate=true" \
   -e SupabaseJwtSettings__Authority="https://yqayiyhixfjyhkykbbsa.supabase.co/auth/v1" \
-  firearm-studio-api
+  ghcr.io/sheldonbakker/firearm-studio-api:latest
 ```
 
 ## API overview
