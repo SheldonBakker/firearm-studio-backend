@@ -34,6 +34,17 @@ public sealed class RecordPaymentCommandHandler(IApplicationDbContext db)
             .Where(p => p.InvoiceId == command.Id)
             .SumAsync(p => p.Amount, cancellationToken);
 
+        if (alreadyPaid >= invoice.Total)
+        {
+            return Error.Conflict(ErrorCodes.AlreadyPaid, "Invoice has already been fully paid.");
+        }
+
+        var remaining = invoice.Total - alreadyPaid;
+        if (request.Amount > remaining)
+        {
+            return Error.Validation(ErrorCodes.ExceedsBalance, $"Payment amount exceeds the outstanding balance of {remaining:F2}.");
+        }
+
         await db.Payments.AddAsync(new Payment
         {
             InvoiceId = command.Id,
@@ -59,5 +70,7 @@ public sealed class RecordPaymentCommandHandler(IApplicationDbContext db)
         public const string InvalidAmount = "RecordPaymentCommand.InvalidAmount";
         public const string NotFound = "RecordPaymentCommand.NotFound";
         public const string Cancelled = "RecordPaymentCommand.Cancelled";
+        public const string AlreadyPaid = "RecordPaymentCommand.AlreadyPaid";
+        public const string ExceedsBalance = "RecordPaymentCommand.ExceedsBalance";
     }
 }
