@@ -29,14 +29,14 @@ public sealed class InvoicesController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult> List(CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<InvoiceListItemDto>>> List(CancellationToken ct)
     {
         var result = await mediator.Send(new GetInvoicesQuery(), ct);
         return result.ToActionResult();
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult> Get(Guid id, CancellationToken ct)
+    public async Task<ActionResult<InvoiceDetailDto>> Get(Guid id, CancellationToken ct)
     {
         var result = await mediator.Send(new GetInvoiceQuery(id), ct);
         return result.ToActionResult();

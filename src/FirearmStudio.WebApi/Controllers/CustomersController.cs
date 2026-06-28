@@ -43,14 +43,14 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("{id:guid}/firearms")]
-    public async Task<ActionResult> Firearms(Guid id, CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<CustomerFirearmListItemDto>>> Firearms(Guid id, CancellationToken ct)
     {
         var result = await mediator.Send(new GetCustomerFirearmsQuery(id), ct);
         return result.ToActionResult();
     }
 
     [HttpGet("{id:guid}/invoices")]
-    public async Task<ActionResult> Invoices(Guid id, CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<CustomerInvoiceListItemDto>>> Invoices(Guid id, CancellationToken ct)
     {
         var result = await mediator.Send(new GetCustomerInvoicesQuery(id), ct);
         return result.ToActionResult();

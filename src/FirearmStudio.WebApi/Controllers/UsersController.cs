@@ -19,7 +19,7 @@ namespace FirearmStudio.WebApi.Controllers;
 public sealed class UsersController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult> List(CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<AppUserResponse>>> List(CancellationToken ct)
     {
         var result = await mediator.Send(new ListUsersQuery(), ct);
         return result.ToActionResult();

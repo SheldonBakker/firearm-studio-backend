@@ -19,14 +19,14 @@ namespace FirearmStudio.WebApi.Controllers;
 public sealed class LicencesController(IMediator mediator) : ControllerBase
 {
     [HttpGet("licences/due-renewal")]
-    public async Task<ActionResult> DueForRenewal(CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<LicenceDueForRenewalDto>>> DueForRenewal(CancellationToken ct)
     {
         var result = await mediator.Send(new GetLicencesDueForRenewalQuery(), ct);
         return result.ToActionResult();
     }
 
     [HttpGet("licences/expired")]
-    public async Task<ActionResult> Expired(CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<ExpiredLicenceDto>>> Expired(CancellationToken ct)
     {
         var result = await mediator.Send(new GetExpiredLicencesQuery(), ct);
         return result.ToActionResult();

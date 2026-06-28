@@ -12,10 +12,7 @@ public static class DependencyInjection
         services.AddProblemDetails();
 
         services
-            .AddControllers(options => options.Filters.Add<ValidationFilter>())
-            .AddJsonOptions(options =>
-                options.JsonSerializerOptions.Converters.Add(
-                    new System.Text.Json.Serialization.JsonStringEnumConverter()));
+            .AddControllers(options => options.Filters.Add<ValidationFilter>());
         services.AddEndpointsApiExplorer();
 
         services

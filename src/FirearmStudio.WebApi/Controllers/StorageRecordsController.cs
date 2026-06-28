@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using FirearmStudio.Application.StorageRecords;
-using FirearmStudio.Application.StorageRecords.GetActiveStorageRecords;
+using FirearmStudio.Application.StorageRecords.GetStorageRecords;
+using FirearmStudio.Domain.Enums;
 using FirearmStudio.Application.StorageRecords.GetCustomerStorageRecords;
 using FirearmStudio.Application.StorageRecords.ReleaseStorage;
 using FirearmStudio.Application.StorageRecords.StartStorage;
@@ -18,15 +19,19 @@ namespace FirearmStudio.WebApi.Controllers;
 [Authorize(Roles = AppRoles.Policy.AnyAuthenticatedRole)]
 public sealed class StorageRecordsController(IMediator mediator) : ControllerBase
 {
-    [HttpGet("storage/active")]
-    public async Task<ActionResult> Active(CancellationToken ct)
+    [HttpGet("storage")]
+    public async Task<ActionResult<IReadOnlyList<StorageRecordDto>>> GetAll(
+        [FromQuery] StorageStatus? storageStatus,
+        [FromQuery] string? serialNumber,
+        [FromQuery] string? customerName,
+        CancellationToken ct)
     {
-        var result = await mediator.Send(new GetActiveStorageRecordsQuery(), ct);
+        var result = await mediator.Send(new GetStorageRecordsQuery(storageStatus, serialNumber, customerName), ct);
         return result.ToActionResult();
     }
 
     [HttpGet("storage/customer/{customerId:guid}")]
-    public async Task<ActionResult> ForCustomer(Guid customerId, CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<CustomerStorageRecordDto>>> ForCustomer(Guid customerId, CancellationToken ct)
     {
         var result = await mediator.Send(new GetCustomerStorageRecordsQuery(customerId), ct);
         return result.ToActionResult();

@@ -40,7 +40,7 @@ public sealed class FirearmsController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("storage/active")]
-    public async Task<ActionResult> ActiveStorage(
+    public async Task<ActionResult<IReadOnlyList<ActiveStorageFirearmDto>>> ActiveStorage(
         [FromQuery] string? serialNumber,
         [FromQuery] string? customerName,
         [FromQuery] StorageStatus? storageStatus,
@@ -52,7 +52,7 @@ public sealed class FirearmsController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("{id:guid}/licences")]
-    public async Task<ActionResult> Licences(Guid id, CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<FirearmLicenceListItemDto>>> Licences(Guid id, CancellationToken ct)
     {
         var result = await mediator.Send(new GetFirearmLicencesQuery(id), ct);
         return result.ToActionResult();
