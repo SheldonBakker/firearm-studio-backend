@@ -1,6 +1,8 @@
 services:
   api:
-    image: ghcr.io/sheldonbakker/firearm-studio-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production

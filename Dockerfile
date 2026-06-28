@@ -1,6 +1,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1 \
+    DOTNET_gcServer=0 \
+    MSBUILDDISABLENODEREUSE=1
+
 COPY Directory.Build.props Directory.Packages.props ./
 
 COPY src/FirearmStudio.Domain/FirearmStudio.Domain.csproj                 src/FirearmStudio.Domain/
@@ -13,7 +18,8 @@ RUN dotnet restore src/FirearmStudio.WebApi/FirearmStudio.WebApi.csproj
 COPY . .
 
 RUN dotnet publish src/FirearmStudio.WebApi/FirearmStudio.WebApi.csproj \
-    -c Release -o /app/publish --no-restore /p:UseAppHost=false
+    -c Release -o /app/publish --no-restore \
+    /p:UseAppHost=false /m:1 /p:BuildInParallel=false /p:UseSharedCompilation=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS final
 WORKDIR /app
@@ -21,7 +27,8 @@ COPY --from=build /app/publish .
 
 EXPOSE 5146
 ENV ASPNETCORE_HTTP_PORTS=5146 \
-    ASPNETCORE_ENVIRONMENT=Production
+    ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_gcServer=0
 
 USER $APP_UID
 ENTRYPOINT ["dotnet", "FirearmStudio.WebApi.dll"]
