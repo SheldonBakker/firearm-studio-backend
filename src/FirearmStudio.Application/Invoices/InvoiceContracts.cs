@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using ErrorOr;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 
@@ -8,12 +7,6 @@ namespace FirearmStudio.Application.Invoices;
 public sealed record GenerateMonthlyInvoicesRequest(DateOnly InvoiceMonth, decimal VatRate, int DueDays);
 
 public sealed record GenerateMonthlyInvoicesResponse(int InvoicesCreated, int InvoicesSkipped);
-
-public interface IInvoiceGenerationService
-{
-    Task<ErrorOr<GenerateMonthlyInvoicesResponse>> GenerateMonthlyAsync(
-        GenerateMonthlyInvoicesRequest request, CancellationToken ct = default);
-}
 
 public sealed record RecordPaymentRequest(decimal Amount, DateOnly? PaidOn, PaymentMethod Method, string? Reference, string? Notes);
 
@@ -48,4 +41,33 @@ public sealed record InvoiceDetailDto(
     DateTime? SentAt,
     DateOnly? DueOn,
     IReadOnlyList<InvoiceLineDto> Lines,
-    IReadOnlyList<InvoicePaymentDto> Payments);
+    IReadOnlyList<InvoicePaymentDto> Payments)
+{
+    public static Expression<Func<Invoice, InvoiceDetailDto>> QueryProjection => invoice => new InvoiceDetailDto(
+        invoice.Id,
+        invoice.CustomerId,
+        invoice.InvoiceNumber,
+        invoice.InvoiceMonth,
+        invoice.Subtotal,
+        invoice.VatAmount,
+        invoice.Total,
+        invoice.Status,
+        invoice.SentAt,
+        invoice.DueOn,
+        invoice.Lines
+            .Select(line => new InvoiceLineDto(
+                line.Id,
+                line.Description,
+                line.Quantity,
+                line.UnitPrice,
+                line.LineTotal))
+            .ToList(),
+        invoice.Payments
+            .Select(payment => new InvoicePaymentDto(
+                payment.Id,
+                payment.Amount,
+                payment.PaidOn,
+                payment.Method,
+                payment.Reference))
+            .ToList());
+}

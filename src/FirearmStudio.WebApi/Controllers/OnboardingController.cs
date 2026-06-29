@@ -23,7 +23,7 @@ public sealed class OnboardingController(IMediator mediator) : ControllerBase
             return result.ToActionResult();
         }
 
-        return Created($"/api/v1/companies/{result.Value.Id}", new
+        return Created("/api/v1/company", new
         {
             company = result.Value,
             message = "Company created and you are its admin. Refresh your Supabase session to " +

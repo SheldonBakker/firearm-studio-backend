@@ -17,6 +17,7 @@ public sealed class GetExpiredLicencesQueryHandler(IApplicationDbContext db)
             .AsNoTracking()
             .Where(l => l.ExpiresOn < today)
             .OrderBy(l => l.ExpiresOn)
+            .ThenBy(l => l.Id)
             .Select(ExpiredLicenceDto.QueryProjection)
             .ToListAsync(cancellationToken);
 

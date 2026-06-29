@@ -15,9 +15,13 @@ public sealed class GetActiveStorageFirearmsQueryHandler(IApplicationDbContext d
         var queryable = db.StorageRecords.AsNoTracking();
 
         if (query.StorageStatus.HasValue)
+        {
             queryable = queryable.Where(s => s.StorageStatus == query.StorageStatus.Value);
+        }
         else
+        {
             queryable = queryable.ActiveOpen();
+        }
 
         if (!string.IsNullOrWhiteSpace(query.SerialNumber))
         {
@@ -34,16 +38,9 @@ public sealed class GetActiveStorageFirearmsQueryHandler(IApplicationDbContext d
         }
 
         IReadOnlyList<ActiveStorageFirearmDto> records = await queryable
-            .Select(s => new ActiveStorageFirearmDto(
-                s.FirearmId,
-                s.Firearm!.CustomerId,
-                s.Firearm.Customer!.FullName ?? s.Firearm.Customer.CompanyName,
-                s.Firearm.SerialNumber,
-                s.Firearm.Make,
-                s.Firearm.Model,
-                s.MonthlyRate,
-                s.StorageLocation,
-                s.StoredFrom))
+            .OrderBy(record => record.Firearm!.SerialNumber)
+            .ThenBy(record => record.Id)
+            .Select(ActiveStorageFirearmDto.QueryProjection)
             .ToListAsync(cancellationToken);
 
         return ErrorOrFactory.From(records);

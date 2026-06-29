@@ -1,5 +1,3 @@
-using ErrorOr;
-
 namespace FirearmStudio.Application.Onboarding;
 
 public sealed record CreateCompanyRequest(
@@ -15,8 +13,3 @@ public sealed record CreateCompanyRequest(
     string? PostalCode);
 
 public sealed record CompanyResponse(Guid Id, string Name);
-
-public interface IOnboardingService
-{
-    Task<ErrorOr<CompanyResponse>> CreateCompanyAsync(CreateCompanyRequest request, CancellationToken ct = default);
-}

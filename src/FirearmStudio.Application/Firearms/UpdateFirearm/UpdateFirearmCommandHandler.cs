@@ -13,7 +13,7 @@ public sealed class UpdateFirearmCommandHandler(IApplicationDbContext db)
         var firearm = await db.Firearms.FirstOrDefaultAsync(x => x.Id == command.Id, cancellationToken);
         if (firearm is null)
         {
-            return Error.NotFound("UpdateFirearmCommand.NotFound", "Firearm not found.");
+            return Error.NotFound(ErrorCodes.NotFound, "Firearm not found.");
         }
 
         var request = command.Request;
@@ -45,5 +45,10 @@ public sealed class UpdateFirearmCommandHandler(IApplicationDbContext db)
         await db.SaveChangesAsync(cancellationToken);
 
         return Result.Updated;
+    }
+
+    public static class ErrorCodes
+    {
+        public const string NotFound = "UpdateFirearmCommand.NotFound";
     }
 }

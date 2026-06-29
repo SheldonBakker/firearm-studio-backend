@@ -14,6 +14,8 @@ public sealed class GetCustomerInvoicesQueryHandler(IApplicationDbContext db)
         IReadOnlyList<CustomerInvoiceListItemDto> invoices = await db.Invoices
             .AsNoTracking()
             .Where(i => i.CustomerId == query.CustomerId)
+            .OrderByDescending(i => i.InvoiceMonth)
+            .ThenBy(i => i.Id)
             .Select(CustomerInvoiceListItemDto.QueryProjection)
             .ToListAsync(cancellationToken);
 

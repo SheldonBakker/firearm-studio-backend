@@ -15,7 +15,9 @@ public sealed class GetStorageRecordsQueryHandler(IApplicationDbContext db)
         var queryable = db.StorageRecords.AsNoTracking();
 
         if (query.StorageStatus.HasValue)
+        {
             queryable = queryable.Where(s => s.StorageStatus == query.StorageStatus.Value);
+        }
 
         if (!string.IsNullOrWhiteSpace(query.SerialNumber))
         {
@@ -32,19 +34,9 @@ public sealed class GetStorageRecordsQueryHandler(IApplicationDbContext db)
         }
 
         IReadOnlyList<StorageRecordDto> records = await queryable
-            .Select(s => new StorageRecordDto(
-                s.Id,
-                s.FirearmId,
-                s.Firearm!.CustomerId,
-                s.Firearm.Customer!.FullName ?? s.Firearm.Customer.CompanyName,
-                s.Firearm.SerialNumber,
-                s.StorageStatus,
-                s.MonthlyRate,
-                s.StorageLocation,
-                s.RackNumber,
-                s.SafeNumber,
-                s.StoredFrom,
-                s.StoredUntil))
+            .OrderByDescending(record => record.StoredFrom)
+            .ThenBy(record => record.Id)
+            .Select(StorageRecordDto.QueryProjection)
             .ToListAsync(cancellationToken);
 
         return ErrorOrFactory.From(records);

@@ -14,6 +14,8 @@ public sealed class GetFirearmLicencesQueryHandler(IApplicationDbContext db)
         IReadOnlyList<FirearmLicenceListItemDto> licences = await db.FirearmLicences
             .AsNoTracking()
             .Where(l => l.FirearmId == query.FirearmId)
+            .OrderBy(l => l.ExpiresOn)
+            .ThenBy(l => l.Id)
             .Select(FirearmLicenceListItemDto.QueryProjection)
             .ToListAsync(cancellationToken);
 

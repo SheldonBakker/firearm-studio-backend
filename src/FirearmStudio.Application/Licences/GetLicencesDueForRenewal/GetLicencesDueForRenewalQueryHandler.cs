@@ -18,6 +18,7 @@ public sealed class GetLicencesDueForRenewalQueryHandler(IApplicationDbContext d
             .AsNoTracking()
             .Where(l => l.RenewalDueOn >= today && l.RenewalDueOn <= horizon)
             .OrderBy(l => l.RenewalDueOn)
+            .ThenBy(l => l.Id)
             .Select(LicenceDueForRenewalDto.QueryProjection)
             .ToListAsync(cancellationToken);
 

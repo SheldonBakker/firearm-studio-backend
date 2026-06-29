@@ -4,20 +4,31 @@ namespace FirearmStudio.Infrastructure.Tenancy;
 
 public sealed class TenantContext(ICurrentUserService currentUserService) : ITenantContext
 {
-    private bool _bypass;
+    private int _bypassDepth;
 
     public Guid? CompanyId => currentUserService.User.CompanyId;
 
-    public bool BypassFilter => _bypass;
+    public bool BypassFilter => _bypassDepth > 0;
 
     public IDisposable BeginBypass()
     {
-        _bypass = true;
+        _bypassDepth++;
         return new BypassScope(this);
     }
 
     private sealed class BypassScope(TenantContext owner) : IDisposable
     {
-        public void Dispose() => owner._bypass = false;
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            owner._bypassDepth--;
+        }
     }
 }

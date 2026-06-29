@@ -25,6 +25,12 @@ internal sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
         builder.Property(x => x.RegistrationNumber).HasMaxLength(50);
         builder.Property(x => x.VatNumber).HasMaxLength(50);
         builder.Property(x => x.Email).HasMaxLength(320);
+        builder.Property(x => x.Phone).HasMaxLength(50);
+        builder.Property(x => x.AddressLine1).HasMaxLength(200);
+        builder.Property(x => x.AddressLine2).HasMaxLength(200);
+        builder.Property(x => x.City).HasMaxLength(120);
+        builder.Property(x => x.Province).HasMaxLength(120);
+        builder.Property(x => x.PostalCode).HasMaxLength(20);
         builder.Property(x => x.IsActive).HasDefaultValue(true);
     }
 }
@@ -36,6 +42,10 @@ internal sealed class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
         builder.Property(x => x.Email).IsRequired().HasMaxLength(320);
         builder.Property(x => x.FullName).HasMaxLength(200);
         builder.Property(x => x.IsActive).HasDefaultValue(true);
+
+        builder.ToTable(table => table.HasCheckConstraint(
+            "ck_app_users_role",
+            "role between 0 and 3"));
 
         builder.HasIndex(x => x.CompanyId);
 

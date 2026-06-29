@@ -15,6 +15,10 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(x => x.VatAmount).HasPrecision(12, 2);
         builder.Property(x => x.Total).HasPrecision(12, 2);
 
+        builder.ToTable(table => table.HasCheckConstraint(
+            "ck_invoices_amounts",
+            "subtotal >= 0 and vat_amount >= 0 and total = subtotal + vat_amount"));
+
         builder.HasIndex(x => new { x.CustomerId, x.InvoiceMonth });
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => new { x.CompanyId, x.InvoiceNumber }).IsUnique();
@@ -43,6 +47,10 @@ internal sealed class InvoiceLineConfiguration : IEntityTypeConfiguration<Invoic
         builder.Property(x => x.UnitPrice).HasPrecision(12, 2);
         builder.Property(x => x.LineTotal).HasPrecision(12, 2);
 
+        builder.ToTable(table => table.HasCheckConstraint(
+            "ck_invoice_lines_amounts",
+            "quantity > 0 and unit_price >= 0 and line_total >= 0"));
+
         builder.HasIndex(x => x.InvoiceId);
         builder.HasIndex(x => x.FirearmId);
 
@@ -66,6 +74,11 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
 
         builder.Property(x => x.Amount).HasPrecision(12, 2);
         builder.Property(x => x.Reference).HasMaxLength(120);
+        builder.Property(x => x.Notes).HasMaxLength(4000);
+
+        builder.ToTable(table => table.HasCheckConstraint(
+            "ck_payments_amount",
+            "amount > 0"));
 
         builder.HasIndex(x => x.InvoiceId);
 

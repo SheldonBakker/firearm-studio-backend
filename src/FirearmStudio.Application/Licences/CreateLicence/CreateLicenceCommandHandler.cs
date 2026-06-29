@@ -30,7 +30,14 @@ public sealed class CreateLicenceCommandHandler(IApplicationDbContext db)
         };
 
         await db.FirearmLicences.AddAsync(licence, cancellationToken);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return Error.Conflict(ErrorCodes.LicenceNumberConflict, "This licence number already exists for the firearm.");
+        }
 
         return licence.Id;
     }
@@ -38,5 +45,6 @@ public sealed class CreateLicenceCommandHandler(IApplicationDbContext db)
     public static class ErrorCodes
     {
         public const string FirearmNotFound = "CreateLicenceCommand.FirearmNotFound";
+        public const string LicenceNumberConflict = "CreateLicenceCommand.LicenceNumberConflict";
     }
 }

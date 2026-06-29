@@ -1,4 +1,5 @@
-using ErrorOr;
+using System.Linq.Expressions;
+using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Users;
@@ -13,15 +14,16 @@ public sealed record AppUserResponse(
     string? FullName,
     AppRole Role,
     bool IsActive,
-    bool IsLinked);
-
-public interface IUserManagementService
+    bool IsLinked)
 {
-    Task<ErrorOr<IReadOnlyList<AppUserResponse>>> ListUsersAsync(CancellationToken ct = default);
+    public static Expression<Func<AppUser, AppUserResponse>> QueryProjection => user => new AppUserResponse(
+        user.Id,
+        user.Email,
+        user.FullName,
+        user.Role,
+        user.IsActive,
+        user.AuthUserId != null);
 
-    Task<ErrorOr<AppUserResponse>> InviteUserAsync(InviteUserRequest request, CancellationToken ct = default);
-
-    Task<ErrorOr<AppUserResponse>> ChangeRoleAsync(Guid userId, UpdateUserRoleRequest request, CancellationToken ct = default);
-
-    Task<ErrorOr<Success>> DeactivateUserAsync(Guid userId, CancellationToken ct = default);
+    public static AppUserResponse FromEntity(AppUser user) =>
+        new(user.Id, user.Email, user.FullName, user.Role, user.IsActive, user.AuthUserId is not null);
 }

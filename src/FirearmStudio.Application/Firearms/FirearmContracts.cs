@@ -32,7 +32,20 @@ public sealed record ActiveStorageFirearmDto(
     string? Model,
     decimal MonthlyRate,
     string? StorageLocation,
-    DateOnly StoredFrom);
+    DateOnly StoredFrom)
+{
+    public static Expression<Func<StorageRecord, ActiveStorageFirearmDto>> QueryProjection => record =>
+        new ActiveStorageFirearmDto(
+            record.FirearmId,
+            record.Firearm!.CustomerId,
+            record.Firearm.Customer!.FullName ?? record.Firearm.Customer.CompanyName,
+            record.Firearm.SerialNumber,
+            record.Firearm.Make,
+            record.Firearm.Model,
+            record.MonthlyRate,
+            record.StorageLocation,
+            record.StoredFrom);
+}
 
 public sealed record FirearmLicenceListItemDto(
     Guid Id,

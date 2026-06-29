@@ -1,7 +1,4 @@
 using FirearmStudio.Application.Abstractions;
-using FirearmStudio.Application.Invoices;
-using FirearmStudio.Application.Onboarding;
-using FirearmStudio.Application.Users;
 using FirearmStudio.Infrastructure.Persistence;
 using FirearmStudio.Infrastructure.Persistence.Interceptors;
 using FirearmStudio.Infrastructure.Services;
@@ -41,12 +38,6 @@ public static class DependencyInjection
                 .AddInterceptors(sp.GetRequiredService<TenantAndAuditInterceptor>()));
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
-
-        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-
-        services.AddScoped<IOnboardingService, OnboardingService>();
-        services.AddScoped<IUserManagementService, UserManagementService>();
-        services.AddScoped<IInvoiceGenerationService, InvoiceGenerationService>();
 
         return services;
     }

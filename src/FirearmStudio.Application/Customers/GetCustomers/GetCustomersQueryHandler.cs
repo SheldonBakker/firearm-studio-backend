@@ -40,8 +40,8 @@ public sealed class GetCustomersQueryHandler(IApplicationDbContext db)
         }
 
         queryable = query.SortOrder.Equals("desc", StringComparison.OrdinalIgnoreCase)
-            ? queryable.OrderByDescending(c => c.FullName)
-            : queryable.OrderBy(c => c.FullName);
+            ? queryable.OrderByDescending(c => c.FullName).ThenBy(c => c.Id)
+            : queryable.OrderBy(c => c.FullName).ThenBy(c => c.Id);
 
         var totalCount = await queryable.CountAsync(cancellationToken);
 

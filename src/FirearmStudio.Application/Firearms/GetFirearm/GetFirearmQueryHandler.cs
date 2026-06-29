@@ -17,7 +17,12 @@ public sealed class GetFirearmQueryHandler(IApplicationDbContext db)
             .FirstOrDefaultAsync(cancellationToken);
 
         return firearm is null
-            ? Error.NotFound("GetFirearmQuery.NotFound", "Firearm not found.")
+            ? Error.NotFound(ErrorCodes.NotFound, "Firearm not found.")
             : firearm;
+    }
+
+    public static class ErrorCodes
+    {
+        public const string NotFound = "GetFirearmQuery.NotFound";
     }
 }

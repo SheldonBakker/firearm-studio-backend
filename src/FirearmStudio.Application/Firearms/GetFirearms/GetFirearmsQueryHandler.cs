@@ -19,7 +19,9 @@ public sealed class GetFirearmsQueryHandler(IApplicationDbContext db)
         }
 
         if (query.Status.HasValue)
+        {
             queryable = queryable.Where(f => f.Status == query.Status.Value);
+        }
 
         if (!string.IsNullOrWhiteSpace(query.CustomerName))
         {
@@ -31,6 +33,7 @@ public sealed class GetFirearmsQueryHandler(IApplicationDbContext db)
 
         IReadOnlyList<FirearmResponse> firearms = await queryable
             .OrderBy(f => f.SerialNumber)
+            .ThenBy(f => f.Id)
             .Select(FirearmResponse.QueryProjection)
             .ToListAsync(cancellationToken);
 

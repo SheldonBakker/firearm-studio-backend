@@ -13,19 +13,7 @@ public sealed class GetInvoiceQueryHandler(IApplicationDbContext db)
         var invoice = await db.Invoices
             .AsNoTracking()
             .Where(i => i.Id == query.Id)
-            .Select(i => new InvoiceDetailDto(
-                i.Id,
-                i.CustomerId,
-                i.InvoiceNumber,
-                i.InvoiceMonth,
-                i.Subtotal,
-                i.VatAmount,
-                i.Total,
-                i.Status,
-                i.SentAt,
-                i.DueOn,
-                i.Lines.Select(l => new InvoiceLineDto(l.Id, l.Description, l.Quantity, l.UnitPrice, l.LineTotal)).ToList(),
-                i.Payments.Select(p => new InvoicePaymentDto(p.Id, p.Amount, p.PaidOn, p.Method, p.Reference)).ToList()))
+            .Select(InvoiceDetailDto.QueryProjection)
             .FirstOrDefaultAsync(cancellationToken);
 
         return invoice is null

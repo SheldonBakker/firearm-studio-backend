@@ -6,7 +6,9 @@
 # Build output
 [Bb]in/
 [Oo]bj/
-
+# dotnet-format can create this literal backslash directory on Unix hosts.
+bin?Debug/
+CONVENTIONS.md
 # dotenv files
 .env
 

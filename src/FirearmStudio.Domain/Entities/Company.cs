@@ -2,7 +2,7 @@ using FirearmStudio.Domain.Common;
 
 namespace FirearmStudio.Domain.Entities;
 
-public class Company : BaseEntity
+public sealed class Company : BaseEntity
 {
     public required string Name { get; set; }
 

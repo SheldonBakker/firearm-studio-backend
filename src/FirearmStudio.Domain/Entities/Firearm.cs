@@ -3,7 +3,7 @@ using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Domain.Entities;
 
-public class Firearm : BaseEntity, ITenantEntity
+public sealed class Firearm : BaseEntity, ITenantEntity
 {
     public Guid CompanyId { get; set; }
 

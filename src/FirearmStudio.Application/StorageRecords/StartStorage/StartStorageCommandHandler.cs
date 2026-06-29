@@ -18,6 +18,14 @@ public sealed class StartStorageCommandHandler(IApplicationDbContext db)
             return Error.NotFound(ErrorCodes.FirearmNotFound, "Firearm not found.");
         }
 
+        if (await db.StorageRecords.AnyAsync(
+                record => record.FirearmId == command.FirearmId
+                          && record.StorageStatus == StorageStatus.Active,
+                cancellationToken))
+        {
+            return Error.Conflict(ErrorCodes.ActiveStorageExists, "The firearm already has an active storage record.");
+        }
+
         var request = command.Request;
         var record = new StorageRecord
         {
@@ -32,7 +40,14 @@ public sealed class StartStorageCommandHandler(IApplicationDbContext db)
         };
 
         await db.StorageRecords.AddAsync(record, cancellationToken);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return Error.Conflict(ErrorCodes.ActiveStorageExists, "The firearm already has an active storage record.");
+        }
 
         return record.Id;
     }
@@ -40,5 +55,6 @@ public sealed class StartStorageCommandHandler(IApplicationDbContext db)
     public static class ErrorCodes
     {
         public const string FirearmNotFound = "StartStorageCommand.FirearmNotFound";
+        public const string ActiveStorageExists = "StartStorageCommand.ActiveStorageExists";
     }
 }

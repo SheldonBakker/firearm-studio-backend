@@ -38,7 +38,9 @@ public sealed class TenantAndAuditInterceptor(
     private void Apply(DbContext? context)
     {
         if (context is null)
+        {
             return;
+        }
 
         var now = DateTime.UtcNow;
         var auditLogs = new List<AuditLog>();
@@ -49,7 +51,9 @@ public sealed class TenantAndAuditInterceptor(
             {
                 case EntityState.Added:
                     if (entry.Entity.Id == Guid.Empty)
+                    {
                         entry.Entity.Id = Guid.CreateVersion7();
+                    }
                     entry.Entity.CreatedAt = now;
                     StampTenantOnInsert(entry);
                     break;
@@ -69,7 +73,9 @@ public sealed class TenantAndAuditInterceptor(
 
         // Skip audit logs when there is no company context (background/system operations).
         if (tenant.CompanyId is not { } companyId)
+        {
             return;
+        }
 
         var userId = currentUserService.User.IsAuthenticated
             ? currentUserService.User.Id
@@ -124,22 +130,38 @@ public sealed class TenantAndAuditInterceptor(
     private void StampTenantOnInsert(EntityEntry<BaseEntity> entry)
     {
         if (entry.Entity is not ITenantEntity tenantEntity)
+        {
             return;
+        }
 
         if (tenantEntity.CompanyId != Guid.Empty)
+        {
+            if (!tenant.BypassFilter && tenantEntity.CompanyId != tenant.CompanyId)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot insert tenant entity '{entry.Entity.GetType().Name}' for another company.");
+            }
+
             return;
+        }
 
         if (tenant.CompanyId is { } companyId)
+        {
             tenantEntity.CompanyId = companyId;
+        }
         else if (!tenant.BypassFilter)
+        {
             throw new InvalidOperationException(
                 $"Cannot insert tenant entity '{entry.Entity.GetType().Name}' without a current company.");
+        }
     }
 
     private static void GuardTenantNotChanged(EntityEntry<BaseEntity> entry)
     {
         if (entry.Entity is not ITenantEntity)
+        {
             return;
+        }
 
         var companyIdProp = entry.Property(nameof(ITenantEntity.CompanyId));
         if (companyIdProp.IsModified &&

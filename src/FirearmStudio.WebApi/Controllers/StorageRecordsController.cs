@@ -44,7 +44,7 @@ public sealed class StorageRecordsController(IMediator mediator) : ControllerBas
         var result = await mediator.Send(new StartStorageCommand(firearmId, request), ct);
         return result.IsError
             ? result.ToActionResult()
-            : Created($"/api/v1/storage/{result.Value}", new { Id = result.Value });
+            : Created("/api/v1/storage", new { Id = result.Value });
     }
 
     [HttpPatch("storage-records/{id:guid}")]

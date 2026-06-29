@@ -96,7 +96,10 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_app_users_company_id_email");
 
-                    b.ToTable("app_users", (string)null);
+                    b.ToTable("app_users", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_app_users_role", "role between 0 and 3");
+                        });
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.AuditLog", b =>
@@ -166,15 +169,18 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("AddressLine1")
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("address_line1");
 
                     b.Property<string>("AddressLine2")
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("address_line2");
 
                     b.Property<string>("City")
-                        .HasColumnType("text")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
                         .HasColumnName("city");
 
                     b.Property<DateTime>("CreatedAt")
@@ -199,15 +205,18 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnName("name");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("phone");
 
                     b.Property<string>("PostalCode")
-                        .HasColumnType("text")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("postal_code");
 
                     b.Property<string>("Province")
-                        .HasColumnType("text")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
                         .HasColumnName("province");
 
                     b.Property<string>("RegistrationNumber")
@@ -238,15 +247,18 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("AddressLine1")
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("address_line1");
 
                     b.Property<string>("AddressLine2")
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("address_line2");
 
                     b.Property<string>("City")
-                        .HasColumnType("text")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
                         .HasColumnName("city");
 
                     b.Property<Guid>("CompanyId")
@@ -287,23 +299,28 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnName("is_active");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("notes");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("phone");
 
                     b.Property<string>("PostalCode")
-                        .HasColumnType("text")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("postal_code");
 
                     b.Property<string>("Province")
-                        .HasColumnType("text")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
                         .HasColumnName("province");
 
                     b.Property<string>("RegistrationNumber")
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("registration_number");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -311,7 +328,8 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnName("updated_at");
 
                     b.Property<string>("VatNumber")
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("vat_number");
 
                     b.HasKey("Id")
@@ -331,7 +349,8 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("Calibre")
-                        .HasColumnType("text")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
                         .HasColumnName("calibre");
 
                     b.Property<Guid>("CompanyId")
@@ -347,11 +366,13 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnName("customer_id");
 
                     b.Property<string>("FirearmType")
-                        .HasColumnType("text")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
                         .HasColumnName("firearm_type");
 
                     b.Property<string>("InternalReference")
-                        .HasColumnType("text")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
                         .HasColumnName("internal_reference");
 
                     b.Property<string>("Make")
@@ -361,11 +382,13 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnName("make");
 
                     b.Property<string>("Model")
-                        .HasColumnType("text")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
                         .HasColumnName("model");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("notes");
 
                     b.Property<string>("SerialNumber")
@@ -420,7 +443,8 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnName("created_at");
 
                     b.Property<string>("DocumentUrl")
-                        .HasColumnType("text")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
                         .HasColumnName("document_url");
 
                     b.Property<DateOnly>("ExpiresOn")
@@ -474,7 +498,10 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_firearm_licences_firearm_id_licence_number");
 
-                    b.ToTable("firearm_licences", (string)null);
+                    b.ToTable("firearm_licences", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_firearm_licences_date_range", "issued_on is null or issued_on <= expires_on");
+                        });
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.Invoice", b =>
@@ -563,7 +590,10 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_invoices_company_id_customer_id_invoice_month");
 
-                    b.ToTable("invoices", (string)null);
+                    b.ToTable("invoices", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_invoices_amounts", "subtotal >= 0 and vat_amount >= 0 and total = subtotal + vat_amount");
+                        });
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.InvoiceLine", b =>
@@ -626,7 +656,10 @@ namespace FirearmStudio.Infrastructure.Migrations
                     b.HasIndex("InvoiceId")
                         .HasDatabaseName("ix_invoice_lines_invoice_id");
 
-                    b.ToTable("invoice_lines", (string)null);
+                    b.ToTable("invoice_lines", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_invoice_lines_amounts", "quantity > 0 and unit_price >= 0 and line_total >= 0");
+                        });
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.Payment", b =>
@@ -658,7 +691,8 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnName("method");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("notes");
 
                     b.Property<DateOnly>("PaidOn")
@@ -683,7 +717,10 @@ namespace FirearmStudio.Infrastructure.Migrations
                     b.HasIndex("InvoiceId")
                         .HasDatabaseName("ix_payments_invoice_id");
 
-                    b.ToTable("payments", (string)null);
+                    b.ToTable("payments", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_payments_amount", "amount > 0");
+                        });
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.StorageRecord", b =>
@@ -711,7 +748,8 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnName("monthly_rate");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("notes");
 
                     b.Property<string>("RackNumber")
@@ -752,10 +790,18 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasDatabaseName("ix_storage_records_company_id");
 
                     b.HasIndex("FirearmId")
+                        .IsUnique()
                         .HasDatabaseName("ix_storage_records_active")
                         .HasFilter("storage_status = 'active'");
 
-                    b.ToTable("storage_records", (string)null);
+                    b.ToTable("storage_records", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_storage_records_date_range", "stored_until is null or stored_until >= stored_from");
+
+                            t.HasCheckConstraint("ck_storage_records_monthly_rate", "monthly_rate > 0");
+
+                            t.HasCheckConstraint("ck_storage_records_status_dates", "(storage_status = 'active' and stored_until is null) or (storage_status <> 'active' and stored_until is not null)");
+                        });
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.AppUser", b =>

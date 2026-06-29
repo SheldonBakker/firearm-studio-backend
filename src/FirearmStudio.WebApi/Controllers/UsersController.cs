@@ -29,7 +29,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     public async Task<ActionResult> Invite(InviteUserRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new InviteUserCommand(request), ct);
-        return result.IsError ? result.ToActionResult() : Created($"/api/v1/users/{result.Value.Id}", result.Value);
+        return result.IsError ? result.ToActionResult() : Created("/api/v1/users", result.Value);
     }
 
     [HttpPatch("{id:guid}/role")]

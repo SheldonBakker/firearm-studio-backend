@@ -16,7 +16,7 @@ public sealed class CreateFirearmCommandHandler(IApplicationDbContext db)
         var customerExists = await db.Customers.AnyAsync(c => c.Id == request.CustomerId, cancellationToken);
         if (!customerExists)
         {
-            return Error.NotFound("CreateFirearmCommand.CustomerNotFound", "Customer not found.");
+            return Error.NotFound(ErrorCodes.CustomerNotFound, "Customer not found.");
         }
 
         var firearm = new Firearm
@@ -32,8 +32,21 @@ public sealed class CreateFirearmCommandHandler(IApplicationDbContext db)
         };
 
         await db.Firearms.AddAsync(firearm, cancellationToken);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return Error.Conflict(ErrorCodes.SerialNumberConflict, "A firearm with this serial number already exists.");
+        }
 
         return FirearmResponse.FromEntity(firearm);
+    }
+
+    public static class ErrorCodes
+    {
+        public const string CustomerNotFound = "CreateFirearmCommand.CustomerNotFound";
+        public const string SerialNumberConflict = "CreateFirearmCommand.SerialNumberConflict";
     }
 }

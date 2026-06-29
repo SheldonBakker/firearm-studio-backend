@@ -14,6 +14,8 @@ public sealed class GetCustomerFirearmsQueryHandler(IApplicationDbContext db)
         IReadOnlyList<CustomerFirearmListItemDto> firearms = await db.Firearms
             .AsNoTracking()
             .Where(f => f.CustomerId == query.CustomerId)
+            .OrderBy(f => f.SerialNumber)
+            .ThenBy(f => f.Id)
             .Select(CustomerFirearmListItemDto.QueryProjection)
             .ToListAsync(cancellationToken);
 

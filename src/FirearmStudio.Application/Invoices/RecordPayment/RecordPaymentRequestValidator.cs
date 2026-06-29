@@ -6,8 +6,12 @@ public sealed class RecordPaymentRequestValidator : AbstractValidator<RecordPaym
 {
     public RecordPaymentRequestValidator()
     {
-        RuleFor(x => x.Amount).GreaterThan(0).WithMessage("Payment amount must be greater than zero.");
-        RuleFor(x => x.Reference).NotEmpty().WithMessage("Reference is required.");
-        RuleFor(x => x.Method).IsInEnum().WithMessage("Unknown payment method.");
+        RuleFor(request => request.Amount).GreaterThan(0).WithMessage("Payment amount must be greater than zero.");
+        RuleFor(request => request.PaidOn)
+            .Must(date => date is null || date.Value != default)
+            .WithMessage("PaidOn must be a valid date.");
+        RuleFor(request => request.Reference).NotEmpty().MaximumLength(120).WithMessage("Reference is required.");
+        RuleFor(request => request.Notes).MaximumLength(4000);
+        RuleFor(request => request.Method).IsInEnum().WithMessage("Unknown payment method.");
     }
 }

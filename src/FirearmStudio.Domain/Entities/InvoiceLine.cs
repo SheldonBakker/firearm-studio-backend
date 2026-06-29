@@ -2,7 +2,7 @@ using FirearmStudio.Domain.Common;
 
 namespace FirearmStudio.Domain.Entities;
 
-public class InvoiceLine : BaseEntity, ITenantEntity
+public sealed class InvoiceLine : BaseEntity, ITenantEntity
 {
     public Guid CompanyId { get; set; }
 

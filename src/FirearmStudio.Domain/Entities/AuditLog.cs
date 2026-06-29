@@ -2,7 +2,7 @@ using FirearmStudio.Domain.Common;
 
 namespace FirearmStudio.Domain.Entities;
 
-public class AuditLog : BaseEntity, ITenantEntity
+public sealed class AuditLog : BaseEntity, ITenantEntity
 {
     public Guid CompanyId { get; set; }
 

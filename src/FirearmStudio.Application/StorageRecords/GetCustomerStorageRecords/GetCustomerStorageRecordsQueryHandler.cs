@@ -14,8 +14,9 @@ public sealed class GetCustomerStorageRecordsQueryHandler(IApplicationDbContext 
         IReadOnlyList<CustomerStorageRecordDto> records = await db.StorageRecords
             .AsNoTracking()
             .Where(s => s.Firearm!.CustomerId == query.CustomerId)
-            .Select(s => new CustomerStorageRecordDto(
-                s.Id, s.FirearmId, s.MonthlyRate, s.StorageStatus, s.StoredFrom, s.StoredUntil))
+            .OrderByDescending(s => s.StoredFrom)
+            .ThenBy(s => s.Id)
+            .Select(CustomerStorageRecordDto.QueryProjection)
             .ToListAsync(cancellationToken);
 
         return ErrorOrFactory.From(records);

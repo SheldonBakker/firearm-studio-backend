@@ -42,7 +42,19 @@ public sealed class UpdateLicenceCommandHandler(IApplicationDbContext db)
             licence.DocumentUrl = request.DocumentUrl.Value;
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        if (licence.IssuedOn > licence.ExpiresOn)
+        {
+            return Error.Validation(ErrorCodes.InvalidDateRange, "IssuedOn must be on or before ExpiresOn.");
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return Error.Conflict(ErrorCodes.LicenceNumberConflict, "This licence number already exists for the firearm.");
+        }
 
         return Result.Updated;
     }
@@ -50,5 +62,7 @@ public sealed class UpdateLicenceCommandHandler(IApplicationDbContext db)
     public static class ErrorCodes
     {
         public const string NotFound = "UpdateLicenceCommand.NotFound";
+        public const string InvalidDateRange = "UpdateLicenceCommand.InvalidDateRange";
+        public const string LicenceNumberConflict = "UpdateLicenceCommand.LicenceNumberConflict";
     }
 }

@@ -20,6 +20,7 @@ public sealed class GetAuditLogsQueryHandler(IApplicationDbContext db)
 
         IReadOnlyList<AuditLogListItemDto> items = await queryable
             .OrderByDescending(a => a.CreatedAt)
+            .ThenBy(a => a.Id)
             .Take(query.Take <= 0 ? 100 : Math.Min(query.Take, 500))
             .Select(AuditLogListItemDto.QueryProjection)
             .ToListAsync(cancellationToken);

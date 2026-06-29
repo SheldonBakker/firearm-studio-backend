@@ -38,7 +38,7 @@ Clean Architecture with dependencies pointing inward (`WebApi → Infrastructure
 src/
   FirearmStudio.Domain/          Entities, enums, value objects, role constants (no dependencies)
   FirearmStudio.Application/     Abstractions, options, DTOs/contracts, validators
-  FirearmStudio.Infrastructure/  EF Core DbContext, tenancy, repositories, services
+  FirearmStudio.Infrastructure/  EF Core DbContext, tenancy, auditing, technical adapters
   FirearmStudio.WebApi/          Controllers, auth wiring, middleware, Program.cs
 ```
 
@@ -50,7 +50,7 @@ Tenant isolation lives in the infrastructure, not in each query: every entity im
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - A Supabase project (this repo targets ref `yqayiyhixfjyhkykbbsa`)
-- `dotnet-ef` tool: `dotnet tool install --global dotnet-ef`
+- Restore the pinned local `dotnet-ef` tool: `dotnet tool restore`
 
 ## Configuration
 
@@ -89,36 +89,9 @@ The schema is managed by EF Core migrations.
 dotnet ef database update -p src/FirearmStudio.Infrastructure -s src/FirearmStudio.WebApi
 ```
 
-Then apply the Supabase **custom access-token hook** and linkage triggers (run in the Supabase SQL
-editor or via a migration). These inject `company_id` + `roles` into every issued JWT and link
-invited users to their Supabase account:
-
-```sql
-create or replace function public.custom_access_token_hook(event jsonb)
-returns jsonb language plpgsql stable set search_path = '' as $$
-declare claims jsonb; v_company uuid; v_role public.app_role; v_auth_id uuid := (event->>'user_id')::uuid;
-begin
-  claims := event->'claims';
-  select au.company_id, au.role into v_company, v_role
-    from public.app_users au where au.auth_user_id = v_auth_id and au.is_active limit 1;
-  if v_company is not null then
-    claims := jsonb_set(claims, '{company_id}', to_jsonb(v_company::text), true);
-    claims := jsonb_set(claims, '{app_metadata}',
-      coalesce(claims->'app_metadata','{}'::jsonb) ||
-      jsonb_build_object('roles', jsonb_build_array(v_role::text)), true);
-  end if;
-  return jsonb_set(event, '{claims}', claims, true);
-end; $$;
-
-grant execute on function public.custom_access_token_hook(jsonb) to supabase_auth_admin;
-revoke execute on function public.custom_access_token_hook(jsonb) from authenticated, anon, public;
-grant select on public.app_users to supabase_auth_admin;
-
--- app_users has RLS enabled. The hook runs as supabase_auth_admin (a non-BYPASSRLS role), so it
--- needs an explicit read policy or it will see zero rows and inject no claims.
-create policy "Allow auth admin to read app_users" on public.app_users
-  as permissive for select to supabase_auth_admin using (true);
-```
+The migrations also install the Supabase custom access-token hook, its grants and RLS policy,
+enable RLS on every application table, and revoke direct table access from the `anon` and
+`authenticated` Data API roles. Application data is exposed only through this WebApi.
 
 Finally, **enable the hook** in the Supabase dashboard → **Authentication → Hooks → Customize
 Access Token (JWT) Claims** → select `public.custom_access_token_hook`. The hook is inert until
@@ -129,6 +102,9 @@ enabled — without it, tokens carry no `company_id` or roles and tenant isolati
 ```bash
 # Restore dependencies and build the whole solution
 dotnet build
+
+# Enforce architecture and feature conventions
+./scripts/check-conventions.sh
 
 # Run the API
 dotnet run --project src/FirearmStudio.WebApi

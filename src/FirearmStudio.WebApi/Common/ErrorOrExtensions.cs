@@ -5,16 +5,20 @@ namespace FirearmStudio.WebApi.Common;
 
 public static class ErrorOrExtensions
 {
-    public static ActionResult ToProblem<T>(this ControllerBase controller, ErrorOr<T> result) =>
-        controller.Problem(detail: result.Errors.FirstOrDefault().Description, statusCode: StatusCode(result));
-
-    public static ActionResult ToActionResult<T>(this ErrorOr<T> result, string? successMessage = null)
+    public static ActionResult ToActionResult<T>(this ErrorOr<T> result)
     {
         if (result.IsError)
         {
             var error = result.Errors.FirstOrDefault();
             var statusCode = StatusCode(result);
-            return new ObjectResult(new ProblemDetails { Detail = error.Description, Status = statusCode })
+            var problem = new ProblemDetails
+            {
+                Detail = error.Description,
+                Status = statusCode,
+            };
+            problem.Extensions["code"] = error.Code;
+
+            return new ObjectResult(problem)
             {
                 StatusCode = statusCode,
             };
@@ -22,11 +26,7 @@ public static class ErrorOrExtensions
 
         return result.Value switch
         {
-            Created => new StatusCodeResult(StatusCodes.Status201Created),
-            Updated or Deleted or Success =>
-                successMessage is null
-                    ? new NoContentResult()
-                    : new OkObjectResult(new { message = successMessage }),
+            Updated or Deleted or Success => new NoContentResult(),
             var value => new OkObjectResult(value),
         };
     }
