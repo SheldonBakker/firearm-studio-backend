@@ -16,8 +16,6 @@ public sealed class GetStorageRecordsQueryHandler(IApplicationDbContext db)
 
         if (query.StorageStatus.HasValue)
             queryable = queryable.Where(s => s.StorageStatus == query.StorageStatus.Value);
-        else
-            queryable = queryable.ActiveOpen();
 
         if (!string.IsNullOrWhiteSpace(query.SerialNumber))
         {
