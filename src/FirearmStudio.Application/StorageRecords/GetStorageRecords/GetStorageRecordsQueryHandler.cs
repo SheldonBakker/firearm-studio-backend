@@ -1,16 +1,22 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Model;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.StorageRecords.GetStorageRecords;
 
 public sealed class GetStorageRecordsQueryHandler(IApplicationDbContext db)
-    : IQueryHandler<GetStorageRecordsQuery, ErrorOr<IReadOnlyList<StorageRecordDto>>>
+    : IQueryHandler<GetStorageRecordsQuery, ErrorOr<PaginatedResponse<StorageRecordDto>>>
 {
-    public async Task<ErrorOr<IReadOnlyList<StorageRecordDto>>> Handle(
+    private const int MaxPageSize = 200;
+
+    public async Task<ErrorOr<PaginatedResponse<StorageRecordDto>>> Handle(
         GetStorageRecordsQuery query, CancellationToken cancellationToken)
     {
+        var pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
+        var pageSize = query.PageSize is < 1 or > MaxPageSize ? 20 : query.PageSize;
+
         var queryable = db.StorageRecords.AsNoTracking();
 
         if (query.StorageStatus.HasValue)
@@ -32,12 +38,24 @@ public sealed class GetStorageRecordsQueryHandler(IApplicationDbContext db)
                 (s.Firearm!.Customer!.CompanyName != null && s.Firearm.Customer.CompanyName.ToLower().Contains(term)));
         }
 
-        IReadOnlyList<StorageRecordDto> records = await queryable
+        queryable = queryable
             .OrderByDescending(record => record.StoredFrom)
-            .ThenBy(record => record.Id)
+            .ThenBy(record => record.Id);
+
+        var totalCount = await queryable.CountAsync(cancellationToken);
+
+        var items = await queryable
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .Select(StorageRecordDto.QueryProjection)
             .ToListAsync(cancellationToken);
 
-        return ErrorOrFactory.From(records);
+        return new PaginatedResponse<StorageRecordDto>
+        {
+            Items = items,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+        };
     }
 }

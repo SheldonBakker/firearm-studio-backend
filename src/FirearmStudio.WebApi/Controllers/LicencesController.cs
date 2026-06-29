@@ -3,6 +3,7 @@ using FirearmStudio.Application.Licences;
 using FirearmStudio.Application.Licences.CreateLicence;
 using FirearmStudio.Application.Licences.GetLicences;
 using FirearmStudio.Application.Licences.UpdateLicence;
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.Domain.Enums;
 using FirearmStudio.WebApi.Common;
@@ -19,13 +20,15 @@ namespace FirearmStudio.WebApi.Controllers;
 public sealed class LicencesController(IMediator mediator) : ControllerBase
 {
     [HttpGet("licences")]
-    public async Task<ActionResult<IReadOnlyList<LicenceListItemDto>>> List(
+    public async Task<ActionResult<PaginatedResponse<LicenceListItemDto>>> List(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
         [FromQuery] string sortOrder = "asc",
         [FromQuery] string? licenceNumber = null,
         [FromQuery] LicenceStatus? status = null,
         CancellationToken ct = default)
     {
-        var result = await mediator.Send(new GetLicencesQuery(sortOrder, licenceNumber, status), ct);
+        var result = await mediator.Send(new GetLicencesQuery(pageNumber, pageSize, sortOrder, licenceNumber, status), ct);
         return result.ToActionResult();
     }
 

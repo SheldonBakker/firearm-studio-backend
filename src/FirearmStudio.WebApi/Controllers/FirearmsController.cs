@@ -4,6 +4,7 @@ using FirearmStudio.Application.Firearms.CreateFirearm;
 using FirearmStudio.Application.Firearms.GetFirearm;
 using FirearmStudio.Application.Firearms.GetFirearmLicences;
 using FirearmStudio.Application.Firearms.GetFirearms;
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Enums;
 using FirearmStudio.Application.Firearms.UpdateFirearm;
 using FirearmStudio.Domain.Authentication;
@@ -21,13 +22,15 @@ namespace FirearmStudio.WebApi.Controllers;
 public sealed class FirearmsController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<FirearmResponse>>> List(
-        [FromQuery] string? serialNumber,
-        [FromQuery] FirearmStatus? status,
-        [FromQuery] string? customerName,
-        CancellationToken ct)
+    public async Task<ActionResult<PaginatedResponse<FirearmResponse>>> List(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? serialNumber = null,
+        [FromQuery] FirearmStatus? status = null,
+        [FromQuery] string? customerName = null,
+        CancellationToken ct = default)
     {
-        var result = await mediator.Send(new GetFirearmsQuery(serialNumber, status, customerName), ct);
+        var result = await mediator.Send(new GetFirearmsQuery(pageNumber, pageSize, serialNumber, status, customerName), ct);
         return result.ToActionResult();
     }
 

@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using FirearmStudio.Application.StorageRecords;
 using FirearmStudio.Application.StorageRecords.GetStorageRecords;
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Enums;
 using FirearmStudio.Application.StorageRecords.GetCustomerStorageRecords;
 using FirearmStudio.Application.StorageRecords.StartStorage;
@@ -20,13 +21,15 @@ namespace FirearmStudio.WebApi.Controllers;
 public sealed class StorageRecordsController(IMediator mediator) : ControllerBase
 {
     [HttpGet("storage")]
-    public async Task<ActionResult<IReadOnlyList<StorageRecordDto>>> GetAll(
-        [FromQuery] StorageStatus? storageStatus,
-        [FromQuery] string? serialNumber,
-        [FromQuery] string? customerName,
-        CancellationToken ct)
+    public async Task<ActionResult<PaginatedResponse<StorageRecordDto>>> GetAll(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] StorageStatus? storageStatus = null,
+        [FromQuery] string? serialNumber = null,
+        [FromQuery] string? customerName = null,
+        CancellationToken ct = default)
     {
-        var result = await mediator.Send(new GetStorageRecordsQuery(storageStatus, serialNumber, customerName), ct);
+        var result = await mediator.Send(new GetStorageRecordsQuery(pageNumber, pageSize, storageStatus, serialNumber, customerName), ct);
         return result.ToActionResult();
     }
 

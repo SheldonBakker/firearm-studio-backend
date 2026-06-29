@@ -1,15 +1,21 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Model;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Firearms.GetFirearms;
 
 public sealed class GetFirearmsQueryHandler(IApplicationDbContext db)
-    : IQueryHandler<GetFirearmsQuery, ErrorOr<IReadOnlyList<FirearmResponse>>>
+    : IQueryHandler<GetFirearmsQuery, ErrorOr<PaginatedResponse<FirearmResponse>>>
 {
-    public async Task<ErrorOr<IReadOnlyList<FirearmResponse>>> Handle(GetFirearmsQuery query, CancellationToken cancellationToken)
+    private const int MaxPageSize = 200;
+
+    public async Task<ErrorOr<PaginatedResponse<FirearmResponse>>> Handle(GetFirearmsQuery query, CancellationToken cancellationToken)
     {
+        var pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
+        var pageSize = query.PageSize is < 1 or > MaxPageSize ? 20 : query.PageSize;
+
         var queryable = db.Firearms.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(query.SerialNumber))
@@ -31,12 +37,24 @@ public sealed class GetFirearmsQueryHandler(IApplicationDbContext db)
                 (f.Customer!.CompanyName != null && f.Customer.CompanyName.ToLower().Contains(term)));
         }
 
-        IReadOnlyList<FirearmResponse> firearms = await queryable
+        queryable = queryable
             .OrderBy(f => f.SerialNumber)
-            .ThenBy(f => f.Id)
+            .ThenBy(f => f.Id);
+
+        var totalCount = await queryable.CountAsync(cancellationToken);
+
+        var items = await queryable
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .Select(FirearmResponse.QueryProjection)
             .ToListAsync(cancellationToken);
 
-        return ErrorOrFactory.From(firearms);
+        return new PaginatedResponse<FirearmResponse>
+        {
+            Items = items,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+        };
     }
 }

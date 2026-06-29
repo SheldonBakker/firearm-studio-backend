@@ -6,6 +6,7 @@ using FirearmStudio.Application.Invoices.GetInvoice;
 using FirearmStudio.Application.Invoices.GetInvoices;
 using FirearmStudio.Application.Invoices.RecordPayment;
 using FirearmStudio.Application.Invoices.SendInvoice;
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.WebApi.Common;
 using MediatR;
@@ -29,9 +30,12 @@ public sealed class InvoicesController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<InvoiceListItemDto>>> List(CancellationToken ct)
+    public async Task<ActionResult<PaginatedResponse<InvoiceListItemDto>>> List(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
     {
-        var result = await mediator.Send(new GetInvoicesQuery(), ct);
+        var result = await mediator.Send(new GetInvoicesQuery(pageNumber, pageSize), ct);
         return result.ToActionResult();
     }
 

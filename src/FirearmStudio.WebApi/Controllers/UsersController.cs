@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using FirearmStudio.Application.Model;
 using FirearmStudio.Application.Users;
 using FirearmStudio.Application.Users.ChangeUserRole;
 using FirearmStudio.Application.Users.DeactivateUser;
@@ -19,9 +20,12 @@ namespace FirearmStudio.WebApi.Controllers;
 public sealed class UsersController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<AppUserResponse>>> List(CancellationToken ct)
+    public async Task<ActionResult<PaginatedResponse<AppUserResponse>>> List(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
     {
-        var result = await mediator.Send(new ListUsersQuery(), ct);
+        var result = await mediator.Send(new ListUsersQuery(pageNumber, pageSize), ct);
         return result.ToActionResult();
     }
 
