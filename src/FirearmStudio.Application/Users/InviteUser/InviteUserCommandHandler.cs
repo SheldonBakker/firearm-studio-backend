@@ -2,6 +2,7 @@ using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
 using FirearmStudio.Domain.Entities;
+using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Users.InviteUser;
@@ -22,17 +23,43 @@ public sealed class InviteUserCommandHandler(
         }
 
         var email = request.Email.Trim().ToLowerInvariant();
-        bool emailAlreadyExists;
+        var newCompanyId = tenant.CompanyId!.Value; // endpoint is [Authorize(Roles = Admin)] → always set
+
         using (tenant.BeginBypass())
         {
-            emailAlreadyExists = await db.AppUsers
+            var existing = await db.AppUsers
                 .IgnoreQueryFilters()
-                .AnyAsync(user => user.Email == email, cancellationToken);
-        }
+                .FirstOrDefaultAsync(user => user.Email == email, cancellationToken);
 
-        if (emailAlreadyExists)
-        {
-            return Error.Conflict(ErrorCodes.EmailAlreadyExists, "A user with this email already belongs to a company or has a pending invite.");
+            if (existing is not null)
+            {
+                // Don't orphan the source company of its last admin (skip when staying in same company).
+                if (existing.CompanyId != newCompanyId
+                    && existing.Role == AppRole.Admin
+                    && existing.IsActive)
+                {
+                    var sourceActiveAdmins = await db.AppUsers
+                        .IgnoreQueryFilters()
+                        .CountAsync(
+                            user => user.CompanyId == existing.CompanyId && user.Role == AppRole.Admin && user.IsActive,
+                            cancellationToken);
+                    if (sourceActiveAdmins <= 1)
+                    {
+                        return Error.Conflict(
+                            ErrorCodes.SourceLastActiveAdmin,
+                            "That user is the last active admin of their current company and cannot be reassigned.");
+                    }
+                }
+
+                existing.CompanyId = newCompanyId;
+                existing.Role = request.Role;
+                existing.IsActive = true;
+                existing.InvitedAt = DateTime.UtcNow;
+                // auth_user_id, linked_at, full_name left intact so the user stays linked.
+
+                await db.SaveChangesAsync(cancellationToken); // inside bypass → guard permits the move
+                return AppUserResponse.FromEntity(existing);
+            }
         }
 
         var user = new AppUser
@@ -62,5 +89,6 @@ public sealed class InviteUserCommandHandler(
     {
         public const string UnknownRole = "InviteUserCommand.UnknownRole";
         public const string EmailAlreadyExists = "InviteUserCommand.EmailAlreadyExists";
+        public const string SourceLastActiveAdmin = "InviteUserCommand.SourceLastActiveAdmin";
     }
 }

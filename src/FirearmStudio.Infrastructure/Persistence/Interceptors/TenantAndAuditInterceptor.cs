@@ -175,9 +175,15 @@ public sealed class TenantAndAuditInterceptor(
         }
     }
 
-    private static void GuardTenantNotChanged(EntityEntry<BaseEntity> entry)
+    private void GuardTenantNotChanged(EntityEntry<BaseEntity> entry)
     {
         if (entry.Entity is not ITenantEntity)
+        {
+            return;
+        }
+
+        // An explicit BeginBypass() scope authorises deliberate tenant moves (reassignment / onboarding).
+        if (tenant.BypassFilter)
         {
             return;
         }
