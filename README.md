@@ -166,7 +166,7 @@ the table below.
 | Users | `GET /users`, `POST /users/invite`, `PATCH /users/{id}/role`, `PATCH /users/{id}/deactivate` | admin |
 | Customers | `GET/POST/PATCH /customers`, `GET /customers/{id}/firearms`, `GET /customers/{id}/invoices` | read: viewer+ / write: manager+ |
 | Firearms | `GET/POST/PATCH /firearms`, `GET /firearms/storage/active`, `GET /firearms/{id}/licences` | read: viewer+ / write: manager+ |
-| Licences | `GET /licences/due-renewal`, `GET /licences/expired`, `POST /firearms/{id}/licences`, `PATCH /licences/{id}` | read: viewer+ / write: staff+ |
+| Licences | `GET /licences`, `POST /firearms/{id}/licences`, `PATCH /licences/{id}` | read: viewer+ / write: staff+ |
 | Storage | `POST /firearms/{id}/storage`, `PATCH /storage-records/{id}/release`, `GET /storage/active`, `GET /storage/customer/{id}` | read: viewer+ / write: staff+ |
 | Invoices | `POST /invoices/generate-monthly`, `GET /invoices`, `GET /invoices/{id}`, `POST /invoices/{id}/send`, `POST /invoices/{id}/payments`, `PATCH /invoices/{id}/cancel` | read: viewer+ / write: manager+ |
 | Audit logs | `GET /audit-logs` | manager+ |

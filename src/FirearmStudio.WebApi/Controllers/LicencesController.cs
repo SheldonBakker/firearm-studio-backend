@@ -1,10 +1,10 @@
 using Asp.Versioning;
 using FirearmStudio.Application.Licences;
 using FirearmStudio.Application.Licences.CreateLicence;
-using FirearmStudio.Application.Licences.GetExpiredLicences;
-using FirearmStudio.Application.Licences.GetLicencesDueForRenewal;
+using FirearmStudio.Application.Licences.GetLicences;
 using FirearmStudio.Application.Licences.UpdateLicence;
 using FirearmStudio.Domain.Authentication;
+using FirearmStudio.Domain.Enums;
 using FirearmStudio.WebApi.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -18,17 +18,14 @@ namespace FirearmStudio.WebApi.Controllers;
 [Authorize(Roles = AppRoles.Policy.AnyAuthenticatedRole)]
 public sealed class LicencesController(IMediator mediator) : ControllerBase
 {
-    [HttpGet("licences/due-renewal")]
-    public async Task<ActionResult<IReadOnlyList<LicenceDueForRenewalDto>>> DueForRenewal(CancellationToken ct)
+    [HttpGet("licences")]
+    public async Task<ActionResult<IReadOnlyList<LicenceListItemDto>>> List(
+        [FromQuery] string sortOrder = "asc",
+        [FromQuery] string? licenceNumber = null,
+        [FromQuery] LicenceStatus? status = null,
+        CancellationToken ct = default)
     {
-        var result = await mediator.Send(new GetLicencesDueForRenewalQuery(), ct);
-        return result.ToActionResult();
-    }
-
-    [HttpGet("licences/expired")]
-    public async Task<ActionResult<IReadOnlyList<ExpiredLicenceDto>>> Expired(CancellationToken ct)
-    {
-        var result = await mediator.Send(new GetExpiredLicencesQuery(), ct);
+        var result = await mediator.Send(new GetLicencesQuery(sortOrder, licenceNumber, status), ct);
         return result.ToActionResult();
     }
 
