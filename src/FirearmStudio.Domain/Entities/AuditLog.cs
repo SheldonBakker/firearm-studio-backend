@@ -15,4 +15,6 @@ public sealed class AuditLog : BaseEntity, ITenantEntity
 
     public string? OldValue { get; set; }
     public string? NewValue { get; set; }
+
+    public AppUser? AppUser { get; set; }
 }

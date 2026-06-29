@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using FirearmStudio.Application.AuditLogs;
 using FirearmStudio.Application.AuditLogs.GetAuditLogs;
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.WebApi.Common;
 using MediatR;
@@ -16,10 +17,17 @@ namespace FirearmStudio.WebApi.Controllers;
 public sealed class AuditLogsController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<AuditLogListItemDto>>> List(
-        [FromQuery] string? entityType, [FromQuery] int take, CancellationToken ct)
+    public async Task<ActionResult<PaginatedResponse<AuditLogListItemDto>>> List(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? fullName = null,
+        [FromQuery] string? action = null,
+        [FromQuery] string? entityType = null,
+        [FromQuery] DateOnly? createdOn = null,
+        CancellationToken ct = default)
     {
-        var result = await mediator.Send(new GetAuditLogsQuery(entityType, take), ct);
+        var result = await mediator.Send(
+            new GetAuditLogsQuery(pageNumber, pageSize, fullName, action, entityType, createdOn), ct);
         return result.ToActionResult();
     }
 }

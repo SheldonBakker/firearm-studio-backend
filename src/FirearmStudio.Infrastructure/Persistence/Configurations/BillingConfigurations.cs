@@ -101,5 +101,11 @@ internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.Property(x => x.NewValue).HasColumnType("jsonb");
 
         builder.HasIndex(x => new { x.EntityType, x.EntityId });
+        builder.HasIndex(x => x.AppUserId);
+
+        builder.HasOne(x => x.AppUser)
+            .WithMany()
+            .HasForeignKey(x => x.AppUserId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

@@ -77,18 +77,37 @@ public sealed class TenantAndAuditInterceptor(
             return;
         }
 
-        var userId = currentUserService.User.IsAuthenticated
-            ? currentUserService.User.Id
-            : (Guid?)null;
+        var appUserId = currentUserService.User.IsAuthenticated
+            ? ResolveAppUserId(context, currentUserService.User.Id)
+            : null;
 
         foreach (var log in auditLogs)
         {
             log.Id = Guid.CreateVersion7();
             log.CreatedAt = now;
             log.CompanyId = companyId;
-            log.AppUserId = userId;
+            log.AppUserId = appUserId;
             context.Add(log);
         }
+    }
+
+    private bool _appUserResolved;
+    private Guid? _appUserId;
+
+    private Guid? ResolveAppUserId(DbContext context, Guid authUserId)
+    {
+        if (_appUserResolved)
+        {
+            return _appUserId;
+        }
+
+        // The AppUser tenant query filter scopes this to the current company.
+        _appUserId = context.Set<AppUser>()
+            .Where(u => u.AuthUserId == authUserId)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefault();
+        _appUserResolved = true;
+        return _appUserId;
     }
 
     private static AuditLog BuildAuditLog(EntityEntry<BaseEntity> entry)
