@@ -38,7 +38,7 @@ public sealed class GetActiveStorageFirearmsQueryHandler(IApplicationDbContext d
         }
 
         IReadOnlyList<ActiveStorageFirearmDto> records = await queryable
-            .OrderBy(record => record.Firearm!.SerialNumber)
+            .OrderByDescending(record => record.StoredFrom)
             .ThenBy(record => record.Id)
             .Select(ActiveStorageFirearmDto.QueryProjection)
             .ToListAsync(cancellationToken);
