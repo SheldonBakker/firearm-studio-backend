@@ -1,7 +1,6 @@
 using Asp.Versioning;
 using FirearmStudio.Application.Firearms;
 using FirearmStudio.Application.Firearms.CreateFirearm;
-using FirearmStudio.Application.Firearms.GetActiveStorageFirearms;
 using FirearmStudio.Application.Firearms.GetFirearm;
 using FirearmStudio.Application.Firearms.GetFirearmLicences;
 using FirearmStudio.Application.Firearms.GetFirearms;
@@ -36,18 +35,6 @@ public sealed class FirearmsController(IMediator mediator) : ControllerBase
     public async Task<ActionResult<FirearmResponse>> Get(Guid id, CancellationToken ct)
     {
         var result = await mediator.Send(new GetFirearmQuery(id), ct);
-        return result.ToActionResult();
-    }
-
-    [HttpGet("storage/active")]
-    public async Task<ActionResult<IReadOnlyList<ActiveStorageFirearmDto>>> ActiveStorage(
-        [FromQuery] string? serialNumber,
-        [FromQuery] string? customerName,
-        [FromQuery] StorageStatus? storageStatus,
-        CancellationToken ct)
-    {
-        var result = await mediator.Send(
-            new GetActiveStorageFirearmsQuery(serialNumber, customerName, storageStatus), ct);
         return result.ToActionResult();
     }
 

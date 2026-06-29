@@ -23,30 +23,6 @@ public sealed record FirearmResponse(
         new(f.Id, f.CustomerId, f.Make, f.Model, f.Calibre, f.FirearmType, f.SerialNumber, f.Status, f.Notes);
 }
 
-public sealed record ActiveStorageFirearmDto(
-    Guid FirearmId,
-    Guid CustomerId,
-    string? CustomerName,
-    string SerialNumber,
-    string Make,
-    string? Model,
-    decimal MonthlyRate,
-    string? StorageLocation,
-    DateOnly StoredFrom)
-{
-    public static Expression<Func<StorageRecord, ActiveStorageFirearmDto>> QueryProjection => record =>
-        new ActiveStorageFirearmDto(
-            record.FirearmId,
-            record.Firearm!.CustomerId,
-            record.Firearm.Customer!.FullName ?? record.Firearm.Customer.CompanyName,
-            record.Firearm.SerialNumber,
-            record.Firearm.Make,
-            record.Firearm.Model,
-            record.MonthlyRate,
-            record.StorageLocation,
-            record.StoredFrom);
-}
-
 public sealed record FirearmLicenceListItemDto(
     Guid Id,
     string LicenceNumber,

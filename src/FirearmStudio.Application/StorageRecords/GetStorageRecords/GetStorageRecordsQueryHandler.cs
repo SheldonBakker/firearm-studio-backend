@@ -1,7 +1,6 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
-using FirearmStudio.Application.Common;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.StorageRecords.GetStorageRecords;
