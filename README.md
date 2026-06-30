@@ -12,6 +12,7 @@ One company can never see or modify another company's data.
 ## Features
 
 - **Supabase authentication** — validates Supabase-issued ES256 JWTs via JWKS (the API never issues tokens).
+- **API-key gate** — every `/api/*` request must carry a valid `X-Api-Key` header (checked before auth).
 - **Multi-tenancy** — strict per-company isolation enforced by an EF Core global query filter plus a `SaveChanges` interceptor that stamps and guards `CompanyId`.
 - **Role-based access** — `admin` / `manager` / `staff` / `viewer`, delivered in the JWT by a Supabase custom access-token hook and enforced with `[Authorize(Roles = ...)]`.
 - **Domain** — companies, app users, customers, firearms, licences (with auto-calculated renewal date), storage records, invoices, invoice lines, payments, audit logs.
@@ -67,6 +68,7 @@ cp .env.example .env
 | --- | --- |
 | `ConnectionStrings__DefaultConnection` | Supabase Postgres connection (Npgsql key-value format). |
 | `SupabaseJwtSettings__Authority` | Supabase auth URL, e.g. `https://<ref>.supabase.co/auth/v1`. Issuer is derived from it; audience defaults to `authenticated`. |
+| `ApiKeySettings__Key` | Shared secret required on every `/api/*` request via the `X-Api-Key` header (e.g. `openssl rand -base64 32`). |
 | `ASPNETCORE_ENVIRONMENT` | `Development` or `Production`. |
 
 ### Connection string
@@ -103,15 +105,12 @@ enabled — without it, tokens carry no `company_id` or roles and tenant isolati
 # Restore dependencies and build the whole solution
 dotnet build
 
-# Enforce architecture and feature conventions
-./scripts/check-conventions.sh
-
 # Run the API
 dotnet run --project src/FirearmStudio.WebApi
 ```
 
 Swagger UI (Development): `http://localhost:5146/swagger`. Paste a Supabase access token via the
-**Authorize** button to call protected endpoints.
+**Authorize** button, and send the `X-Api-Key` header, to call protected endpoints.
 
 ## Deployment (Docker / Portainer)
 
@@ -119,31 +118,18 @@ The repo is container-ready: a multi-stage `Dockerfile` (build on `sdk:10.0`, ru
 non-root `aspnet:10.0-noble-chiseled`) plus a `docker-compose.yml` for a Portainer stack.
 
 - The container serves **plain HTTP on port 5146** — TLS is terminated by your reverse proxy.
-- Configuration comes from **environment variables** (no `.env` is baked into the image). Set these as
-  **stack environment variables in Portainer** (Stacks → your stack → Environment variables), using the
-  `Section__Key` convention:
-  - `ConnectionStrings__DefaultConnection` — Supabase session-pooler connection string (required secret).
-  - `SupabaseJwtSettings__Authority` — `https://<ref>.supabase.co/auth/v1`.
-- Liveness endpoint: `GET /health` (anonymous). Point your reverse proxy's health check there — the
-  chiseled runtime has no shell, so a container-level `HEALTHCHECK` is intentionally omitted.
+- Configuration comes from **environment variables** (no `.env` is baked into the image). Set the
+  config keys above as **stack environment variables in Portainer** (Stacks → your stack →
+  Environment variables), using the `Section__Key` convention.
+- Liveness endpoint: `GET /health` (anonymous, no API key). Point your reverse proxy's health check
+  there — the chiseled runtime has no shell, so a container-level `HEALTHCHECK` is intentionally omitted.
 - Database migrations are **not** run from the container; the Supabase schema is managed separately.
 
-### Deploying (image built in CI, Portainer pulls it)
-
 The image is **built by GitHub Actions** (`.github/workflows/docker-publish.yml`) on every push to
-`main` and pushed to **GHCR** as `ghcr.io/sheldonbakker/firearm-studio-api:latest`. The Portainer
-host never compiles — it only pulls the prebuilt image — so a low-memory server is fine and nothing
-on it needs changing.
-
-`docker-compose.yml` references that image. In Portainer → **Stacks → Add stack** (Web editor or
-Repository), add the env vars above and deploy. Update with **Pull and redeploy** (or a Portainer
-webhook / `docker compose pull && up -d`).
-
-GHCR auth:
-- The CI build uses the built-in `GITHUB_TOKEN` (no secrets to configure).
-- The package starts **private**. Either make it public (GitHub → Packages → the package → *Package
-  settings* → change visibility) **or** add a Registry in Portainer (`ghcr.io`, your username, a PAT
-  with `read:packages`) so it can pull.
+`main` and pushed to **GHCR** as `ghcr.io/sheldonbakker/firearm-studio-api:latest`. `docker-compose.yml`
+references that image. In Portainer → **Stacks → Add stack**, add the env vars and deploy; update with
+**Pull and redeploy**. The package starts **private** — either make it public or add a `ghcr.io`
+Registry in Portainer (your username + a PAT with `read:packages`) so it can pull.
 
 To build/run locally instead:
 
@@ -152,25 +138,28 @@ docker build -t firearm-studio-api .
 docker run -p 5146:5146 \
   -e ConnectionStrings__DefaultConnection="Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;Trust Server Certificate=true" \
   -e SupabaseJwtSettings__Authority="https://yqayiyhixfjyhkykbbsa.supabase.co/auth/v1" \
+  -e ApiKeySettings__Key="<your-api-key>" \
   firearm-studio-api
 ```
 
 ## API overview
 
-All routes are versioned under `api/v1`. Reads require any authenticated role; writes are gated per
-the table below.
+All routes are versioned under `api/v1` and require the `X-Api-Key` header. Reads require any
+authenticated role; writes are gated per the table below.
 
 | Area | Routes | Minimum role |
 | --- | --- | --- |
 | Onboarding | `POST /onboarding/company` | any authenticated user (no company yet) |
+| Company | `GET /company`, `PATCH /company` | read: any authenticated / write: admin |
 | Users | `GET /users`, `POST /users/invite`, `PATCH /users/{id}/role`, `PATCH /users/{id}/deactivate` | admin |
 | Customers | `GET/POST/PATCH /customers`, `GET /customers/{id}/firearms`, `GET /customers/{id}/invoices` | read: viewer+ / write: manager+ |
 | Firearms | `GET/POST/PATCH /firearms`, `GET /firearms/{id}/licences` | read: viewer+ / write: manager+ |
 | Licences | `GET /licences`, `POST /firearms/{id}/licences`, `PATCH /licences/{id}` | read: viewer+ / write: staff+ |
 | Storage | `POST /firearms/{id}/storage`, `PATCH /storage-records/{id}/release`, `GET /storage/active`, `GET /storage/customer/{id}` | read: viewer+ / write: staff+ |
 | Invoices | `POST /invoices/generate-monthly`, `GET /invoices`, `GET /invoices/{id}`, `POST /invoices/{id}/send`, `POST /invoices/{id}/payments`, `PATCH /invoices/{id}/cancel` | read: viewer+ / write: manager+ |
+| Dashboard | `GET /dashboard/stats` | any authenticated |
 | Audit logs | `GET /audit-logs` | manager+ |
-| Me | `GET /me`, `GET /me/admin-check` | any authenticated |
+| Me | `GET /me`, `GET /me/admin-check` | any authenticated (admin-check: admin) |
 
 ### Onboarding flow
 
