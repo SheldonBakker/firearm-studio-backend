@@ -20,7 +20,7 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             "subtotal >= 0 and vat_amount >= 0 and total = subtotal + vat_amount"));
 
         builder.HasIndex(x => new { x.CustomerId, x.InvoiceMonth });
-        builder.HasIndex(x => x.Status);
+        builder.HasIndex(x => new { x.CompanyId, x.Status });
         builder.HasIndex(x => new { x.CompanyId, x.InvoiceNumber }).IsUnique();
         builder.HasIndex(x => new { x.CompanyId, x.CustomerId, x.InvoiceMonth }).IsUnique();
 

@@ -12,48 +12,50 @@ public sealed class GetDashboardStatsQueryHandler(IApplicationDbContext db)
     public async Task<ErrorOr<DashboardStatsResponse>> Handle(
         GetDashboardStatsQuery query, CancellationToken cancellationToken)
     {
-        var activeStorageCount = await db.StorageRecords
+        var storage = await db.StorageRecords
             .AsNoTracking()
             .Where(s => s.StorageStatus == StorageStatus.Active)
-            .CountAsync(cancellationToken);
-
-        var totalMonthlyRate = await db.StorageRecords
-            .AsNoTracking()
-            .Where(s => s.StorageStatus == StorageStatus.Active)
-            .SumAsync(s => s.MonthlyRate, cancellationToken);
+            .GroupBy(_ => 1)
+            .Select(g => new { Count = g.Count(), Total = g.Sum(s => s.MonthlyRate) })
+            .FirstOrDefaultAsync(cancellationToken);
 
         var firearmsCount = await db.Firearms
             .AsNoTracking()
             .CountAsync(cancellationToken);
 
-        var outstandingAmount = await db.Invoices
+        var invoices = await db.Invoices
             .AsNoTracking()
-            .Where(i => i.Status == InvoiceStatus.Sent || i.Status == InvoiceStatus.Overdue)
-            .SumAsync(i => i.Total, cancellationToken);
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Outstanding = g.Sum(i =>
+                    i.Status == InvoiceStatus.Sent || i.Status == InvoiceStatus.Overdue
+                        ? i.Total
+                        : 0m),
+                Overdue = g.Count(i => i.Status == InvoiceStatus.Overdue),
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
-        var overdueCount = await db.Invoices
+        var licences = await db.FirearmLicences
             .AsNoTracking()
-            .Where(i => i.Status == InvoiceStatus.Overdue)
-            .CountAsync(cancellationToken);
-
-        var renewalDueCount = await db.FirearmLicences
-            .AsNoTracking()
-            .Where(l => l.Status == LicenceStatus.RenewalDue)
-            .CountAsync(cancellationToken);
-
-        var expiredCount = await db.FirearmLicences
-            .AsNoTracking()
-            .Where(l => l.Status == LicenceStatus.Expired)
-            .CountAsync(cancellationToken);
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                RenewalDue = g.Count(l => l.Status == LicenceStatus.RenewalDue),
+                Expired = g.Count(l => l.Status == LicenceStatus.Expired),
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
         return new DashboardStatsResponse
         {
-            ActiveStorageCount = activeStorageCount,
-            TotalMonthlyRate = totalMonthlyRate,
+            ActiveStorageCount = storage?.Count ?? 0,
+            TotalMonthlyRate = storage?.Total ?? 0m,
             FirearmsCount = firearmsCount,
-            OutstandingAmount = outstandingAmount,
-            OverdueCount = overdueCount,
-            LicenceAlerts = new LicenceAlertsDto(renewalDueCount, expiredCount),
+            OutstandingAmount = invoices?.Outstanding ?? 0m,
+            OverdueCount = invoices?.Overdue ?? 0,
+            LicenceAlerts = new LicenceAlertsDto(
+                licences?.RenewalDue ?? 0,
+                licences?.Expired ?? 0),
         };
     }
 }

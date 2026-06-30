@@ -73,6 +73,7 @@ internal sealed class FirearmLicenceConfiguration : IEntityTypeConfiguration<Fir
         builder.HasIndex(x => x.FirearmId);
         builder.HasIndex(x => x.ExpiresOn);
         builder.HasIndex(x => x.RenewalDueOn);
+        builder.HasIndex(x => new { x.CompanyId, x.Status });
         builder.HasIndex(x => new { x.FirearmId, x.LicenceNumber }).IsUnique();
 
         builder.HasOne(l => l.Firearm)
@@ -111,6 +112,7 @@ internal sealed class StorageRecordConfiguration : IEntityTypeConfiguration<Stor
             .HasFilter("storage_status = 'active'")
             .IsUnique()
             .HasDatabaseName("ix_storage_records_active");
+        builder.HasIndex(x => new { x.CompanyId, x.StorageStatus });
 
         builder.HasOne(s => s.Firearm)
             .WithMany(f => f.StorageRecords)
