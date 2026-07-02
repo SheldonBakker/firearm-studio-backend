@@ -12,5 +12,7 @@ public sealed class KlaviyoSettings
 
     public string ContactMetricName { get; init; } = "Contact Form Submitted";
 
+    public string InvoiceSentMetricName { get; init; } = "Invoice Sent";
+
     public string? ContactListId { get; init; }
 }
