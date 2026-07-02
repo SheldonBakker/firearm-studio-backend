@@ -8,5 +8,6 @@ services:
       ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
       SupabaseJwtSettings__Authority: ${SupabaseJwtSettings__Authority}
       ApiKeySettings__Key: ${ApiKeySettings__Key}
+      KlaviyoSettings__ApiKey: ${KlaviyoSettings__ApiKey}
     ports:
       - "5146:5146"
