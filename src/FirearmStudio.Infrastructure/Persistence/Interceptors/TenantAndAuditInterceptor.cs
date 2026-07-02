@@ -71,7 +71,6 @@ public sealed class TenantAndAuditInterceptor(
             }
         }
 
-        // Skip audit logs when there is no company context (background/system operations).
         if (tenant.CompanyId is not { } companyId)
         {
             return;

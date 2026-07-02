@@ -4,10 +4,6 @@ using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Invoices;
 
-public sealed record GenerateMonthlyInvoicesRequest(DateOnly InvoiceMonth, decimal VatRate, int DueDays);
-
-public sealed record GenerateMonthlyInvoicesResponse(int InvoicesCreated, int InvoicesSkipped);
-
 public sealed record RecordPaymentRequest(decimal Amount, DateOnly? PaidOn, PaymentMethod Method, string? Reference, string? Notes);
 
 public sealed record InvoiceListItemDto(

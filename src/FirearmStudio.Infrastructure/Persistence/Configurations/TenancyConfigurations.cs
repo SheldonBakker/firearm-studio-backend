@@ -32,6 +32,12 @@ internal sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
         builder.Property(x => x.Province).HasMaxLength(120);
         builder.Property(x => x.PostalCode).HasMaxLength(20);
         builder.Property(x => x.IsActive).HasDefaultValue(true);
+        builder.Property(x => x.DueDays).HasDefaultValue(30);
+        builder.Property(x => x.AutoBillingEnabled).HasDefaultValue(true);
+
+        builder.ToTable(table => table.HasCheckConstraint(
+            "ck_companies_due_days",
+            "due_days between 0 and 365"));
     }
 }
 

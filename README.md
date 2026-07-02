@@ -156,10 +156,12 @@ authenticated role; writes are gated per the table below.
 | Firearms | `GET/POST/PATCH /firearms`, `GET /firearms/{id}/licences` | read: viewer+ / write: manager+ |
 | Licences | `GET /licences`, `POST /firearms/{id}/licences`, `PATCH /licences/{id}` | read: viewer+ / write: staff+ |
 | Storage | `POST /firearms/{id}/storage`, `PATCH /storage-records/{id}/release`, `GET /storage/active`, `GET /storage/customer/{id}` | read: viewer+ / write: staff+ |
-| Invoices | `POST /invoices/generate-monthly`, `GET /invoices`, `GET /invoices/{id}`, `POST /invoices/{id}/send`, `POST /invoices/{id}/payments`, `PATCH /invoices/{id}/cancel` | read: viewer+ / write: manager+ |
+| Invoices | `GET /invoices`, `GET /invoices/{id}`, `POST /invoices/{id}/send`, `POST /invoices/{id}/payments`, `PATCH /invoices/{id}/cancel` | read: viewer+ / write: manager+ |
 | Dashboard | `GET /dashboard/stats` | any authenticated |
 | Audit logs | `GET /audit-logs` | manager+ |
 | Me | `GET /me`, `GET /me/admin-check` | any authenticated (admin-check: admin) |
+
+> **Automatic monthly invoicing:** there is no manual generate endpoint. A daily background job generates monthly storage invoices for every active company that has `AutoBillingEnabled`, back-filling any unbilled months since each storage record's `StoredFrom`. Active **and** released storage records are billed for the months they overlap (only cancelled storage is excluded). Invoices are dated when issued; the billed period is carried by `InvoiceMonth`. The due date is `today + Company.DueDays` (constrained to 0–365), and VAT (standard 15%) is applied only when the company has a `VatNumber` (i.e. is VAT-registered). Runs are idempotent — any existing invoice for a (customer, month), **including a cancelled one**, marks it as handled; the job never revives or regenerates cancelled invoices. Each month saves independently, so one failure doesn't block the rest, and the job skips (with an error log) until all EF migrations are applied.
 
 ### Onboarding flow
 

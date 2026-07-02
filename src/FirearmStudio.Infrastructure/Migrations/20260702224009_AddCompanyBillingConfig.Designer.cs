@@ -4,6 +4,7 @@ using FirearmStudio.Domain.Enums;
 using FirearmStudio.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FirearmStudio.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260702224009_AddCompanyBillingConfig")]
+    partial class AddCompanyBillingConfig
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -251,10 +254,7 @@ namespace FirearmStudio.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_companies");
 
-                    b.ToTable("companies", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_companies_due_days", "due_days between 0 and 365");
-                        });
+                    b.ToTable("companies", (string)null);
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.Customer", b =>

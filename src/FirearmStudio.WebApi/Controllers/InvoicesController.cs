@@ -1,7 +1,6 @@
 using Asp.Versioning;
 using FirearmStudio.Application.Invoices;
 using FirearmStudio.Application.Invoices.CancelInvoice;
-using FirearmStudio.Application.Invoices.GenerateMonthlyInvoices;
 using FirearmStudio.Application.Invoices.GetInvoice;
 using FirearmStudio.Application.Invoices.GetInvoices;
 using FirearmStudio.Application.Invoices.RecordPayment;
@@ -21,14 +20,6 @@ namespace FirearmStudio.WebApi.Controllers;
 [Authorize(Roles = AppRoles.Policy.AnyAuthenticatedRole)]
 public sealed class InvoicesController(IMediator mediator) : ControllerBase
 {
-    [HttpPost("generate-monthly")]
-    [Authorize(Roles = AppRoles.Policy.ManagerOrAbove)]
-    public async Task<ActionResult> GenerateMonthly(GenerateMonthlyInvoicesRequest request, CancellationToken ct)
-    {
-        var result = await mediator.Send(new GenerateMonthlyInvoicesCommand(request), ct);
-        return result.ToActionResult();
-    }
-
     [HttpGet]
     public async Task<ActionResult<PaginatedResponse<InvoiceListItemDto>>> List(
         [FromQuery] int pageNumber = 1,

@@ -1,4 +1,5 @@
 using System.Reflection;
+using FirearmStudio.Application.Invoices.MonthlyInvoiceGeneration;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,6 +13,8 @@ public static class DependencyInjection
 
         services.AddMediatR(cfg =>
             cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+
+        services.AddScoped<IMonthlyInvoiceGenerator, MonthlyInvoiceGenerator>();
 
         return services;
     }

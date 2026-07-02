@@ -9,4 +9,5 @@ public interface ITenantContext
     bool BypassFilter { get; }
 
     IDisposable BeginBypass();
+    IDisposable BeginCompanyScope(Guid companyId);
 }

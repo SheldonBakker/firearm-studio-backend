@@ -1,5 +1,6 @@
 using FirearmStudio.Application.Extensions;
 using FirearmStudio.Infrastructure.Extensions;
+using FirearmStudio.WebApi.BackgroundJobs;
 using FirearmStudio.WebApi.Extensions;
 using FirearmStudio.WebApi.Extensions.Authentication;
 using FirearmStudio.WebApi.Middleware;
@@ -38,6 +39,8 @@ builder.Services
     .AddInfrastructure(builder.Configuration)
     .AddWebAuthentication(builder.Configuration)
     .AddApplication();
+
+builder.Services.AddHostedService<MonthlyInvoiceGenerationService>();
 
 var app = builder.Build();
 

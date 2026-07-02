@@ -1,0 +1,103 @@
+using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Application.Invoices.MonthlyInvoiceGeneration;
+using FirearmStudio.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace FirearmStudio.WebApi.BackgroundJobs;
+
+public sealed class MonthlyInvoiceGenerationService(
+    IServiceScopeFactory scopeFactory,
+    ILogger<MonthlyInvoiceGenerationService> logger) : BackgroundService
+{
+    private static readonly TimeSpan Interval = TimeSpan.FromHours(24);
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        using var timer = new PeriodicTimer(Interval);
+
+        do
+        {
+            try
+            {
+                await RunAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Monthly invoice generation run failed.");
+            }
+        }
+        while (await timer.WaitForNextTickAsync(stoppingToken));
+    }
+
+    private async Task RunAsync(CancellationToken cancellationToken)
+    {
+        List<CompanyBilling> companies;
+        using (var scope = scopeFactory.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var pendingMigrations = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
+            if (pendingMigrations.Count > 0)
+            {
+                var migrationNames = string.Join(", ", pendingMigrations);
+                logger.LogError(
+                    "Skipping monthly invoice generation: {Count} pending database migration(s): {Migrations}. " +
+                    "Apply migrations and the job will resume on its next tick.",
+                    pendingMigrations.Count, migrationNames);
+                return;
+            }
+
+            var db = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+            companies = await db.Companies
+                .AsNoTracking()
+                .Where(company => company.IsActive && company.AutoBillingEnabled)
+                .Select(company => new CompanyBilling(company.Id, company.VatNumber, company.DueDays))
+                .ToListAsync(cancellationToken);
+        }
+
+        foreach (var company in companies)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                var tenant = scope.ServiceProvider.GetRequiredService<ITenantContext>();
+                var generator = scope.ServiceProvider.GetRequiredService<IMonthlyInvoiceGenerator>();
+
+                using (tenant.BeginCompanyScope(company.Id))
+                {
+                    var result = await generator.GenerateOutstandingAsync(
+                        company.VatNumber, company.DueDays, cancellationToken);
+
+                    if (result.InvoicesCreated > 0 && logger.IsEnabled(LogLevel.Information))
+                    {
+                        logger.LogInformation(
+                            "Generated {Created} invoice(s) ({Skipped} skipped) for company {CompanyId}.",
+                            result.InvoicesCreated, result.InvoicesSkipped, company.Id);
+                    }
+
+                    if (result.MonthsFailed > 0 && logger.IsEnabled(LogLevel.Warning))
+                    {
+                        logger.LogWarning(
+                            "{MonthsFailed} month(s) failed to save for company {CompanyId}; they will be retried on the next run.",
+                            result.MonthsFailed, company.Id);
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Monthly invoice generation failed for company {CompanyId}.", company.Id);
+            }
+        }
+    }
+
+    private sealed record CompanyBilling(Guid Id, string? VatNumber, int DueDays);
+}

@@ -20,6 +20,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    public void ClearChangeTracker() => ChangeTracker.Clear();
+
     private static readonly MethodInfo SetTenantFilterMethod =
         typeof(ApplicationDbContext).GetMethod(nameof(SetTenantFilter),
             BindingFlags.Instance | BindingFlags.NonPublic)!;

@@ -20,5 +20,8 @@ public sealed class Company : BaseEntity
 
     public bool IsActive { get; set; } = true;
 
+    public int DueDays { get; set; } = 30;
+    public bool AutoBillingEnabled { get; set; } = true;
+
     public ICollection<AppUser> Users { get; set; } = [];
 }
