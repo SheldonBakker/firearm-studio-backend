@@ -16,11 +16,23 @@ public sealed class SubmitContactFormCommandHandler(
     {
         var request = command.Request;
 
-        var properties = new Dictionary<string, object?>
+        var properties = new Dictionary<string, object?> { ["message"] = request.Message };
+        if (!string.IsNullOrWhiteSpace(request.Company))
         {
-            ["company"] = request.Company,
-            ["message"] = request.Message,
-        };
+            properties["company"] = request.Company;
+        }
+
+        if (!string.IsNullOrWhiteSpace(settings.ContactListId))
+        {
+            try
+            {
+                await klaviyo.SubscribeProfileAsync(settings.ContactListId, request.Email, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to subscribe contact {Email} to the Klaviyo list.", request.Email);
+            }
+        }
 
         try
         {
@@ -33,7 +45,6 @@ public sealed class SubmitContactFormCommandHandler(
         }
         catch (Exception ex)
         {
-            // Never surface Klaviyo failures to the caller — log and still acknowledge the submission.
             logger.LogError(ex, "Failed to send contact form submission to Klaviyo for {Email}.", request.Email);
         }
 

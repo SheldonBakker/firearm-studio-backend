@@ -11,7 +11,7 @@ namespace FirearmStudio.WebApi.Controllers;
 [ApiController]
 [ApiVersion(1)]
 [Route("api/v{version:apiVersion}/contact")]
-[AllowAnonymous] // No JWT required; the X-Api-Key gate still applies via ApiKeyMiddleware (path is under /api).
+[AllowAnonymous]
 public sealed class ContactController(IMediator mediator) : ControllerBase
 {
     [HttpPost]

@@ -1,14 +1,11 @@
 using System.Net.Http.Json;
 using FirearmStudio.Application.Abstractions;
-using Microsoft.Extensions.Logging;
 
 namespace FirearmStudio.Infrastructure.Services;
 
-// Typed HttpClient for Klaviyo's Events API (JSON:API). Auth/revision headers and BaseAddress
-// are configured on the HttpClient in AddInfrastructure.
-public sealed class KlaviyoClient(HttpClient httpClient, ILogger<KlaviyoClient> logger) : IKlaviyoClient
+public sealed class KlaviyoClient(HttpClient httpClient) : IKlaviyoClient
 {
-    public async Task TrackEventAsync(
+    public Task TrackEventAsync(
         string metricName,
         string email,
         string? name,
@@ -24,32 +21,65 @@ public sealed class KlaviyoClient(HttpClient httpClient, ILogger<KlaviyoClient> 
                 {
                     properties,
                     metric = new { data = new { type = "metric", attributes = new { name = metricName } } },
-                    profile = new
-                    {
-                        data = new
-                        {
-                            type = "profile",
-                            attributes = new
-                            {
-                                email,
-                                properties = new Dictionary<string, object?> { ["full_name"] = name },
-                            },
-                        },
-                    },
+                    profile = new { data = new { type = "profile", attributes = BuildProfileAttributes(email, name) } },
                 },
             },
         };
 
-        using var response = await httpClient.PostAsJsonAsync("api/events/", payload, cancellationToken);
+        return SendAsync("api/events/", payload, cancellationToken);
+    }
 
+    public Task SubscribeProfileAsync(string listId, string email, CancellationToken cancellationToken)
+    {
+        var payload = new
+        {
+            data = new
+            {
+                type = "profile-subscription-bulk-create-job",
+                attributes = new
+                {
+                    profiles = new
+                    {
+                        data = new[]
+                        {
+                            new
+                            {
+                                type = "profile",
+                                attributes = new
+                                {
+                                    email,
+                                    subscriptions = new { email = new { marketing = new { consent = "SUBSCRIBED" } } },
+                                },
+                            },
+                        },
+                    },
+                },
+                relationships = new { list = new { data = new { type = "list", id = listId } } },
+            },
+        };
+
+        return SendAsync("api/profile-subscription-bulk-create-jobs/", payload, cancellationToken);
+    }
+
+    private static Dictionary<string, object?> BuildProfileAttributes(string email, string? name)
+    {
+        var attributes = new Dictionary<string, object?> { ["email"] = email };
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            attributes["properties"] = new Dictionary<string, object?> { ["full_name"] = name };
+        }
+
+        return attributes;
+    }
+
+    private async Task SendAsync(string path, object payload, CancellationToken cancellationToken)
+    {
+        using var response = await httpClient.PostAsJsonAsync(path, payload, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            logger.LogError(
-                "Klaviyo event track failed with status {StatusCode}: {Body}",
-                (int)response.StatusCode,
-                body);
-            response.EnsureSuccessStatusCode();
+            throw new HttpRequestException(
+                $"Klaviyo POST {path} failed with status {(int)response.StatusCode}: {body}");
         }
     }
 }

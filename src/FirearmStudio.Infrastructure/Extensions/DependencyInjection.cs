@@ -48,13 +48,8 @@ public static class DependencyInjection
 
     private static void AddKlaviyo(IServiceCollection services, IConfiguration configuration)
     {
-        var settings = configuration.GetSection(KlaviyoSettings.SectionName).Get<KlaviyoSettings>();
-        if (settings is null || string.IsNullOrWhiteSpace(settings.ApiKey))
-        {
-            throw new InvalidOperationException(
-                "Klaviyo is not configured. Set KlaviyoSettings:ApiKey " +
-                "(e.g. KlaviyoSettings__ApiKey in .env or user-secrets).");
-        }
+        var settings = configuration.GetSection(KlaviyoSettings.SectionName).Get<KlaviyoSettings>()
+            ?? new KlaviyoSettings();
 
         services.AddSingleton(settings);
 
