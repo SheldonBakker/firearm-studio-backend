@@ -1,4 +1,6 @@
+using System.Net.Http.Headers;
 using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Infrastructure.Persistence;
 using FirearmStudio.Infrastructure.Persistence.Interceptors;
 using FirearmStudio.Infrastructure.Services;
@@ -39,6 +41,29 @@ public static class DependencyInjection
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
+        AddKlaviyo(services, configuration);
+
         return services;
+    }
+
+    private static void AddKlaviyo(IServiceCollection services, IConfiguration configuration)
+    {
+        var settings = configuration.GetSection(KlaviyoSettings.SectionName).Get<KlaviyoSettings>();
+        if (settings is null || string.IsNullOrWhiteSpace(settings.ApiKey))
+        {
+            throw new InvalidOperationException(
+                "Klaviyo is not configured. Set KlaviyoSettings:ApiKey " +
+                "(e.g. KlaviyoSettings__ApiKey in .env or user-secrets).");
+        }
+
+        services.AddSingleton(settings);
+
+        services.AddHttpClient<IKlaviyoClient, KlaviyoClient>(client =>
+        {
+            client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Klaviyo-API-Key {settings.ApiKey}");
+            client.DefaultRequestHeaders.TryAddWithoutValidation("revision", settings.ApiRevision);
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        });
     }
 }
