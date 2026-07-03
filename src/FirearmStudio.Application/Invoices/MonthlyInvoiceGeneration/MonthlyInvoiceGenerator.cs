@@ -31,123 +31,105 @@ public sealed class MonthlyInvoiceGenerator(
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
         var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
+        var monthEnd = currentMonthStart.AddMonths(1).AddDays(-1);
         var dueOn = today.AddDays(Math.Clamp(dueDays, MinDueDays, MaxDueDays));
         var chargeVat = !string.IsNullOrWhiteSpace(vatNumber);
 
         var storageRecords = await db.StorageRecords
             .AsNoTracking()
-            .Where(record => record.StorageStatus != StorageStatus.Cancelled)
+            .Where(record => record.StorageStatus == StorageStatus.Active
+                             && record.StoredFrom <= monthEnd)
             .Include(record => record.Firearm)
             .ToListAsync(cancellationToken);
 
-        var storage = storageRecords
+        var storageByCustomer = storageRecords
             .Where(record => record.Firearm is not null)
+            .GroupBy(record => record.Firearm!.CustomerId)
             .ToList();
 
-        if (storage.Count == 0)
+        if (storageByCustomer.Count == 0)
         {
             return new MonthlyInvoiceGenerationResult(0, 0, 0);
         }
 
-        var earliestFrom = storage.Min(record => record.StoredFrom);
-        var firstMonth = new DateOnly(earliestFrom.Year, earliestFrom.Month, 1);
-
-        var existingInvoices = await db.Invoices
+        var billedCustomers = await db.Invoices
             .AsNoTracking()
-            .Where(invoice => invoice.InvoiceMonth >= firstMonth)
-            .Select(invoice => new { invoice.CustomerId, invoice.InvoiceMonth })
+            .Where(invoice => invoice.InvoiceMonth == currentMonthStart)
+            .Select(invoice => invoice.CustomerId)
             .ToListAsync(cancellationToken);
 
-        var invoicesByMonth = existingInvoices.ToLookup(invoice => invoice.InvoiceMonth);
+        var billedCustomerSet = billedCustomers.ToHashSet();
+
+        var monthLabel = currentMonthStart.ToString("yyyyMM", CultureInfo.InvariantCulture);
+        var humanMonth = currentMonthStart.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
+        var sequence = billedCustomers.Count;
 
         var created = 0;
         var skipped = 0;
-        var monthsFailed = 0;
 
-        for (var monthStart = firstMonth; monthStart <= currentMonthStart; monthStart = monthStart.AddMonths(1))
+        foreach (var group in storageByCustomer)
         {
-            var monthEnd = monthStart.AddMonths(1).AddDays(-1);
-            var monthInvoices = invoicesByMonth[monthStart].ToList();
-            var billedCustomers = monthInvoices
-                .Select(invoice => invoice.CustomerId)
-                .ToHashSet();
-
-            var storageByCustomer = storage
-                .Where(record => record.StoredFrom <= monthEnd
-                                 && (record.StoredUntil == null || record.StoredUntil >= monthStart))
-                .GroupBy(record => record.Firearm!.CustomerId)
-                .ToList();
-
-            var monthLabel = monthStart.ToString("yyyyMM", CultureInfo.InvariantCulture);
-            var humanMonth = monthStart.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
-            var sequence = monthInvoices.Count;
-            var monthCreated = 0;
-
-            foreach (var group in storageByCustomer)
+            if (billedCustomerSet.Contains(group.Key))
             {
-                if (billedCustomers.Contains(group.Key))
-                {
-                    skipped++;
-                    continue;
-                }
-
-                var subtotal = group.Sum(record => record.MonthlyRate);
-                var vat = chargeVat
-                    ? Math.Round(subtotal * StandardVatRatePercent / 100m, 2, MidpointRounding.AwayFromZero)
-                    : 0m;
-
-                sequence++;
-                var invoiceId = Guid.CreateVersion7();
-                db.Invoices.Add(new Invoice
-                {
-                    Id = invoiceId,
-                    CustomerId = group.Key,
-                    InvoiceNumber = $"INV-{monthLabel}-{sequence:D4}",
-                    InvoiceMonth = monthStart,
-                    Subtotal = subtotal,
-                    VatAmount = vat,
-                    Total = subtotal + vat,
-                    Status = InvoiceStatus.Draft,
-                    DueOn = dueOn,
-                });
-
-                foreach (var record in group)
-                {
-                    var firearm = record.Firearm!;
-                    db.InvoiceLines.Add(new InvoiceLine
-                    {
-                        InvoiceId = invoiceId,
-                        FirearmId = firearm.Id,
-                        Description = $"Storage fee - {firearm.Make} {firearm.Model} - Serial: {firearm.SerialNumber} - {humanMonth}",
-                        Quantity = 1,
-                        UnitPrice = record.MonthlyRate,
-                        LineTotal = record.MonthlyRate,
-                    });
-                }
-
-                monthCreated++;
-            }
-
-            if (monthCreated == 0)
-            {
+                skipped++;
                 continue;
             }
 
-            try
+            var subtotal = group.Sum(record => record.MonthlyRate);
+            var vat = chargeVat
+                ? Math.Round(subtotal * StandardVatRatePercent / 100m, 2, MidpointRounding.AwayFromZero)
+                : 0m;
+
+            sequence++;
+            var invoiceId = Guid.CreateVersion7();
+            db.Invoices.Add(new Invoice
             {
-                await db.SaveChangesAsync(cancellationToken);
-                created += monthCreated;
-            }
-            catch (DbUpdateException ex)
+                Id = invoiceId,
+                CustomerId = group.Key,
+                InvoiceNumber = $"INV-{monthLabel}-{sequence:D4}",
+                InvoiceMonth = currentMonthStart,
+                Subtotal = subtotal,
+                VatAmount = vat,
+                Total = subtotal + vat,
+                Status = InvoiceStatus.Draft,
+                DueOn = dueOn,
+            });
+
+            foreach (var record in group)
             {
-                db.ClearChangeTracker();
-                monthsFailed++;
-                logger.LogError(ex,
-                    "Failed to save invoices for month {InvoiceMonth}; continuing with remaining months.",
-                    monthStart);
+                var firearm = record.Firearm!;
+                db.InvoiceLines.Add(new InvoiceLine
+                {
+                    InvoiceId = invoiceId,
+                    FirearmId = firearm.Id,
+                    Description = $"Storage fee - {firearm.Make} {firearm.Model} - Serial: {firearm.SerialNumber} - {humanMonth}",
+                    Quantity = 1,
+                    UnitPrice = record.MonthlyRate,
+                    LineTotal = record.MonthlyRate,
+                });
             }
+
+            created++;
         }
 
-        return new MonthlyInvoiceGenerationResult(created, skipped, monthsFailed);
+        if (created == 0)
+        {
+            return new MonthlyInvoiceGenerationResult(0, skipped, 0);
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            db.ClearChangeTracker();
+            logger.LogError(ex,
+                "Failed to save invoices for month {InvoiceMonth}.",
+                currentMonthStart);
+            return new MonthlyInvoiceGenerationResult(0, skipped, 1);
+        }
+
+        return new MonthlyInvoiceGenerationResult(created, skipped, 0);
     }
 }
