@@ -2,8 +2,6 @@ using Asp.Versioning;
 using FirearmStudio.Application.Customers;
 using FirearmStudio.Application.Customers.CreateCustomer;
 using FirearmStudio.Application.Customers.GetCustomer;
-using FirearmStudio.Application.Customers.GetCustomerFirearms;
-using FirearmStudio.Application.Customers.GetCustomerInvoices;
 using FirearmStudio.Application.Customers.GetCustomers;
 using FirearmStudio.Application.Customers.UpdateCustomer;
 using FirearmStudio.Application.Model;
@@ -36,23 +34,9 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<CustomerResponse>> Get(Guid id, CancellationToken ct)
+    public async Task<ActionResult<CustomerDetailResponse>> Get(Guid id, CancellationToken ct)
     {
         var result = await mediator.Send(new GetCustomerQuery(id), ct);
-        return result.ToActionResult();
-    }
-
-    [HttpGet("{id:guid}/firearms")]
-    public async Task<ActionResult<IReadOnlyList<CustomerFirearmListItemDto>>> Firearms(Guid id, CancellationToken ct)
-    {
-        var result = await mediator.Send(new GetCustomerFirearmsQuery(id), ct);
-        return result.ToActionResult();
-    }
-
-    [HttpGet("{id:guid}/invoices")]
-    public async Task<ActionResult<IReadOnlyList<CustomerInvoiceListItemDto>>> Invoices(Guid id, CancellationToken ct)
-    {
-        var result = await mediator.Send(new GetCustomerInvoicesQuery(id), ct);
         return result.ToActionResult();
     }
 

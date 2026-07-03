@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using FirearmStudio.Application.Customers;
 using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
@@ -21,6 +22,30 @@ public sealed record FirearmResponse(
 
     public static FirearmResponse FromEntity(Firearm f) =>
         new(f.Id, f.CustomerId, f.Make, f.Model, f.Calibre, f.FirearmType, f.SerialNumber, f.Status, f.Notes);
+}
+
+public sealed record FirearmDetailResponse(
+    Guid Id,
+    CustomerResponse Customer,
+    string Make,
+    string? Model,
+    string? Calibre,
+    string? FirearmType,
+    string SerialNumber,
+    FirearmStatus Status,
+    string? Notes,
+    IReadOnlyList<FirearmLicenceListItemDto> Licences)
+{
+    public static Expression<Func<Firearm, FirearmDetailResponse>> QueryProjection => f => new FirearmDetailResponse(
+        f.Id,
+        new CustomerResponse(
+            f.Customer!.Id, f.Customer.CustomerType, f.Customer.FullName, f.Customer.CompanyName,
+            f.Customer.Email, f.Customer.Phone, f.Customer.Notes, f.Customer.IsActive),
+        f.Make, f.Model, f.Calibre, f.FirearmType, f.SerialNumber, f.Status, f.Notes,
+        f.Licences
+            .Select(l => new FirearmLicenceListItemDto(
+                l.Id, l.LicenceNumber, l.IssuedOn, l.ExpiresOn, l.RenewalDueOn, l.Status))
+            .ToList());
 }
 
 public sealed record FirearmLicenceListItemDto(

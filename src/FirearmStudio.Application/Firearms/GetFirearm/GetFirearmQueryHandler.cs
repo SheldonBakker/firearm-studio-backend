@@ -6,14 +6,14 @@ using Microsoft.EntityFrameworkCore;
 namespace FirearmStudio.Application.Firearms.GetFirearm;
 
 public sealed class GetFirearmQueryHandler(IApplicationDbContext db)
-    : IQueryHandler<GetFirearmQuery, ErrorOr<FirearmResponse>>
+    : IQueryHandler<GetFirearmQuery, ErrorOr<FirearmDetailResponse>>
 {
-    public async Task<ErrorOr<FirearmResponse>> Handle(GetFirearmQuery query, CancellationToken cancellationToken)
+    public async Task<ErrorOr<FirearmDetailResponse>> Handle(GetFirearmQuery query, CancellationToken cancellationToken)
     {
         var firearm = await db.Firearms
             .AsNoTracking()
             .Where(f => f.Id == query.Id)
-            .Select(FirearmResponse.QueryProjection)
+            .Select(FirearmDetailResponse.QueryProjection)
             .FirstOrDefaultAsync(cancellationToken);
 
         return firearm is null

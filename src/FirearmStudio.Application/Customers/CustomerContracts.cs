@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using FirearmStudio.Application.Model;
+using FirearmStudio.Application.StorageRecords;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 
@@ -20,6 +21,39 @@ public sealed record CustomerResponse(
 
     public static CustomerResponse FromEntity(Customer c) =>
         new(c.Id, c.CustomerType, c.FullName, c.CompanyName, c.Email, c.Phone, c.Notes, c.IsActive);
+}
+
+public sealed record CustomerDetailResponse(
+    Guid Id,
+    CustomerType CustomerType,
+    string? FullName,
+    string? CompanyName,
+    string? Email,
+    string? Phone,
+    string? Notes,
+    bool IsActive,
+    IReadOnlyList<CustomerFirearmListItemDto> Firearms,
+    IReadOnlyList<CustomerInvoiceListItemDto> Invoices,
+    IReadOnlyList<CustomerStorageRecordDto> StorageRecords)
+{
+    public static Expression<Func<Customer, CustomerDetailResponse>> QueryProjection => c => new CustomerDetailResponse(
+        c.Id, c.CustomerType, c.FullName, c.CompanyName, c.Email, c.Phone, c.Notes, c.IsActive,
+        c.Firearms
+            .OrderBy(f => f.SerialNumber)
+            .ThenBy(f => f.Id)
+            .Select(f => new CustomerFirearmListItemDto(f.Id, f.Make, f.Model, f.SerialNumber, f.Status))
+            .ToList(),
+        c.Invoices
+            .OrderByDescending(i => i.InvoiceMonth)
+            .ThenBy(i => i.Id)
+            .Select(i => new CustomerInvoiceListItemDto(i.Id, i.InvoiceNumber, i.InvoiceMonth, i.Total, i.Status))
+            .ToList(),
+        c.Firearms
+            .SelectMany(f => f.StorageRecords)
+            .OrderByDescending(s => s.StoredFrom)
+            .ThenBy(s => s.Id)
+            .Select(s => new CustomerStorageRecordDto(s.Id, s.FirearmId, s.MonthlyRate, s.StorageStatus, s.StoredFrom, s.StoredUntil))
+            .ToList());
 }
 
 public sealed record CustomerListItemDto(

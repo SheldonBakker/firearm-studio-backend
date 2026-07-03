@@ -6,14 +6,14 @@ using Microsoft.EntityFrameworkCore;
 namespace FirearmStudio.Application.Customers.GetCustomer;
 
 public sealed class GetCustomerQueryHandler(IApplicationDbContext db)
-    : IQueryHandler<GetCustomerQuery, ErrorOr<CustomerResponse>>
+    : IQueryHandler<GetCustomerQuery, ErrorOr<CustomerDetailResponse>>
 {
-    public async Task<ErrorOr<CustomerResponse>> Handle(GetCustomerQuery query, CancellationToken cancellationToken)
+    public async Task<ErrorOr<CustomerDetailResponse>> Handle(GetCustomerQuery query, CancellationToken cancellationToken)
     {
         var customer = await db.Customers
             .AsNoTracking()
             .Where(c => c.Id == query.Id)
-            .Select(CustomerResponse.QueryProjection)
+            .Select(CustomerDetailResponse.QueryProjection)
             .FirstOrDefaultAsync(cancellationToken);
 
         return customer is null

@@ -2,7 +2,6 @@ using Asp.Versioning;
 using FirearmStudio.Application.Firearms;
 using FirearmStudio.Application.Firearms.CreateFirearm;
 using FirearmStudio.Application.Firearms.GetFirearm;
-using FirearmStudio.Application.Firearms.GetFirearmLicences;
 using FirearmStudio.Application.Firearms.GetFirearms;
 using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Enums;
@@ -35,16 +34,9 @@ public sealed class FirearmsController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<FirearmResponse>> Get(Guid id, CancellationToken ct)
+    public async Task<ActionResult<FirearmDetailResponse>> Get(Guid id, CancellationToken ct)
     {
         var result = await mediator.Send(new GetFirearmQuery(id), ct);
-        return result.ToActionResult();
-    }
-
-    [HttpGet("{id:guid}/licences")]
-    public async Task<ActionResult<IReadOnlyList<FirearmLicenceListItemDto>>> Licences(Guid id, CancellationToken ct)
-    {
-        var result = await mediator.Send(new GetFirearmLicencesQuery(id), ct);
         return result.ToActionResult();
     }
 

@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using FirearmStudio.Application.Licences;
 using FirearmStudio.Application.Licences.CreateLicence;
+using FirearmStudio.Application.Licences.GetLicence;
 using FirearmStudio.Application.Licences.GetLicences;
 using FirearmStudio.Application.Licences.UpdateLicence;
 using FirearmStudio.Application.Model;
@@ -29,6 +30,13 @@ public sealed class LicencesController(IMediator mediator) : ControllerBase
         CancellationToken ct = default)
     {
         var result = await mediator.Send(new GetLicencesQuery(pageNumber, pageSize, sortOrder, licenceNumber, status), ct);
+        return result.ToActionResult();
+    }
+
+    [HttpGet("licences/{id:guid}")]
+    public async Task<ActionResult<LicenceDetailDto>> Get(Guid id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetLicenceQuery(id), ct);
         return result.ToActionResult();
     }
 
