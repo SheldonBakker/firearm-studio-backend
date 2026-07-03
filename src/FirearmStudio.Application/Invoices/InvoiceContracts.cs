@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using FirearmStudio.Application.Customers;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 
@@ -36,6 +37,7 @@ public sealed record InvoiceDetailDto(
     InvoiceStatus Status,
     DateTime? SentAt,
     DateOnly? DueOn,
+    CustomerResponse? Customer,
     IReadOnlyList<InvoiceLineDto> Lines,
     IReadOnlyList<InvoicePaymentDto> Payments)
 {
@@ -50,6 +52,17 @@ public sealed record InvoiceDetailDto(
         invoice.Status,
         invoice.SentAt,
         invoice.DueOn,
+        invoice.Customer == null
+            ? null
+            : new CustomerResponse(
+                invoice.Customer.Id,
+                invoice.Customer.CustomerType,
+                invoice.Customer.FullName,
+                invoice.Customer.CompanyName,
+                invoice.Customer.Email,
+                invoice.Customer.Phone,
+                invoice.Customer.Notes,
+                invoice.Customer.IsActive),
         invoice.Lines
             .Select(line => new InvoiceLineDto(
                 line.Id,
