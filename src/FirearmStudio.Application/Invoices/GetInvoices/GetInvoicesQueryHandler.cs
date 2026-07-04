@@ -17,10 +17,46 @@ public sealed class GetInvoicesQueryHandler(IApplicationDbContext db)
         var pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
         var pageSize = query.PageSize is < 1 or > MaxPageSize ? 20 : query.PageSize;
 
-        var queryable = db.Invoices
-            .AsNoTracking()
-            .OrderByDescending(i => i.InvoiceMonth)
-            .ThenBy(i => i.Id);
+        var queryable = db.Invoices.AsNoTracking();
+
+        if (query.Status.HasValue)
+        {
+            queryable = queryable.Where(i => i.Status == query.Status.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.InvoiceNumber))
+        {
+            var term = query.InvoiceNumber.Trim().ToLower();
+            queryable = queryable.Where(i => i.InvoiceNumber.ToLower().Contains(term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.CustomerName))
+        {
+            var term = query.CustomerName.Trim().ToLower();
+            queryable = queryable.Where(i =>
+                (i.Customer!.FullName != null && i.Customer.FullName.ToLower().Contains(term)) ||
+                (i.Customer!.CompanyName != null && i.Customer.CompanyName.ToLower().Contains(term)));
+        }
+
+        var desc = query.SortOrder.Equals("desc", StringComparison.OrdinalIgnoreCase);
+        queryable = query.SortBy.ToLowerInvariant() switch
+        {
+            "total" => desc
+                ? queryable.OrderByDescending(i => i.Total).ThenBy(i => i.Id)
+                : queryable.OrderBy(i => i.Total).ThenBy(i => i.Id),
+            "dueon" => desc
+                ? queryable.OrderByDescending(i => i.DueOn).ThenBy(i => i.Id)
+                : queryable.OrderBy(i => i.DueOn).ThenBy(i => i.Id),
+            "invoicenumber" => desc
+                ? queryable.OrderByDescending(i => i.InvoiceNumber).ThenBy(i => i.Id)
+                : queryable.OrderBy(i => i.InvoiceNumber).ThenBy(i => i.Id),
+            "status" => desc
+                ? queryable.OrderByDescending(i => i.Status).ThenBy(i => i.Id)
+                : queryable.OrderBy(i => i.Status).ThenBy(i => i.Id),
+            _ => desc
+                ? queryable.OrderByDescending(i => i.InvoiceMonth).ThenBy(i => i.Id)
+                : queryable.OrderBy(i => i.InvoiceMonth).ThenBy(i => i.Id),
+        };
 
         var totalCount = await queryable.CountAsync(cancellationToken);
 
