@@ -28,8 +28,6 @@ public sealed class ApiKeyMiddleware(ApiKeySettings settings) : IMiddleware
         await next(context);
     }
 
-    // Accept if any supplied header value matches (a proxy may legitimately duplicate the header);
-    // FixedTimeEquals keeps the comparison constant-time. Avoids comma-joining multiple values.
     private bool IsValid(StringValues provided)
     {
         foreach (var value in provided)
