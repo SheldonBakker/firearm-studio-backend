@@ -2,6 +2,7 @@ using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
 using FirearmStudio.Domain.Entities;
+using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Firearms.CreateFirearm;
@@ -29,6 +30,7 @@ public sealed class CreateFirearmCommandHandler(IApplicationDbContext db)
             SerialNumber = request.SerialNumber,
             InternalReference = request.InternalReference,
             Notes = request.Notes,
+            Status = FirearmStatus.PendingTransfer,
         };
 
         await db.Firearms.AddAsync(firearm, cancellationToken);
