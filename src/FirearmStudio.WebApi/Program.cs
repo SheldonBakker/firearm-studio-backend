@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using FirearmStudio.Application.Extensions;
 using FirearmStudio.Infrastructure.Extensions;
 using FirearmStudio.WebApi.BackgroundJobs;
@@ -5,6 +6,7 @@ using FirearmStudio.WebApi.Extensions;
 using FirearmStudio.WebApi.Extensions.Authentication;
 using FirearmStudio.WebApi.Middleware;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 
 try
@@ -13,7 +15,6 @@ try
 }
 catch (Exception)
 {
-    // No readable/parseable .env (e.g. in the container) — fall back to environment variables.
 }
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,7 +43,32 @@ builder.Services
 
 builder.Services.AddHostedService<MonthlyInvoiceGenerationService>();
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("public", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+            }));
+
+    options.AddPolicy("public-write", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+            }));
+});
+
 var app = builder.Build();
+
+await app.Services.ApplyPendingMigrationsAsync();
 
 app.UseForwardedHeaders();
 
@@ -60,6 +86,7 @@ app.UseMiddleware<ApiKeyMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapControllers();
 app.MapHealthChecks("/health");

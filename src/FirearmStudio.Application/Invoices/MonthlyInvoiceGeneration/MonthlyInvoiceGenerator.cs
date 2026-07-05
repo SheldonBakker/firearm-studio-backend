@@ -54,7 +54,8 @@ public sealed class MonthlyInvoiceGenerator(
 
         var billedCustomers = await db.Invoices
             .AsNoTracking()
-            .Where(invoice => invoice.InvoiceMonth == currentMonthStart)
+            .Where(invoice => invoice.InvoiceMonth == currentMonthStart
+                              && invoice.Kind == InvoiceKind.MonthlyStorage)
             .Select(invoice => invoice.CustomerId)
             .ToListAsync(cancellationToken);
 
@@ -88,6 +89,7 @@ public sealed class MonthlyInvoiceGenerator(
                 CustomerId = group.Key,
                 InvoiceNumber = $"INV-{monthLabel}-{sequence:D4}",
                 InvoiceMonth = currentMonthStart,
+                Kind = InvoiceKind.MonthlyStorage,
                 Subtotal = subtotal,
                 VatAmount = vat,
                 Total = subtotal + vat,

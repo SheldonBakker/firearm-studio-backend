@@ -15,14 +15,23 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(x => x.VatAmount).HasPrecision(12, 2);
         builder.Property(x => x.Total).HasPrecision(12, 2);
 
-        builder.ToTable(table => table.HasCheckConstraint(
-            "ck_invoices_amounts",
-            "subtotal >= 0 and vat_amount >= 0 and total = subtotal + vat_amount"));
+        builder.ToTable(table =>
+        {
+            table.HasCheckConstraint(
+                "ck_invoices_amounts",
+                "subtotal >= 0 and vat_amount >= 0 and total = subtotal + vat_amount");
+            table.HasCheckConstraint(
+                "ck_invoices_kind",
+                "kind between 0 and 1");
+        });
 
         builder.HasIndex(x => new { x.CustomerId, x.InvoiceMonth });
         builder.HasIndex(x => new { x.CompanyId, x.Status });
         builder.HasIndex(x => new { x.CompanyId, x.InvoiceNumber }).IsUnique();
-        builder.HasIndex(x => new { x.CompanyId, x.CustomerId, x.InvoiceMonth }).IsUnique();
+
+        builder.HasIndex(x => new { x.CompanyId, x.CustomerId, x.InvoiceMonth })
+            .IsUnique()
+            .HasFilter("kind = 0");
 
         builder.Property<uint>("xmin")
             .HasColumnType("xid")

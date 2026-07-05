@@ -19,6 +19,9 @@ public sealed class TenantAndAuditInterceptor(
         typeof(StorageRecord),
         typeof(Invoice),
         typeof(Payment),
+        typeof(ShootingRange),
+        typeof(Package),
+        typeof(Booking),
     ];
 
     public override InterceptionResult<int> SavingChanges(

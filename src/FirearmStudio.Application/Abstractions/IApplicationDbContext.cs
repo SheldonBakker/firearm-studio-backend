@@ -15,10 +15,18 @@ public interface IApplicationDbContext
     DbSet<InvoiceLine> InvoiceLines { get; }
     DbSet<Payment> Payments { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<ShootingRange> ShootingRanges { get; }
+    DbSet<RangeOperatingHours> RangeOperatingHours { get; }
+    DbSet<Package> Packages { get; }
+    DbSet<PackageItem> PackageItems { get; }
+    DbSet<Booking> Bookings { get; }
 
     DbSet<TEntity> Set<TEntity>() where TEntity : class;
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    Task<bool> TryExecuteInSerializableTransactionAsync(
+        Func<CancellationToken, Task> operation, CancellationToken cancellationToken = default);
 
     void ClearChangeTracker();
 }

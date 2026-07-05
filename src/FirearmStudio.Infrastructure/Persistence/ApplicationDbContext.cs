@@ -1,8 +1,10 @@
+using System.Data;
 using System.Reflection;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace FirearmStudio.Infrastructure.Persistence;
 
@@ -19,8 +21,55 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<ShootingRange> ShootingRanges => Set<ShootingRange>();
+    public DbSet<RangeOperatingHours> RangeOperatingHours => Set<RangeOperatingHours>();
+    public DbSet<Package> Packages => Set<Package>();
+    public DbSet<PackageItem> PackageItems => Set<PackageItem>();
+    public DbSet<Booking> Bookings => Set<Booking>();
 
     public void ClearChangeTracker() => ChangeTracker.Clear();
+
+    private const int SerializableAttempts = 3;
+    private const string SerializationFailureSqlState = "40001";
+
+    public async Task<bool> TryExecuteInSerializableTransactionAsync(
+        Func<CancellationToken, Task> operation, CancellationToken cancellationToken = default)
+    {
+        for (var attempt = 1; attempt <= SerializableAttempts; attempt++)
+        {
+            await using var transaction = await Database.BeginTransactionAsync(
+                IsolationLevel.Serializable, cancellationToken);
+
+            try
+            {
+                await operation(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return true;
+            }
+            catch (Exception ex) when (IsSerializationFailure(ex))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                ChangeTracker.Clear();
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsSerializationFailure(Exception? exception)
+    {
+        while (exception is not null)
+        {
+            if (exception is PostgresException { SqlState: SerializationFailureSqlState })
+            {
+                return true;
+            }
+
+            exception = exception.InnerException;
+        }
+
+        return false;
+    }
 
     private static readonly MethodInfo SetTenantFilterMethod =
         typeof(ApplicationDbContext).GetMethod(nameof(SetTenantFilter),

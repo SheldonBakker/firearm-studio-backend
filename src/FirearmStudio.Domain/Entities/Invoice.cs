@@ -19,6 +19,8 @@ public sealed class Invoice : BaseEntity, ITenantEntity
 
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Draft;
 
+    public InvoiceKind Kind { get; set; } = InvoiceKind.MonthlyStorage;
+
     public DateTime? SentAt { get; set; }
     public DateOnly? DueOn { get; set; }
 
