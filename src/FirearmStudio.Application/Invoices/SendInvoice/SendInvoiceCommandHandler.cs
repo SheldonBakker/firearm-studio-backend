@@ -136,6 +136,12 @@ public sealed class SendInvoiceCommandHandler(
                 ["city"] = company.City,
                 ["province"] = company.Province,
                 ["postal_code"] = company.PostalCode,
+                ["bank_name"] = company.BankName,
+                ["bank_account_holder"] = company.BankAccountHolder,
+                ["bank_account_number"] = company.BankAccountNumber,
+                ["bank_branch_code"] = company.BankBranchCode,
+                ["bank_account_type"] = company.BankAccountType,
+                ["bank_swift_code"] = company.BankSwiftCode,
             };
         }
 
