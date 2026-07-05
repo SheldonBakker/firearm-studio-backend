@@ -5,6 +5,7 @@ using FirearmStudio.Application.Bookings.GetMonthAvailability;
 using FirearmStudio.Application.Model;
 using FirearmStudio.Application.ShootingRanges;
 using FirearmStudio.Application.ShootingRanges.CreateShootingRange;
+using FirearmStudio.Application.ShootingRanges.DeleteShootingRange;
 using FirearmStudio.Application.ShootingRanges.GetShootingRange;
 using FirearmStudio.Application.ShootingRanges.GetShootingRanges;
 using FirearmStudio.Application.ShootingRanges.UpdateShootingRange;
@@ -57,6 +58,14 @@ public sealed class ShootingRangesController(IMediator mediator) : ControllerBas
     public async Task<ActionResult> Update(Guid id, UpdateShootingRangeRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new UpdateShootingRangeCommand(id, request), ct);
+        return result.ToActionResult();
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = AppRoles.Policy.ManagerOrAbove)]
+    public async Task<ActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new DeleteShootingRangeCommand(id), ct);
         return result.ToActionResult();
     }
 

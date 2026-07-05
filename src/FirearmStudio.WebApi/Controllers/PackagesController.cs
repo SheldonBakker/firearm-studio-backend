@@ -2,6 +2,7 @@ using Asp.Versioning;
 using FirearmStudio.Application.Model;
 using FirearmStudio.Application.Packages;
 using FirearmStudio.Application.Packages.CreatePackage;
+using FirearmStudio.Application.Packages.DeletePackage;
 using FirearmStudio.Application.Packages.GetPackage;
 using FirearmStudio.Application.Packages.GetPackages;
 using FirearmStudio.Application.Packages.UpdatePackage;
@@ -55,6 +56,14 @@ public sealed class PackagesController(IMediator mediator) : ControllerBase
     public async Task<ActionResult> Update(Guid id, UpdatePackageRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new UpdatePackageCommand(id, request), ct);
+        return result.ToActionResult();
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = AppRoles.Policy.ManagerOrAbove)]
+    public async Task<ActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new DeletePackageCommand(id), ct);
         return result.ToActionResult();
     }
 }
