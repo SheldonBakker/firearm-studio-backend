@@ -3,10 +3,7 @@ using FirearmStudio.Application.Bookings;
 using FirearmStudio.Application.Bookings.CreatePublicBooking;
 using FirearmStudio.Application.Bookings.GetDayAvailability;
 using FirearmStudio.Application.Bookings.GetMonthAvailability;
-using FirearmStudio.Application.Packages;
-using FirearmStudio.Application.Packages.GetPublicPackages;
-using FirearmStudio.Application.ShootingRanges;
-using FirearmStudio.Application.ShootingRanges.GetPublicRanges;
+using FirearmStudio.Application.Bookings.GetPublicBookingOptions;
 using FirearmStudio.WebApi.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -22,17 +19,10 @@ namespace FirearmStudio.WebApi.Controllers;
 [EnableRateLimiting("public")]
 public sealed class PublicBookingsController(IMediator mediator) : ControllerBase
 {
-    [HttpGet("packages")]
-    public async Task<ActionResult<IReadOnlyList<PublicPackageResponse>>> Packages(Guid companyId, CancellationToken ct)
+    [HttpGet("bookings")]
+    public async Task<ActionResult<PublicBookingOptionsResponse>> BookingOptions(Guid companyId, CancellationToken ct)
     {
-        var result = await mediator.Send(new GetPublicPackagesQuery(companyId), ct);
-        return result.ToActionResult();
-    }
-
-    [HttpGet("ranges")]
-    public async Task<ActionResult<IReadOnlyList<PublicRangeResponse>>> Ranges(Guid companyId, CancellationToken ct)
-    {
-        var result = await mediator.Send(new GetPublicRangesQuery(companyId), ct);
+        var result = await mediator.Send(new GetPublicBookingOptionsQuery(companyId), ct);
         return result.ToActionResult();
     }
 
