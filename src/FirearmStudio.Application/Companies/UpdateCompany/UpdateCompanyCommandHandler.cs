@@ -74,6 +74,36 @@ public sealed class UpdateCompanyCommandHandler(
             company.PostalCode = request.PostalCode.Value;
         }
 
+        if (request.BankName.IsSet)
+        {
+            company.BankName = request.BankName.Value;
+        }
+
+        if (request.BankAccountHolder.IsSet)
+        {
+            company.BankAccountHolder = request.BankAccountHolder.Value;
+        }
+
+        if (request.BankAccountNumber.IsSet)
+        {
+            company.BankAccountNumber = request.BankAccountNumber.Value;
+        }
+
+        if (request.BankBranchCode.IsSet)
+        {
+            company.BankBranchCode = request.BankBranchCode.Value;
+        }
+
+        if (request.BankAccountType.IsSet)
+        {
+            company.BankAccountType = request.BankAccountType.Value;
+        }
+
+        if (request.BankSwiftCode.IsSet)
+        {
+            company.BankSwiftCode = request.BankSwiftCode.Value;
+        }
+
         await db.SaveChangesAsync(cancellationToken);
 
         return Result.Updated;

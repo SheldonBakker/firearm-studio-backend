@@ -16,6 +16,12 @@ public sealed record CompanyDetailsResponse(
     string? City,
     string? Province,
     string? PostalCode,
+    string? BankName,
+    string? BankAccountHolder,
+    string? BankAccountNumber,
+    string? BankBranchCode,
+    string? BankAccountType,
+    string? BankSwiftCode,
     bool IsActive,
     DateTime CreatedAt,
     DateTime? UpdatedAt)
@@ -23,6 +29,7 @@ public sealed record CompanyDetailsResponse(
     public static Expression<Func<Company, CompanyDetailsResponse>> QueryProjection => c => new CompanyDetailsResponse(
         c.Id, c.Name, c.RegistrationNumber, c.VatNumber, c.Email, c.Phone,
         c.AddressLine1, c.AddressLine2, c.City, c.Province, c.PostalCode,
+        c.BankName, c.BankAccountHolder, c.BankAccountNumber, c.BankBranchCode, c.BankAccountType, c.BankSwiftCode,
         c.IsActive, c.CreatedAt, c.UpdatedAt);
 }
 
@@ -36,4 +43,10 @@ public sealed record UpdateCompanyRequest(
     Optional<string?> AddressLine2,
     Optional<string?> City,
     Optional<string?> Province,
-    Optional<string?> PostalCode);
+    Optional<string?> PostalCode,
+    Optional<string?> BankName,
+    Optional<string?> BankAccountHolder,
+    Optional<string?> BankAccountNumber,
+    Optional<string?> BankBranchCode,
+    Optional<string?> BankAccountType,
+    Optional<string?> BankSwiftCode);

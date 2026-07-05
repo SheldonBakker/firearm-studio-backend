@@ -52,6 +52,30 @@ public sealed class UpdateCompanyRequestValidator : AbstractValidator<UpdateComp
             .MaximumLength(20)
             .OverridePropertyName(nameof(UpdateCompanyRequest.PostalCode))
             .When(request => request.PostalCode.IsSet);
+        RuleFor(request => request.BankName.Value)
+            .MaximumLength(200)
+            .OverridePropertyName(nameof(UpdateCompanyRequest.BankName))
+            .When(request => request.BankName.IsSet);
+        RuleFor(request => request.BankAccountHolder.Value)
+            .MaximumLength(200)
+            .OverridePropertyName(nameof(UpdateCompanyRequest.BankAccountHolder))
+            .When(request => request.BankAccountHolder.IsSet);
+        RuleFor(request => request.BankAccountNumber.Value)
+            .MaximumLength(34)
+            .OverridePropertyName(nameof(UpdateCompanyRequest.BankAccountNumber))
+            .When(request => request.BankAccountNumber.IsSet);
+        RuleFor(request => request.BankBranchCode.Value)
+            .MaximumLength(20)
+            .OverridePropertyName(nameof(UpdateCompanyRequest.BankBranchCode))
+            .When(request => request.BankBranchCode.IsSet);
+        RuleFor(request => request.BankAccountType.Value)
+            .MaximumLength(20)
+            .OverridePropertyName(nameof(UpdateCompanyRequest.BankAccountType))
+            .When(request => request.BankAccountType.IsSet);
+        RuleFor(request => request.BankSwiftCode.Value)
+            .MaximumLength(11)
+            .OverridePropertyName(nameof(UpdateCompanyRequest.BankSwiftCode))
+            .When(request => request.BankSwiftCode.IsSet);
     }
 
     private static bool HasAtLeastOneChange(UpdateCompanyRequest request) =>
@@ -64,5 +88,11 @@ public sealed class UpdateCompanyRequestValidator : AbstractValidator<UpdateComp
         || request.AddressLine2.IsSet
         || request.City.IsSet
         || request.Province.IsSet
-        || request.PostalCode.IsSet;
+        || request.PostalCode.IsSet
+        || request.BankName.IsSet
+        || request.BankAccountHolder.IsSet
+        || request.BankAccountNumber.IsSet
+        || request.BankBranchCode.IsSet
+        || request.BankAccountType.IsSet
+        || request.BankSwiftCode.IsSet;
 }
