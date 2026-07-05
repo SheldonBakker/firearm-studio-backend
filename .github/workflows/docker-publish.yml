@@ -45,3 +45,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Trigger Portainer redeploy
+        run: |
+          curl -fsSL -X POST "https://admin.firearmstudio.com/api/stacks/webhooks/612afdde-5415-41f5-83c2-e7c7c4e6d915"
