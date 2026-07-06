@@ -59,6 +59,8 @@ internal static class BookingRequestedNotifier
         {
             ["id"] = company.Id,
             ["name"] = company.Name,
+            ["registration_number"] = company.RegistrationNumber,
+            ["vat_number"] = company.VatNumber,
             ["email"] = company.Email,
             ["phone"] = company.Phone,
             ["address_line1"] = company.AddressLine1,
@@ -66,6 +68,12 @@ internal static class BookingRequestedNotifier
             ["city"] = company.City,
             ["province"] = company.Province,
             ["postal_code"] = company.PostalCode,
+            ["bank_name"] = company.BankName,
+            ["bank_account_holder"] = company.BankAccountHolder,
+            ["bank_account_number"] = company.BankAccountNumber,
+            ["bank_branch_code"] = company.BankBranchCode,
+            ["bank_account_type"] = company.BankAccountType,
+            ["bank_swift_code"] = company.BankSwiftCode,
         };
     }
 }

@@ -125,4 +125,13 @@ public sealed record PublicBookingResponse(
     decimal Subtotal,
     decimal VatAmount,
     decimal Total,
-    IReadOnlyList<PublicBookingConfirmationResponse> Bookings);
+    IReadOnlyList<PublicBookingConfirmationResponse> Bookings,
+    PublicInvoiceBankingResponse Banking);
+
+public sealed record PublicInvoiceBankingResponse(
+    string? BankName,
+    string? BankAccountHolder,
+    string? BankAccountNumber,
+    string? BankBranchCode,
+    string? BankAccountType,
+    string? BankSwiftCode);

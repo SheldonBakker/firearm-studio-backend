@@ -118,7 +118,17 @@ public sealed class CreatePublicBookingCommandHandler(
             var company = await db.Companies
                 .AsNoTracking()
                 .Where(c => c.Id == tenant.CompanyId)
-                .Select(c => new { c.VatNumber, c.DueDays })
+                .Select(c => new
+                {
+                    c.VatNumber,
+                    c.DueDays,
+                    c.BankName,
+                    c.BankAccountHolder,
+                    c.BankAccountNumber,
+                    c.BankBranchCode,
+                    c.BankAccountType,
+                    c.BankSwiftCode,
+                })
                 .FirstAsync(ct);
 
             var invoice = BookingInvoiceFactory.CreateCombined(invoiceLines, company.VatNumber, company.DueDays);
@@ -148,7 +158,14 @@ public sealed class CreatePublicBookingCommandHandler(
                         line.RangeName,
                         line.Booking.PackageName,
                         line.Booking.PackagePrice))
-                    .ToList());
+                    .ToList(),
+                new PublicInvoiceBankingResponse(
+                    company.BankName,
+                    company.BankAccountHolder,
+                    company.BankAccountNumber,
+                    company.BankBranchCode,
+                    company.BankAccountType,
+                    company.BankSwiftCode));
         }, cancellationToken);
 
         if (outcome.IsError)
