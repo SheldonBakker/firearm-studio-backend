@@ -55,6 +55,16 @@ public sealed class RecordPaymentCommandHandler(IApplicationDbContext db)
             invoice.Status = InvoiceStatus.Paid;
         }
 
+        var pendingBookings = await db.Bookings
+            .Where(b => b.InvoiceId == command.Id && b.Status == BookingStatus.Pending)
+            .ToListAsync(cancellationToken);
+
+        foreach (var booking in pendingBookings)
+        {
+            booking.Status = BookingStatus.Confirmed;
+            booking.ConfirmedAt = DateTime.UtcNow;
+        }
+
         try
         {
             await db.SaveChangesAsync(cancellationToken);
