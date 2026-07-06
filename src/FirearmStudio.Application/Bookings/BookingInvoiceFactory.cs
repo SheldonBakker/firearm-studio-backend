@@ -70,10 +70,6 @@ internal static class BookingInvoiceFactory
         string RangeName,
         IReadOnlyList<IncludedItem> PackageItems);
 
-    /// <summary>
-    /// Builds a single draft invoice covering several bookings (a multi-session cart checkout).
-    /// One priced line per booking, plus zero-priced lines for each booking's included package items.
-    /// </summary>
     internal static Invoice CreateCombined(
         IReadOnlyList<BookingLine> bookings,
         string? companyVatNumber,
@@ -101,7 +97,8 @@ internal static class BookingInvoiceFactory
             Subtotal = subtotal,
             VatAmount = vat,
             Total = subtotal + vat,
-            Status = InvoiceStatus.Draft,
+            Status = InvoiceStatus.Sent,
+            SentAt = DateTime.UtcNow,
             DueOn = today.AddDays(Math.Clamp(companyDueDays, MonthlyInvoiceGenerator.MinDueDays, MonthlyInvoiceGenerator.MaxDueDays)),
         };
 
