@@ -53,7 +53,7 @@ public sealed class PublicBookingsController(IMediator mediator) : ControllerBas
 
     [HttpPost("bookings")]
     [EnableRateLimiting("public-write")]
-    public async Task<ActionResult<PublicBookingConfirmationResponse>> CreateBooking(
+    public async Task<ActionResult<PublicBookingResponse>> CreateBooking(
         Guid companyId,
         CreatePublicBookingRequest request,
         CancellationToken ct)

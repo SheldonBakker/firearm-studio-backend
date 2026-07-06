@@ -93,17 +93,6 @@ public sealed record CreateBookingRequest(
     string? Notes,
     bool ConfirmImmediately);
 
-public sealed record CreatePublicBookingRequest(
-    Guid ShootingRangeId,
-    Guid PackageId,
-    DateOnly BookingDate,
-    TimeOnly StartTime,
-    int ShooterCount,
-    string FullName,
-    string Email,
-    string? Phone,
-    string? Notes);
-
 public sealed record PublicBookingConfirmationResponse(
     Guid Id,
     string BookingNumber,
@@ -114,3 +103,26 @@ public sealed record PublicBookingConfirmationResponse(
     string RangeName,
     string PackageName,
     decimal PackagePrice);
+
+public sealed record PublicBookingSessionRequest(
+    Guid ShootingRangeId,
+    Guid PackageId,
+    DateOnly BookingDate,
+    TimeOnly StartTime,
+    int ShooterCount,
+    string? Notes);
+
+public sealed record CreatePublicBookingRequest(
+    IReadOnlyList<PublicBookingSessionRequest> Sessions,
+    string FullName,
+    string Email,
+    string? Phone,
+    string? Notes);
+
+public sealed record PublicBookingResponse(
+    Guid InvoiceId,
+    string InvoiceNumber,
+    decimal Subtotal,
+    decimal VatAmount,
+    decimal Total,
+    IReadOnlyList<PublicBookingConfirmationResponse> Bookings);

@@ -14,5 +14,7 @@ public sealed class KlaviyoSettings
 
     public string InvoiceSentMetricName { get; init; } = "Invoice Sent";
 
+    public string BookingRequestedMetricName { get; init; } = "Booking Requested";
+
     public string? ContactListId { get; init; }
 }

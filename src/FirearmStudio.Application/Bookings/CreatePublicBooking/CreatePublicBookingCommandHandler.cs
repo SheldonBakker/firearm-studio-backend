@@ -1,18 +1,23 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FirearmStudio.Application.Bookings.CreatePublicBooking;
 
-public sealed class CreatePublicBookingCommandHandler(IApplicationDbContext db, ITenantContext tenant)
-    : ICommandHandler<CreatePublicBookingCommand, ErrorOr<PublicBookingConfirmationResponse>>
+public sealed class CreatePublicBookingCommandHandler(
+    IApplicationDbContext db,
+    ITenantContext tenant,
+    IKlaviyoClient klaviyo,
+    KlaviyoSettings settings,
+    ILogger<CreatePublicBookingCommandHandler> logger)
+    : ICommandHandler<CreatePublicBookingCommand, ErrorOr<PublicBookingResponse>>
 {
-    private const int MaxPendingBookingsPerDay = 3;
-
-    public async Task<ErrorOr<PublicBookingConfirmationResponse>> Handle(
+    public async Task<ErrorOr<PublicBookingResponse>> Handle(
         CreatePublicBookingCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
@@ -28,9 +33,9 @@ public sealed class CreatePublicBookingCommandHandler(IApplicationDbContext db, 
 
         using var scope = tenant.BeginCompanyScope(command.CompanyId);
 
-        ErrorOr<PublicBookingConfirmationResponse> outcome = Error.Conflict(
+        ErrorOr<PublicBookingResponse> outcome = Error.Conflict(
             BookingCreation.ErrorCodes.SlotContention,
-            "The slot could not be reserved due to concurrent bookings. Please retry.");
+            "The bookings could not be reserved due to concurrent bookings. Please retry.");
 
         var committed = await db.TryExecuteInSerializableTransactionAsync(async ct =>
         {
@@ -62,60 +67,88 @@ public sealed class CreatePublicBookingCommandHandler(IApplicationDbContext db, 
 
                 customer.FullName ??= request.FullName.Trim();
                 customer.Phone ??= request.Phone;
+            }
 
-                var pendingOnDate = await db.Bookings
-                    .CountAsync(b => b.CustomerId == customer.Id
-                                     && b.BookingDate == request.BookingDate
-                                     && b.Status == BookingStatus.Pending, ct);
+            var invoiceLines = new List<BookingInvoiceFactory.BookingLine>(request.Sessions.Count);
 
-                if (pendingOnDate >= MaxPendingBookingsPerDay)
+            foreach (var session in request.Sessions)
+            {
+                var result = await BookingCreation.AddBookingAsync(
+                    db,
+                    new BookingCreation.SlotRequest(
+                        session.ShootingRangeId,
+                        session.PackageId,
+                        customer.Id,
+                        session.BookingDate,
+                        session.StartTime,
+                        session.ShooterCount,
+                        session.Notes,
+                        BookingSource.Public),
+                    ct);
+
+                if (result.IsError)
                 {
-                    outcome = Error.Conflict(
-                        ErrorCodes.TooManyPendingBookings,
-                        "Too many pending bookings for this customer on the selected date.");
+                    outcome = result.Errors;
                     return;
                 }
+
+                var booking = result.Value;
+
+                // Persist each booking before creating the next so its lane occupancy and
+                // per-date booking-number sequence are visible to the following iterations.
+                await db.SaveChangesAsync(ct);
+
+                var rangeName = await db.ShootingRanges
+                    .AsNoTracking()
+                    .Where(r => r.Id == booking.ShootingRangeId)
+                    .Select(r => r.Name)
+                    .FirstAsync(ct);
+
+                var packageItems = await db.PackageItems
+                    .AsNoTracking()
+                    .Where(i => i.PackageId == booking.PackageId)
+                    .OrderBy(i => i.SortOrder)
+                    .ThenBy(i => i.Id)
+                    .Select(i => new BookingInvoiceFactory.IncludedItem(i.Description, i.Quantity))
+                    .ToListAsync(ct);
+
+                invoiceLines.Add(new BookingInvoiceFactory.BookingLine(booking, rangeName, packageItems));
             }
 
-            var result = await BookingCreation.AddBookingAsync(
-                db,
-                new BookingCreation.SlotRequest(
-                    request.ShootingRangeId,
-                    request.PackageId,
-                    customer.Id,
-                    request.BookingDate,
-                    request.StartTime,
-                    request.ShooterCount,
-                    request.Notes,
-                    BookingSource.Public),
-                ct);
+            var company = await db.Companies
+                .AsNoTracking()
+                .Where(c => c.Id == tenant.CompanyId)
+                .Select(c => new { c.VatNumber, c.DueDays })
+                .FirstAsync(ct);
 
-            if (result.IsError)
+            var invoice = BookingInvoiceFactory.CreateCombined(invoiceLines, company.VatNumber, company.DueDays);
+            db.Invoices.Add(invoice);
+
+            foreach (var line in invoiceLines)
             {
-                outcome = result.Errors;
-                return;
+                line.Booking.InvoiceId = invoice.Id;
             }
-
-            var booking = result.Value;
 
             await db.SaveChangesAsync(ct);
 
-            var rangeName = await db.ShootingRanges
-                .AsNoTracking()
-                .Where(r => r.Id == booking.ShootingRangeId)
-                .Select(r => r.Name)
-                .FirstAsync(ct);
-
-            outcome = new PublicBookingConfirmationResponse(
-                booking.Id,
-                booking.BookingNumber,
-                booking.Status,
-                booking.BookingDate,
-                booking.StartTime,
-                booking.EndTime,
-                rangeName,
-                booking.PackageName,
-                booking.PackagePrice);
+            outcome = new PublicBookingResponse(
+                invoice.Id,
+                invoice.InvoiceNumber,
+                invoice.Subtotal,
+                invoice.VatAmount,
+                invoice.Total,
+                invoiceLines
+                    .Select(line => new PublicBookingConfirmationResponse(
+                        line.Booking.Id,
+                        line.Booking.BookingNumber,
+                        line.Booking.Status,
+                        line.Booking.BookingDate,
+                        line.Booking.StartTime,
+                        line.Booking.EndTime,
+                        line.RangeName,
+                        line.Booking.PackageName,
+                        line.Booking.PackagePrice))
+                    .ToList());
         }, cancellationToken);
 
         if (outcome.IsError)
@@ -127,16 +160,63 @@ public sealed class CreatePublicBookingCommandHandler(IApplicationDbContext db, 
         {
             return Error.Conflict(
                 BookingCreation.ErrorCodes.SlotContention,
-                "The slot could not be reserved due to concurrent bookings. Please retry.");
+                "The bookings could not be reserved due to concurrent bookings. Please retry.");
         }
 
+        await NotifyBookingRequestedAsync(command.CompanyId, request, outcome.Value, cancellationToken);
+
         return outcome;
+    }
+
+    private async Task NotifyBookingRequestedAsync(
+        Guid companyId,
+        CreatePublicBookingRequest request,
+        PublicBookingResponse response,
+        CancellationToken cancellationToken)
+    {
+        var company = await db.Companies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == companyId, cancellationToken);
+
+        var properties = new Dictionary<string, object?>
+        {
+            ["invoice_id"] = response.InvoiceId,
+            ["invoice_number"] = response.InvoiceNumber,
+            ["session_count"] = response.Bookings.Count,
+            ["subtotal"] = response.Subtotal,
+            ["vat_amount"] = response.VatAmount,
+            ["total"] = response.Total,
+            ["bookings"] = response.Bookings
+                .Select(booking => new Dictionary<string, object?>
+                {
+                    ["booking_id"] = booking.Id,
+                    ["booking_number"] = booking.BookingNumber,
+                    ["status"] = booking.Status.ToString(),
+                    ["booking_date"] = booking.BookingDate.ToString("yyyy-MM-dd"),
+                    ["start_time"] = booking.StartTime.ToString("HH\\:mm"),
+                    ["end_time"] = booking.EndTime.ToString("HH\\:mm"),
+                    ["range_name"] = booking.RangeName,
+                    ["package_name"] = booking.PackageName,
+                    ["package_price"] = booking.PackagePrice,
+                })
+                .ToList(),
+            ["company"] = BookingRequestedNotifier.BuildCompanyProperties(company),
+        };
+
+        await BookingRequestedNotifier.NotifyAsync(
+            klaviyo,
+            settings,
+            logger,
+            request.Email.Trim(),
+            request.FullName.Trim(),
+            properties,
+            $"invoice {response.InvoiceNumber}",
+            cancellationToken);
     }
 
     public static class ErrorCodes
     {
         public const string CompanyNotFound = "CreatePublicBookingCommand.CompanyNotFound";
         public const string CustomerInactive = "CreatePublicBookingCommand.CustomerInactive";
-        public const string TooManyPendingBookings = "CreatePublicBookingCommand.TooManyPendingBookings";
     }
 }
