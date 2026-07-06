@@ -36,7 +36,7 @@ internal static class BookingRequestedNotifier
                 settings.BookingRequestedMetricName,
                 email,
                 name,
-                properties,
+                Flatten(properties),
                 cancellationToken);
         }
         catch (Exception ex)
@@ -45,6 +45,42 @@ internal static class BookingRequestedNotifier
                 ex,
                 "Failed to send booking-requested event to Klaviyo ({LogContext}).",
                 logContext);
+        }
+    }
+
+    /// <summary>
+    /// Collapses nested property objects into top-level keys joined by <paramref name="separator"/>
+    /// (e.g. <c>company.bank_name</c> becomes <c>company_bank_name</c>) so Klaviyo can use them in
+    /// segments, flow triggers, and conditions. Arrays (such as the <c>bookings</c> line-item list)
+    /// are left intact, since flattening them would produce unbounded, unsegmentable keys and they
+    /// are useful as-is for looping in email templates.
+    /// </summary>
+    internal static Dictionary<string, object?> Flatten(
+        IReadOnlyDictionary<string, object?> properties, string separator = "_")
+    {
+        var result = new Dictionary<string, object?>();
+        FlattenInto(result, prefix: null, properties, separator);
+        return result;
+    }
+
+    private static void FlattenInto(
+        Dictionary<string, object?> target,
+        string? prefix,
+        IReadOnlyDictionary<string, object?> source,
+        string separator)
+    {
+        foreach (var (key, value) in source)
+        {
+            var compositeKey = prefix is null ? key : $"{prefix}{separator}{key}";
+
+            if (value is IReadOnlyDictionary<string, object?> nested)
+            {
+                FlattenInto(target, compositeKey, nested, separator);
+            }
+            else
+            {
+                target[compositeKey] = value;
+            }
         }
     }
 
