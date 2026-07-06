@@ -22,11 +22,11 @@ public sealed class CreatePublicBookingCommandHandler(
     {
         var request = command.Request;
 
-        var companyExists = await db.Companies
+        var company = await db.Companies
             .AsNoTracking()
-            .AnyAsync(c => c.Id == command.CompanyId && c.IsActive, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == command.CompanyId && c.IsActive, cancellationToken);
 
-        if (!companyExists)
+        if (company is null)
         {
             return Error.NotFound(ErrorCodes.CompanyNotFound, "Company not found.");
         }
@@ -84,6 +84,7 @@ public sealed class CreatePublicBookingCommandHandler(
                         session.ShooterCount,
                         session.Notes,
                         BookingSource.Public),
+                    invoiceLines.Select(line => line.Booking).ToList(),
                     ct);
 
                 if (result.IsError)
@@ -92,44 +93,8 @@ public sealed class CreatePublicBookingCommandHandler(
                     return;
                 }
 
-                var booking = result.Value;
-
-                // Persist each booking before creating the next so its lane occupancy and
-                // per-date booking-number sequence are visible to the following iterations.
-                await db.SaveChangesAsync(ct);
-
-                var rangeName = await db.ShootingRanges
-                    .AsNoTracking()
-                    .Where(r => r.Id == booking.ShootingRangeId)
-                    .Select(r => r.Name)
-                    .FirstAsync(ct);
-
-                var packageItems = await db.PackageItems
-                    .AsNoTracking()
-                    .Where(i => i.PackageId == booking.PackageId)
-                    .OrderBy(i => i.SortOrder)
-                    .ThenBy(i => i.Id)
-                    .Select(i => new BookingInvoiceFactory.IncludedItem(i.Description, i.Quantity))
-                    .ToListAsync(ct);
-
-                invoiceLines.Add(new BookingInvoiceFactory.BookingLine(booking, rangeName, packageItems));
+                invoiceLines.Add(result.Value);
             }
-
-            var company = await db.Companies
-                .AsNoTracking()
-                .Where(c => c.Id == tenant.CompanyId)
-                .Select(c => new
-                {
-                    c.VatNumber,
-                    c.DueDays,
-                    c.BankName,
-                    c.BankAccountHolder,
-                    c.BankAccountNumber,
-                    c.BankBranchCode,
-                    c.BankAccountType,
-                    c.BankSwiftCode,
-                })
-                .FirstAsync(ct);
 
             var invoice = BookingInvoiceFactory.CreateCombined(invoiceLines, company.VatNumber, company.DueDays);
             db.Invoices.Add(invoice);
@@ -180,21 +145,18 @@ public sealed class CreatePublicBookingCommandHandler(
                 "The bookings could not be reserved due to concurrent bookings. Please retry.");
         }
 
-        await NotifyBookingRequestedAsync(command.CompanyId, request, outcome.Value, cancellationToken);
+        // Fire-and-forget: the Klaviyo event must never delay or fail the booking response.
+        // Detached from the request's cancellation token because it outlives the request.
+        _ = NotifyBookingRequestedAsync(company, request, outcome.Value);
 
         return outcome;
     }
 
     private async Task NotifyBookingRequestedAsync(
-        Guid companyId,
+        Company company,
         CreatePublicBookingRequest request,
-        PublicBookingResponse response,
-        CancellationToken cancellationToken)
+        PublicBookingResponse response)
     {
-        var company = await db.Companies
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == companyId, cancellationToken);
-
         var properties = new Dictionary<string, object?>
         {
             ["invoice_id"] = response.InvoiceId,
@@ -228,7 +190,7 @@ public sealed class CreatePublicBookingCommandHandler(
             request.FullName.Trim(),
             properties,
             $"invoice {response.InvoiceNumber}",
-            cancellationToken);
+            CancellationToken.None);
     }
 
     public static class ErrorCodes

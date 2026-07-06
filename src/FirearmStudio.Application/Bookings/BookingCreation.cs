@@ -19,8 +19,17 @@ internal static class BookingCreation
         string? Notes,
         BookingSource Source);
 
-    internal static async Task<ErrorOr<Booking>> AddBookingAsync(
-        IApplicationDbContext db, SlotRequest request, CancellationToken cancellationToken)
+    /// <summary>
+    /// Validates and stages a booking on the change tracker without saving. Returns the booking
+    /// together with its range name and package items so callers can build invoice lines without
+    /// extra queries. <paramref name="pendingBookings"/> are same-transaction bookings not yet
+    /// saved; they count toward lane occupancy so multi-session carts need no intermediate saves.
+    /// </summary>
+    internal static async Task<ErrorOr<BookingInvoiceFactory.BookingLine>> AddBookingAsync(
+        IApplicationDbContext db,
+        SlotRequest request,
+        IReadOnlyCollection<Booking> pendingBookings,
+        CancellationToken cancellationToken)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
         if (request.BookingDate < today)
@@ -33,6 +42,7 @@ internal static class BookingCreation
             .Where(r => r.Id == request.ShootingRangeId && r.IsActive)
             .Select(r => new
             {
+                r.Name,
                 r.LaneCount,
                 r.SlotIntervalMinutes,
                 Hours = r.OperatingHours
@@ -50,7 +60,18 @@ internal static class BookingCreation
         var package = await db.Packages
             .AsNoTracking()
             .Where(p => p.Id == request.PackageId && p.IsActive)
-            .Select(p => new { p.Name, p.Price, p.DurationMinutes, p.MaxShooters })
+            .Select(p => new
+            {
+                p.Name,
+                p.Price,
+                p.DurationMinutes,
+                p.MaxShooters,
+                Items = p.Items
+                    .OrderBy(i => i.SortOrder)
+                    .ThenBy(i => i.Id)
+                    .Select(i => new BookingInvoiceFactory.IncludedItem(i.Description, i.Quantity))
+                    .ToList(),
+            })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (package is null)
@@ -95,14 +116,18 @@ internal static class BookingCreation
                         && b.EndTime > request.StartTime)
             .CountAsync(cancellationToken);
 
+        overlapping += pendingBookings.Count(b =>
+            b.ShootingRangeId == request.ShootingRangeId
+            && b.BookingDate == request.BookingDate
+            && b.StartTime < endTime
+            && b.EndTime > request.StartTime);
+
         if (overlapping >= range.LaneCount)
         {
             return Error.Conflict(ErrorCodes.SlotUnavailable, "No lane is available for the requested time.");
         }
 
-        var bookingsOnDate = await db.Bookings
-            .Where(b => b.BookingDate == request.BookingDate)
-            .CountAsync(cancellationToken);
+        var sequenceValue = await db.NextBookingNumberAsync(cancellationToken);
 
         var dateLabel = request.BookingDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
 
@@ -111,7 +136,7 @@ internal static class BookingCreation
             ShootingRangeId = request.ShootingRangeId,
             PackageId = request.PackageId,
             CustomerId = request.CustomerId,
-            BookingNumber = $"BKG-{dateLabel}-{bookingsOnDate + 1:D4}",
+            BookingNumber = $"BKG-{dateLabel}-{sequenceValue:D4}",
             BookingDate = request.BookingDate,
             StartTime = request.StartTime,
             EndTime = endTime,
@@ -124,7 +149,7 @@ internal static class BookingCreation
 
         await db.Bookings.AddAsync(booking, cancellationToken);
 
-        return booking;
+        return new BookingInvoiceFactory.BookingLine(booking, range.Name, package.Items);
     }
 
     public static class ErrorCodes

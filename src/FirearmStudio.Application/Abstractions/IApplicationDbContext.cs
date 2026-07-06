@@ -25,6 +25,8 @@ public interface IApplicationDbContext
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
+    Task<long> NextBookingNumberAsync(CancellationToken cancellationToken = default);
+
     Task<bool> TryExecuteInSerializableTransactionAsync(
         Func<CancellationToken, Task> operation, CancellationToken cancellationToken = default);
 

@@ -41,15 +41,16 @@ public sealed class CreateBookingCommandHandler(IApplicationDbContext db, ITenan
                     request.ShooterCount,
                     request.Notes,
                     BookingSource.Staff),
+                pendingBookings: [],
                 ct);
 
             if (result.IsError)
             {
-                outcome = result;
+                outcome = result.Errors;
                 return;
             }
 
-            var booking = result.Value;
+            var booking = result.Value.Booking;
 
             if (request.ConfirmImmediately)
             {
@@ -62,22 +63,8 @@ public sealed class CreateBookingCommandHandler(IApplicationDbContext db, ITenan
                     .Select(c => new { c.VatNumber, c.DueDays })
                     .FirstAsync(ct);
 
-                var rangeName = await db.ShootingRanges
-                    .AsNoTracking()
-                    .Where(r => r.Id == booking.ShootingRangeId)
-                    .Select(r => r.Name)
-                    .FirstAsync(ct);
-
-                var packageItems = await db.PackageItems
-                    .AsNoTracking()
-                    .Where(i => i.PackageId == booking.PackageId)
-                    .OrderBy(i => i.SortOrder)
-                    .ThenBy(i => i.Id)
-                    .Select(i => new BookingInvoiceFactory.IncludedItem(i.Description, i.Quantity))
-                    .ToListAsync(ct);
-
                 var invoice = BookingInvoiceFactory.Create(
-                    booking, company.VatNumber, company.DueDays, rangeName, packageItems);
+                    booking, company.VatNumber, company.DueDays, result.Value.RangeName, result.Value.PackageItems);
 
                 db.Invoices.Add(invoice);
                 booking.InvoiceId = invoice.Id;

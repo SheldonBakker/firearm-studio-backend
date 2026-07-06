@@ -55,6 +55,7 @@ public static class DependencyInjection
 
         services.AddHttpClient<IKlaviyoClient, KlaviyoClient>(client =>
         {
+            client.Timeout = TimeSpan.FromSeconds(10);
             client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
             client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Klaviyo-API-Key {settings.ApiKey}");
             client.DefaultRequestHeaders.TryAddWithoutValidation("revision", settings.ApiRevision);

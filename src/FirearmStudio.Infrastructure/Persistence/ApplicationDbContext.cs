@@ -29,6 +29,11 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public void ClearChangeTracker() => ChangeTracker.Clear();
 
+    public async Task<long> NextBookingNumberAsync(CancellationToken cancellationToken = default)
+        => await Database
+            .SqlQuery<long>($"""SELECT nextval('booking_number_seq') AS "Value" """)
+            .SingleAsync(cancellationToken);
+
     private const int SerializableAttempts = 3;
     private const string SerializationFailureSqlState = "40001";
 
@@ -78,6 +83,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("pgcrypto");
+
+        modelBuilder.HasSequence<long>("booking_number_seq");
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
