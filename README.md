@@ -159,7 +159,7 @@ authenticated role; writes are gated per the table below.
 | Licences | `GET /licences`, `POST /firearms/{id}/licences`, `PATCH /licences/{id}` | read: viewer+ / write: staff+ |
 | Storage | `POST /firearms/{id}/storage`, `PATCH /storage-records/{id}/release`, `GET /storage/active`, `GET /storage/customer/{id}` | read: viewer+ / write: staff+ |
 | Invoices | `GET /invoices`, `GET /invoices/{id}`, `POST /invoices/{id}/send`, `POST /invoices/{id}/payments`, `PATCH /invoices/{id}/cancel` | read: viewer+ / write: manager+ |
-| Sage | `POST /sage/register` | admin |
+| Sage | `GET /sage/connections`, `POST /sage/register` | admin |
 | Dashboard | `GET /dashboard/stats` | any authenticated |
 | Audit logs | `GET /audit-logs` | manager+ |
 | Me | `GET /me`, `GET /me/admin-check` | any authenticated (admin-check: admin) |

@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using FirearmStudio.Application.Sage;
+using FirearmStudio.Application.Sage.GetSageConnection;
 using FirearmStudio.Application.Sage.RegisterSageConnection;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.WebApi.Common;
@@ -16,6 +17,13 @@ namespace FirearmStudio.WebApi.Controllers;
 [Authorize(Roles = AppRoles.Admin)]
 public sealed class SageController(IMediator mediator) : ControllerBase
 {
+    [HttpGet("connections")]
+    public async Task<ActionResult<SageConnectionDetailsResponse>> GetConnection(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetSageConnectionQuery(), ct);
+        return result.ToActionResult();
+    }
+
     [HttpPost("register")]
     [EnableRateLimiting("sage-register")]
     public async Task<ActionResult<SageConnectionResponse>> Register(
