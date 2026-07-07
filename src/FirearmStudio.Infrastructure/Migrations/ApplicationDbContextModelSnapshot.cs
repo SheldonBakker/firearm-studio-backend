@@ -1093,6 +1093,71 @@ namespace FirearmStudio.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FirearmStudio.Domain.Entities.SageConnection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ApiKeyCiphertext")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("api_key_ciphertext");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("LastRegisteredByAuthUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_registered_by_auth_user_id");
+
+                    b.Property<DateTime>("LastValidatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_validated_at");
+
+                    b.Property<string>("PasswordCiphertext")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("password_ciphertext");
+
+                    b.Property<int>("SageCompanyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("sage_company_id");
+
+                    b.Property<string>("SageCompanyName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("sage_company_name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UsernameCiphertext")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("username_ciphertext");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sage_connections");
+
+                    b.HasIndex("CompanyId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_sage_connections_company_id");
+
+                    b.ToTable("sage_connections", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_sage_connections_sage_company_id", "sage_company_id > 0");
+                        });
+                });
+
             modelBuilder.Entity("FirearmStudio.Domain.Entities.ShootingRange", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1471,6 +1536,16 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasConstraintName("fk_range_operating_hours_shooting_ranges_shooting_range_id");
 
                     b.Navigation("ShootingRange");
+                });
+
+            modelBuilder.Entity("FirearmStudio.Domain.Entities.SageConnection", b =>
+                {
+                    b.HasOne("FirearmStudio.Domain.Entities.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sage_connections_companies_company_id");
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.ShootingRange", b =>

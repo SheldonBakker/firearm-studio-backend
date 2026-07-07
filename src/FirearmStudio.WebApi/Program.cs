@@ -1,5 +1,6 @@
 using System.Threading.RateLimiting;
 using FirearmStudio.Application.Extensions;
+using FirearmStudio.Domain.Authentication;
 using FirearmStudio.Infrastructure.Extensions;
 using FirearmStudio.WebApi.BackgroundJobs;
 using FirearmStudio.WebApi.Extensions;
@@ -63,6 +64,18 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = 5,
                 Window = TimeSpan.FromMinutes(1),
+            }));
+
+    options.AddPolicy("sage-register", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.User.FindFirst(SupabaseClaimTypes.CompanyId)?.Value
+            ?? context.User.FindFirst(SupabaseClaimTypes.Subject)?.Value
+            ?? context.Connection.RemoteIpAddress?.ToString()
+            ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
             }));
 });
 

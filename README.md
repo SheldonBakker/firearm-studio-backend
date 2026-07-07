@@ -69,6 +69,7 @@ cp .env.example .env
 | `ConnectionStrings__DefaultConnection` | Supabase Postgres connection (Npgsql key-value format). |
 | `SupabaseJwtSettings__Authority` | Supabase auth URL, e.g. `https://<ref>.supabase.co/auth/v1`. Issuer is derived from it; audience defaults to `authenticated`. |
 | `ApiKeySettings__Key` | Shared secret required on every `/api/*` request via the `X-Api-Key` header (e.g. `openssl rand -base64 32`). |
+| `CredentialProtectionSettings__Key` | Base64 32-byte key used to encrypt stored external API credentials (e.g. `openssl rand -base64 32`). |
 | `ASPNETCORE_ENVIRONMENT` | `Development` or `Production`. |
 
 ### Connection string
@@ -139,6 +140,7 @@ docker run -p 5146:5146 \
   -e ConnectionStrings__DefaultConnection="Host=...;Port=5432;Database=postgres;Username=...;Password=...;SSL Mode=Require;Trust Server Certificate=true" \
   -e SupabaseJwtSettings__Authority="https://yqayiyhixfjyhkykbbsa.supabase.co/auth/v1" \
   -e ApiKeySettings__Key="<your-api-key>" \
+  -e CredentialProtectionSettings__Key="<base64-32-byte-key>" \
   firearm-studio-api
 ```
 
@@ -157,6 +159,7 @@ authenticated role; writes are gated per the table below.
 | Licences | `GET /licences`, `POST /firearms/{id}/licences`, `PATCH /licences/{id}` | read: viewer+ / write: staff+ |
 | Storage | `POST /firearms/{id}/storage`, `PATCH /storage-records/{id}/release`, `GET /storage/active`, `GET /storage/customer/{id}` | read: viewer+ / write: staff+ |
 | Invoices | `GET /invoices`, `GET /invoices/{id}`, `POST /invoices/{id}/send`, `POST /invoices/{id}/payments`, `PATCH /invoices/{id}/cancel` | read: viewer+ / write: manager+ |
+| Sage | `POST /sage/register` | admin |
 | Dashboard | `GET /dashboard/stats` | any authenticated |
 | Audit logs | `GET /audit-logs` | manager+ |
 | Me | `GET /me`, `GET /me/admin-check` | any authenticated (admin-check: admin) |
