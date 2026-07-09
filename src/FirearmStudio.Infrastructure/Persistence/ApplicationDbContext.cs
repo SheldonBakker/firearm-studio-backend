@@ -26,6 +26,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Package> Packages => Set<Package>();
     public DbSet<PackageItem> PackageItems => Set<PackageItem>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<SageConnection> SageConnections => Set<SageConnection>();
 
     public void ClearChangeTracker() => ChangeTracker.Clear();
 

@@ -13,10 +13,14 @@ namespace FirearmStudio.Infrastructure.Extensions;
 
 public static class DependencyInjection
 {
+    private const string SageAccountingBaseUrl = "https://accounting.sageone.co.za/api/2.0.0";
+    private static readonly TimeSpan SageAccountingTimeout = TimeSpan.FromSeconds(10);
+
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        AddCredentialProtection(services, configuration);
 
         services.AddScoped<TenantContext>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
@@ -42,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
         AddKlaviyo(services, configuration);
+        AddSageAccounting(services);
 
         return services;
     }
@@ -59,6 +64,26 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
             client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Klaviyo-API-Key {settings.ApiKey}");
             client.DefaultRequestHeaders.TryAddWithoutValidation("revision", settings.ApiRevision);
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        });
+    }
+
+    private static void AddCredentialProtection(IServiceCollection services, IConfiguration configuration)
+    {
+        var settings = configuration.GetSection(CredentialProtectionSettings.SectionName)
+            .Get<CredentialProtectionSettings>()
+            ?? new CredentialProtectionSettings();
+
+        services.AddSingleton(settings);
+        services.AddSingleton<ICredentialProtector, AesGcmCredentialProtector>();
+    }
+
+    private static void AddSageAccounting(IServiceCollection services)
+    {
+        services.AddHttpClient<ISageAccountingClient, SageAccountingClient>(client =>
+        {
+            client.Timeout = SageAccountingTimeout;
+            client.BaseAddress = new Uri(SageAccountingBaseUrl + "/");
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         });
     }
