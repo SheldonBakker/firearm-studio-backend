@@ -8,15 +8,17 @@ namespace FirearmStudio.Application.Sage.GetSageConnection;
 public sealed class GetSageConnectionQueryHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUserService)
-    : IQueryHandler<GetSageConnectionQuery, ErrorOr<SageConnectionDetailsResponse>>
+    : IQueryHandler<GetSageConnectionQuery, ErrorOr<SageConnectionDetailsResponse?>>
 {
-    public async Task<ErrorOr<SageConnectionDetailsResponse>> Handle(
+    public async Task<ErrorOr<SageConnectionDetailsResponse?>> Handle(
         GetSageConnectionQuery query,
         CancellationToken cancellationToken)
     {
         if (currentUserService.User.CompanyId is not { } companyId)
         {
-            return Error.NotFound(ErrorCodes.NotFound, "Sage connection not found.");
+            return Error.Unauthorized(
+                ErrorCodes.CompanyContextRequired,
+                "The authenticated session is not associated with a company.");
         }
 
         var connection = await db.SageConnections
@@ -39,7 +41,7 @@ public sealed class GetSageConnectionQueryHandler(
             .FirstOrDefaultAsync(cancellationToken);
 
         return connection is null
-            ? Error.NotFound(ErrorCodes.NotFound, "Sage connection not found.")
+            ? (SageConnectionDetailsResponse?)null
             : new SageConnectionDetailsResponse(
                 connection.Id,
                 connection.CompanyId,
@@ -56,6 +58,6 @@ public sealed class GetSageConnectionQueryHandler(
 
     public static class ErrorCodes
     {
-        public const string NotFound = "GetSageConnectionQuery.NotFound";
+        public const string CompanyContextRequired = "GetSageConnectionQuery.CompanyContextRequired";
     }
 }
