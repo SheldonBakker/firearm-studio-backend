@@ -81,8 +81,6 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
-await app.Services.ApplyPendingMigrationsAsync();
-
 app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
