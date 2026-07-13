@@ -8,9 +8,19 @@ using Npgsql;
 
 namespace FirearmStudio.Infrastructure.Persistence;
 
-public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ITenantContext tenant)
+public sealed class ApplicationDbContext(
+    DbContextOptions<ApplicationDbContext> options,
+    ITenantContext tenant)
     : DbContext(options), IApplicationDbContext
 {
+    private const int SerializableAttempts = 3;
+    private const string TenantFilterName = "TenantFilter";
+
+    private static readonly MethodInfo ApplyTenantFilterMethod =
+        typeof(ApplicationDbContext).GetMethod(
+            nameof(ApplyTenantFilter),
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<AppUser> AppUsers => Set<AppUser>();
     public DbSet<Customer> Customers => Set<Customer>();
@@ -30,31 +40,37 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public void ClearChangeTracker() => ChangeTracker.Clear();
 
-    public async Task<long> NextBookingNumberAsync(CancellationToken cancellationToken = default)
-        => await Database
-            .SqlQuery<long>($"""SELECT nextval('booking_number_seq') AS "Value" """)
+    public Task<long> NextBookingNumberAsync(
+        CancellationToken cancellationToken = default) =>
+        Database
+            .SqlQuery<long>(
+                $"""SELECT nextval('booking_number_seq') AS "Value" """)
             .SingleAsync(cancellationToken);
 
-    private const int SerializableAttempts = 3;
-    private const string SerializationFailureSqlState = "40001";
-
     public async Task<bool> TryExecuteInSerializableTransactionAsync(
-        Func<CancellationToken, Task> operation, CancellationToken cancellationToken = default)
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken = default)
     {
-        for (var attempt = 1; attempt <= SerializableAttempts; attempt++)
+        for (var attempt = 0; attempt < SerializableAttempts; attempt++)
         {
-            await using var transaction = await Database.BeginTransactionAsync(
-                IsolationLevel.Serializable, cancellationToken);
+            await using var transaction =
+                await Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
 
             try
             {
                 await operation(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
+
                 return true;
             }
-            catch (Exception ex) when (IsSerializationFailure(ex))
+            catch (Exception exception) when (
+                exception.GetBaseException() is PostgresException
+                {
+                    SqlState: PostgresErrorCodes.SerializationFailure
+                })
             {
-                await transaction.RollbackAsync(cancellationToken);
                 ChangeTracker.Clear();
             }
         }
@@ -62,49 +78,31 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         return false;
     }
 
-    private static bool IsSerializationFailure(Exception? exception)
-    {
-        while (exception is not null)
-        {
-            if (exception is PostgresException { SqlState: SerializationFailureSqlState })
-            {
-                return true;
-            }
-
-            exception = exception.InnerException;
-        }
-
-        return false;
-    }
-
-    private static readonly MethodInfo SetTenantFilterMethod =
-        typeof(ApplicationDbContext).GetMethod(nameof(SetTenantFilter),
-            BindingFlags.Instance | BindingFlags.NonPublic)!;
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("pgcrypto");
-
         modelBuilder.HasSequence<long>("booking_number_seq");
 
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(
+            typeof(ApplicationDbContext).Assembly);
 
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        foreach (var entityType in modelBuilder.Model
+                     .GetEntityTypes()
+                     .Where(static entityType =>
+                         entityType.BaseType is null &&
+                         typeof(ITenantEntity).IsAssignableFrom(
+                             entityType.ClrType)))
         {
-            if (typeof(ITenantEntity).IsAssignableFrom(entityType.ClrType))
-            {
-                SetTenantFilterMethod
-                    .MakeGenericMethod(entityType.ClrType)
-                    .Invoke(this, [modelBuilder]);
-            }
+            ApplyTenantFilterMethod
+                .MakeGenericMethod(entityType.ClrType)
+                .Invoke(this, [modelBuilder]);
         }
-
-        base.OnModelCreating(modelBuilder);
     }
 
-    private void SetTenantFilter<TEntity>(ModelBuilder modelBuilder) where TEntity : class, ITenantEntity
-    {
-        modelBuilder.Entity<TEntity>()
-            .HasQueryFilter(e => tenant.BypassFilter || e.CompanyId == tenant.CompanyId);
-    }
+    private void ApplyTenantFilter<TEntity>(ModelBuilder modelBuilder)
+        where TEntity : class, ITenantEntity =>
+        modelBuilder.Entity<TEntity>().HasQueryFilter(
+            TenantFilterName,
+            entity => tenant.BypassFilter ||
+                      entity.CompanyId == tenant.CompanyId);
 }
