@@ -1,38 +1,42 @@
 using FirearmStudio.Infrastructure.Tenancy;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore.Design;
 
 namespace FirearmStudio.Infrastructure.Persistence;
 
-public sealed class DesignTimeDbContextFactory : Microsoft.EntityFrameworkCore.Design.IDesignTimeDbContextFactory<ApplicationDbContext>
+public sealed class DesignTimeDbContextFactory
+    : IDesignTimeDbContextFactory<ApplicationDbContext>
 {
+    private const string ConnectionStringKey =
+        "ConnectionStrings__DefaultConnection";
+
     public ApplicationDbContext CreateDbContext(string[] args)
     {
-        try
+        DotNetEnv.Env
+            .TraversePath()
+            .Load();
+
+        var connectionString =
+            Environment.GetEnvironmentVariable(ConnectionStringKey);
+
+        if (string.IsNullOrWhiteSpace(connectionString))
         {
-            DotNetEnv.Env.TraversePath().Load();
-        }
-        catch (Exception)
-        {
+            throw new InvalidOperationException(
+                $"The '{ConnectionStringKey}' variable is missing or empty in the .env file.");
         }
 
-        var configuration = new ConfigurationBuilder()
-            .AddUserSecrets("firearm-studio-backend")
-            .AddEnvironmentVariables()
-            .Build();
-
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException(
-                "No connection string found. Set ConnectionStrings:DefaultConnection via the .env " +
-                "(ConnectionStrings__DefaultConnection), user-secrets, or an environment variable.");
-
-        var dataSource = SupabaseDataSourceFactory.Build(connectionString);
+        var dataSource =
+            SupabaseDataSourceFactory.Build(connectionString);
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseNpgsql(dataSource, SupabaseDataSourceFactory.MapEnums)
+            .UseNpgsql(
+                dataSource,
+                SupabaseDataSourceFactory.MapEnums)
             .UseSnakeCaseNamingConvention()
             .Options;
 
-        return new ApplicationDbContext(options, new NullTenantContext());
+        return new ApplicationDbContext(
+            options,
+            new NullTenantContext());
     }
 }
