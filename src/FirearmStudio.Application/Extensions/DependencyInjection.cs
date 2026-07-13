@@ -1,4 +1,6 @@
 using System.Reflection;
+using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Application.Bookings;
 using FirearmStudio.Application.Invoices.MonthlyInvoiceGeneration;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +17,8 @@ public static class DependencyInjection
             cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
 
         services.AddScoped<IMonthlyInvoiceGenerator, MonthlyInvoiceGenerator>();
+        services.AddScoped<IBookingRequestedOutbox, BookingRequestedOutbox>();
+        services.AddScoped<IBookingRequestedDispatcher, BookingRequestedDispatcher>();
 
         return services;
     }

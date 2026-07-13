@@ -86,8 +86,9 @@ prefer the pooler. `.env` is git-ignored; never commit real credentials.
 
 ## Database setup
 
-The schema is managed explicitly with EF Core migrations. Building or launching the API does not
-apply pending migrations automatically.
+The schema is managed by EF Core migrations. The API applies any pending migrations automatically
+on startup, so a fresh deployment brings its database up to date on first launch. You can also
+apply them manually against a target database:
 
 ```bash
 dotnet ef database update -p src/FirearmStudio.Infrastructure -s src/FirearmStudio.WebApi
@@ -125,7 +126,8 @@ non-root `aspnet:10.0-noble-chiseled`) plus a `docker-compose.yml` for a Portain
   Environment variables), using the `Section__Key` convention.
 - Liveness endpoint: `GET /health` (anonymous, no API key). Point your reverse proxy's health check
   there — the chiseled runtime has no shell, so a container-level `HEALTHCHECK` is intentionally omitted.
-- Database migrations are **not** run by the API or container; apply them separately before deployment.
+- Database migrations run automatically when the API starts (including inside the container), so the
+  target database is migrated on deployment. Ensure the configured connection has DDL privileges.
 
 The image is **built by GitHub Actions** (`.github/workflows/docker-publish.yml`) on every push to
 `main` and pushed to **GHCR** as `ghcr.io/sheldonbakker/firearm-studio-api:latest`. `docker-compose.yml`

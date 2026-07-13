@@ -133,6 +133,7 @@ internal static class BookingCreation
 
         var booking = new Booking
         {
+            Id = Guid.CreateVersion7(),
             ShootingRangeId = request.ShootingRangeId,
             PackageId = request.PackageId,
             CustomerId = request.CustomerId,

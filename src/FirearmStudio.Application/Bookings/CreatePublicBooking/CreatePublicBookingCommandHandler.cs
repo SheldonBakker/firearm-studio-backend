@@ -1,20 +1,16 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
-using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace FirearmStudio.Application.Bookings.CreatePublicBooking;
 
 public sealed class CreatePublicBookingCommandHandler(
     IApplicationDbContext db,
     ITenantContext tenant,
-    IKlaviyoClient klaviyo,
-    KlaviyoSettings settings,
-    ILogger<CreatePublicBookingCommandHandler> logger)
+    IBookingRequestedOutbox outbox)
     : ICommandHandler<CreatePublicBookingCommand, ErrorOr<PublicBookingResponse>>
 {
     public async Task<ErrorOr<PublicBookingResponse>> Handle(
@@ -40,6 +36,7 @@ public sealed class CreatePublicBookingCommandHandler(
         var committed = await db.TryExecuteInSerializableTransactionAsync(async ct =>
         {
             var email = request.Email.Trim();
+            var fullName = request.FullName.Trim();
             var normalizedEmail = email.ToLower();
 
             var customer = await db.Customers
@@ -51,7 +48,7 @@ public sealed class CreatePublicBookingCommandHandler(
                 {
                     Id = Guid.CreateVersion7(),
                     CustomerType = CustomerType.Individual,
-                    FullName = request.FullName.Trim(),
+                    FullName = fullName,
                     Email = email,
                     Phone = request.Phone,
                 };
@@ -65,11 +62,12 @@ public sealed class CreatePublicBookingCommandHandler(
                     return;
                 }
 
-                customer.FullName ??= request.FullName.Trim();
+                customer.FullName ??= fullName;
                 customer.Phone ??= request.Phone;
             }
 
             var invoiceLines = new List<BookingInvoiceFactory.BookingLine>(request.Sessions.Count);
+            var pendingBookings = new List<Booking>(request.Sessions.Count);
 
             foreach (var session in request.Sessions)
             {
@@ -84,7 +82,7 @@ public sealed class CreatePublicBookingCommandHandler(
                         session.ShooterCount,
                         session.Notes,
                         BookingSource.Public),
-                    invoiceLines.Select(line => line.Booking).ToList(),
+                    pendingBookings,
                     ct);
 
                 if (result.IsError)
@@ -94,6 +92,7 @@ public sealed class CreatePublicBookingCommandHandler(
                 }
 
                 invoiceLines.Add(result.Value);
+                pendingBookings.Add(result.Value.Booking);
             }
 
             var invoice = BookingInvoiceFactory.CreateCombined(invoiceLines, company.VatNumber, company.DueDays);
@@ -104,9 +103,7 @@ public sealed class CreatePublicBookingCommandHandler(
                 line.Booking.InvoiceId = invoice.Id;
             }
 
-            await db.SaveChangesAsync(ct);
-
-            outcome = new PublicBookingResponse(
+            var response = new PublicBookingResponse(
                 invoice.Id,
                 invoice.InvoiceNumber,
                 invoice.Subtotal,
@@ -131,6 +128,12 @@ public sealed class CreatePublicBookingCommandHandler(
                     company.BankBranchCode,
                     company.BankAccountType,
                     company.BankSwiftCode));
+
+            outbox.Add(company, email, fullName, response);
+
+            await db.SaveChangesAsync(ct);
+
+            outcome = response;
         }, cancellationToken);
 
         if (outcome.IsError)
@@ -145,52 +148,7 @@ public sealed class CreatePublicBookingCommandHandler(
                 "The bookings could not be reserved due to concurrent bookings. Please retry.");
         }
 
-        // Fire-and-forget: the Klaviyo event must never delay or fail the booking response.
-        // Detached from the request's cancellation token because it outlives the request.
-        _ = NotifyBookingRequestedAsync(company, request, outcome.Value);
-
         return outcome;
-    }
-
-    private async Task NotifyBookingRequestedAsync(
-        Company company,
-        CreatePublicBookingRequest request,
-        PublicBookingResponse response)
-    {
-        var properties = new Dictionary<string, object?>
-        {
-            ["invoice_id"] = response.InvoiceId,
-            ["invoice_number"] = response.InvoiceNumber,
-            ["session_count"] = response.Bookings.Count,
-            ["subtotal"] = response.Subtotal,
-            ["vat_amount"] = response.VatAmount,
-            ["total"] = response.Total,
-            ["bookings"] = response.Bookings
-                .Select(booking => new Dictionary<string, object?>
-                {
-                    ["booking_id"] = booking.Id,
-                    ["booking_number"] = booking.BookingNumber,
-                    ["status"] = booking.Status.ToString(),
-                    ["booking_date"] = booking.BookingDate.ToString("yyyy-MM-dd"),
-                    ["start_time"] = booking.StartTime.ToString("HH\\:mm"),
-                    ["end_time"] = booking.EndTime.ToString("HH\\:mm"),
-                    ["range_name"] = booking.RangeName,
-                    ["package_name"] = booking.PackageName,
-                    ["package_price"] = booking.PackagePrice,
-                })
-                .ToList(),
-            ["company"] = BookingRequestedNotifier.BuildCompanyProperties(company),
-        };
-
-        await BookingRequestedNotifier.NotifyAsync(
-            klaviyo,
-            settings,
-            logger,
-            request.Email.Trim(),
-            request.FullName.Trim(),
-            properties,
-            $"invoice {response.InvoiceNumber}",
-            CancellationToken.None);
     }
 
     public static class ErrorCodes

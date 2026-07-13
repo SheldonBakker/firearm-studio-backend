@@ -43,6 +43,7 @@ builder.Services
     .AddApplication();
 
 builder.Services.AddHostedService<MonthlyInvoiceGenerationService>();
+builder.Services.AddHostedService<OutboxProcessorService>();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -80,6 +81,8 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+await app.Services.ApplyPendingMigrationsAsync();
 
 app.UseForwardedHeaders();
 

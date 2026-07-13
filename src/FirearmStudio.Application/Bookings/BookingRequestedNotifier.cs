@@ -1,18 +1,12 @@
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Model.Options;
-using FirearmStudio.Domain.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace FirearmStudio.Application.Bookings;
 
-/// <summary>
-/// Fires the customer-facing "Booking Requested" Klaviyo event after a public booking
-/// (single or cart) is committed. Best-effort: any Klaviyo failure is logged and swallowed
-/// so it never fails the booking, and must be called AFTER the booking transaction commits.
-/// </summary>
 internal static class BookingRequestedNotifier
 {
-    internal static async Task NotifyAsync(
+    internal static async Task SendAsync(
         IKlaviyoClient klaviyo,
         KlaviyoSettings settings,
         ILogger logger,
@@ -30,22 +24,42 @@ internal static class BookingRequestedNotifier
             return;
         }
 
-        try
+        await klaviyo.TrackEventAsync(
+            settings.BookingRequestedMetricName,
+            email,
+            name,
+            Flatten(properties),
+            cancellationToken);
+    }
+
+    internal static Dictionary<string, object?> BuildProperties(BookingRequestedPayload payload)
+    {
+        var response = payload.Response;
+
+        return new Dictionary<string, object?>
         {
-            await klaviyo.TrackEventAsync(
-                settings.BookingRequestedMetricName,
-                email,
-                name,
-                Flatten(properties),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                ex,
-                "Failed to send booking-requested event to Klaviyo ({LogContext}).",
-                logContext);
-        }
+            ["invoice_id"] = response.InvoiceId,
+            ["invoice_number"] = response.InvoiceNumber,
+            ["session_count"] = response.Bookings.Count,
+            ["subtotal"] = response.Subtotal,
+            ["vat_amount"] = response.VatAmount,
+            ["total"] = response.Total,
+            ["bookings"] = response.Bookings
+                .Select(booking => new Dictionary<string, object?>
+                {
+                    ["booking_id"] = booking.Id,
+                    ["booking_number"] = booking.BookingNumber,
+                    ["status"] = booking.Status.ToString(),
+                    ["booking_date"] = booking.BookingDate.ToString("yyyy-MM-dd"),
+                    ["start_time"] = booking.StartTime.ToString("HH\\:mm"),
+                    ["end_time"] = booking.EndTime.ToString("HH\\:mm"),
+                    ["range_name"] = booking.RangeName,
+                    ["package_name"] = booking.PackageName,
+                    ["package_price"] = booking.PackagePrice,
+                })
+                .ToList(),
+            ["company"] = BuildCompanyProperties(payload.Company),
+        };
     }
 
     /// <summary>
@@ -84,7 +98,7 @@ internal static class BookingRequestedNotifier
         }
     }
 
-    internal static Dictionary<string, object?> BuildCompanyProperties(Company? company)
+    internal static Dictionary<string, object?> BuildCompanyProperties(CompanyNotificationData? company)
     {
         if (company is null)
         {
