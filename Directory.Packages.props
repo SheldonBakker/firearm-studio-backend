@@ -35,6 +35,11 @@
 
     <!-- CQRS mediator (12.x is the last MIT-licensed line; 13+ is commercial) -->
     <PackageVersion Include="MediatR" Version="12.5.0" />
+
+    <!-- Testing -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.0" />
   </ItemGroup>
 
 </Project>
