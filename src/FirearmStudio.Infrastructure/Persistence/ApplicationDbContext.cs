@@ -29,6 +29,7 @@ public sealed class ApplicationDbContext(
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Firearm> Firearms => Set<Firearm>();
     public DbSet<FirearmLicence> FirearmLicences => Set<FirearmLicence>();
+    public DbSet<LicenceReminder> LicenceReminders => Set<LicenceReminder>();
     public DbSet<StorageRecord> StorageRecords => Set<StorageRecord>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
