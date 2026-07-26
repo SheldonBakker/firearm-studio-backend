@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<IBookingRequestedOutbox, BookingRequestedOutbox>();
         services.AddScoped<IBookingRequestedDispatcher, BookingRequestedDispatcher>();
         services.AddScoped<ILicenceRenewalReminderDispatcher, LicenceRenewalReminderDispatcher>();
+        services.AddScoped<ILicenceReminderGenerator, LicenceReminderGenerator>();
 
         return services;
     }
