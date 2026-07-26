@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Extensions;
 using FirearmStudio.Application.Model;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,8 +22,8 @@ public sealed class GetLicencesQueryHandler(IApplicationDbContext db)
 
         if (!string.IsNullOrWhiteSpace(query.LicenceNumber))
         {
-            var term = query.LicenceNumber.Trim().ToLower();
-            queryable = queryable.Where(l => l.LicenceNumber.ToLower().Contains(term));
+            var pattern = SearchPatternHelper.ToILikeContainsPattern(query.LicenceNumber.Trim());
+            queryable = queryable.Where(l => EF.Functions.ILike(l.LicenceNumber, pattern));
         }
 
         if (query.Status.HasValue)

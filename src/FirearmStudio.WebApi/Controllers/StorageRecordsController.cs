@@ -34,9 +34,13 @@ public sealed class StorageRecordsController(IMediator mediator) : ControllerBas
     }
 
     [HttpGet("storage/customer/{customerId:guid}")]
-    public async Task<ActionResult<IReadOnlyList<CustomerStorageRecordDto>>> ForCustomer(Guid customerId, CancellationToken ct)
+    public async Task<ActionResult<PaginatedResponse<CustomerStorageRecordDto>>> ForCustomer(
+        Guid customerId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
     {
-        var result = await mediator.Send(new GetCustomerStorageRecordsQuery(customerId), ct);
+        var result = await mediator.Send(new GetCustomerStorageRecordsQuery(customerId, pageNumber, pageSize), ct);
         return result.ToActionResult();
     }
 

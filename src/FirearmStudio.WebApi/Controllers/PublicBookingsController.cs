@@ -8,6 +8,7 @@ using FirearmStudio.WebApi.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace FirearmStudio.WebApi.Controllers;
@@ -20,6 +21,7 @@ namespace FirearmStudio.WebApi.Controllers;
 public sealed class PublicBookingsController(IMediator mediator) : ControllerBase
 {
     [HttpGet("bookings")]
+    [OutputCache(PolicyName = "public-options")]
     public async Task<ActionResult<PublicBookingOptionsResponse>> BookingOptions(Guid companyId, CancellationToken ct)
     {
         var result = await mediator.Send(new GetPublicBookingOptionsQuery(companyId), ct);
@@ -27,6 +29,7 @@ public sealed class PublicBookingsController(IMediator mediator) : ControllerBas
     }
 
     [HttpGet("ranges/{rangeId:guid}/availability")]
+    [OutputCache(PolicyName = "public-day")]
     public async Task<ActionResult<DayAvailabilityResponse>> DayAvailability(
         Guid companyId,
         Guid rangeId,
@@ -39,6 +42,7 @@ public sealed class PublicBookingsController(IMediator mediator) : ControllerBas
     }
 
     [HttpGet("ranges/{rangeId:guid}/availability/month")]
+    [OutputCache(PolicyName = "public-month")]
     public async Task<ActionResult<MonthAvailabilityResponse>> MonthAvailability(
         Guid companyId,
         Guid rangeId,

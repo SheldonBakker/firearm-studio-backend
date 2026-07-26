@@ -56,6 +56,24 @@ public static class DependencyInjection
         var settings = configuration.GetSection(KlaviyoSettings.SectionName).Get<KlaviyoSettings>()
             ?? new KlaviyoSettings();
 
+        if (string.IsNullOrWhiteSpace(settings.ApiKey))
+        {
+            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+                ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+                ?? string.Empty;
+
+            if (!string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Missing required configuration '{KlaviyoSettings.SectionName}:ApiKey'. " +
+                    "Set it via KlaviyoSettings__ApiKey in .env or user-secrets.");
+            }
+
+            Console.Error.WriteLine(
+                $"[WARNING] {KlaviyoSettings.SectionName}:ApiKey is not configured. " +
+                "Klaviyo integration will not function. Set KlaviyoSettings__ApiKey in .env or user-secrets.");
+        }
+
         services.AddSingleton(settings);
 
         services.AddHttpClient<IKlaviyoClient, KlaviyoClient>(client =>

@@ -14,68 +14,84 @@ public sealed class RecordPaymentCommandHandler(IApplicationDbContext db)
     {
         var request = command.Request;
 
-        var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == command.Id, cancellationToken);
-        if (invoice is null)
-        {
-            return Error.NotFound(ErrorCodes.NotFound, "Invoice not found.");
-        }
+        ErrorOr<Updated> outcome = Error.Conflict(
+            ErrorCodes.ConcurrentModification,
+            "The invoice was modified by another request. Please retry.");
 
-        if (invoice.Status == InvoiceStatus.Cancelled)
+        var committed = await db.TryExecuteInSerializableTransactionAsync(async ct =>
         {
-            return Error.Conflict(ErrorCodes.Cancelled, "Cannot record a payment against a cancelled invoice.");
-        }
+            var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == command.Id, ct);
+            if (invoice is null)
+            {
+                outcome = Error.NotFound(ErrorCodes.NotFound, "Invoice not found.");
+                return;
+            }
 
-        if (invoice.Status == InvoiceStatus.Paid)
-        {
-            return Error.Conflict(ErrorCodes.AlreadyPaid, "Invoice has already been fully paid.");
-        }
+            if (invoice.Status == InvoiceStatus.Cancelled)
+            {
+                outcome = Error.Conflict(ErrorCodes.Cancelled, "Cannot record a payment against a cancelled invoice.");
+                return;
+            }
 
-        var alreadyPaid = await db.Payments
-            .Where(p => p.InvoiceId == command.Id)
-            .SumAsync(p => p.Amount, cancellationToken);
+            if (invoice.Status == InvoiceStatus.Paid)
+            {
+                outcome = Error.Conflict(ErrorCodes.AlreadyPaid, "Invoice has already been fully paid.");
+                return;
+            }
 
-        var remaining = invoice.Total - alreadyPaid;
-        if (request.Amount > remaining)
-        {
-            return Error.Validation(ErrorCodes.ExceedsBalance, $"Payment amount exceeds the outstanding balance of {remaining:F2}.");
-        }
+            var alreadyPaid = await db.Payments
+                .Where(p => p.InvoiceId == command.Id)
+                .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
 
-        await db.Payments.AddAsync(new Payment
-        {
-            InvoiceId = command.Id,
-            Amount = request.Amount,
-            PaidOn = request.PaidOn ?? DateOnly.FromDateTime(DateTime.UtcNow.Date),
-            Method = request.Method,
-            Reference = request.Reference,
-            Notes = request.Notes,
+            var remaining = invoice.Total - alreadyPaid;
+            if (request.Amount > remaining)
+            {
+                outcome = Error.Validation(ErrorCodes.ExceedsBalance, $"Payment amount exceeds the outstanding balance of {remaining:F2}.");
+                return;
+            }
+
+            await db.Payments.AddAsync(new Payment
+            {
+                InvoiceId = command.Id,
+                Amount = request.Amount,
+                PaidOn = request.PaidOn ?? DateOnly.FromDateTime(DateTime.UtcNow.Date),
+                Method = request.Method,
+                Reference = request.Reference,
+                Notes = request.Notes,
+            }, ct);
+
+            if (alreadyPaid + request.Amount >= invoice.Total)
+            {
+                invoice.Status = InvoiceStatus.Paid;
+            }
+
+            var pendingBookings = await db.Bookings
+                .Where(b => b.InvoiceId == command.Id && b.Status == BookingStatus.Pending)
+                .ToListAsync(ct);
+
+            foreach (var booking in pendingBookings)
+            {
+                booking.Status = BookingStatus.Confirmed;
+                booking.ConfirmedAt = DateTime.UtcNow;
+            }
+
+            await db.SaveChangesAsync(ct);
+            outcome = Result.Updated;
         }, cancellationToken);
 
-        if (alreadyPaid + request.Amount >= invoice.Total)
+        if (outcome.IsError)
         {
-            invoice.Status = InvoiceStatus.Paid;
+            return outcome.Errors;
         }
 
-        var pendingBookings = await db.Bookings
-            .Where(b => b.InvoiceId == command.Id && b.Status == BookingStatus.Pending)
-            .ToListAsync(cancellationToken);
-
-        foreach (var booking in pendingBookings)
+        if (!committed)
         {
-            booking.Status = BookingStatus.Confirmed;
-            booking.ConfirmedAt = DateTime.UtcNow;
-        }
-
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Error.Conflict(ErrorCodes.ConcurrentModification,
+            return Error.Conflict(
+                ErrorCodes.ConcurrentModification,
                 "The invoice was modified by another request. Please retry.");
         }
 
-        return Result.Updated;
+        return outcome;
     }
 
     public static class ErrorCodes

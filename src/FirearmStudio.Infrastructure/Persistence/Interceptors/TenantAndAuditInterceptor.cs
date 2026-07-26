@@ -27,26 +27,53 @@ public sealed class TenantAndAuditInterceptor(
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData, InterceptionResult<int> result)
     {
-        Apply(eventData.Context);
+        if (eventData.Context is null)
+        {
+            return base.SavingChanges(eventData, result);
+        }
+
+        var (now, entries) = ApplyStampsAndCollect(eventData.Context);
+
+        if (tenant.CompanyId is { } companyId && entries is not null)
+        {
+            var appUserId = currentUserService.User.IsAuthenticated
+                ? ResolveAppUserId(eventData.Context, currentUserService.User.Id)
+                : null;
+
+            WriteAuditLogs(eventData.Context, entries, now, companyId, appUserId);
+        }
+
         return base.SavingChanges(eventData, result);
     }
 
-    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+    public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
-        Apply(eventData.Context);
-        return base.SavingChangesAsync(eventData, result, cancellationToken);
-    }
-
-    private void Apply(DbContext? context)
-    {
-        if (context is null)
+        if (eventData.Context is null)
         {
-            return;
+            return await base.SavingChangesAsync(eventData, result, cancellationToken);
         }
 
+        var (now, entries) = ApplyStampsAndCollect(eventData.Context);
+
+        if (tenant.CompanyId is { } companyId && entries is not null)
+        {
+            var appUserId = currentUserService.User.IsAuthenticated
+                ? await ResolveAppUserIdAsync(eventData.Context, currentUserService.User.Id, cancellationToken)
+                : null;
+
+            WriteAuditLogs(eventData.Context, entries, now, companyId, appUserId);
+        }
+
+        return await base.SavingChangesAsync(eventData, result, cancellationToken);
+    }
+
+    // Applies timestamps and tenant stamps; returns auditable entries without building logs yet.
+    // Audit log construction is skipped here so we can short-circuit when CompanyId is null.
+    private (DateTime Now, List<EntityEntry<BaseEntity>>? AuditEntries) ApplyStampsAndCollect(DbContext context)
+    {
         var now = DateTime.UtcNow;
-        var auditLogs = new List<AuditLog>();
+        List<EntityEntry<BaseEntity>>? auditEntries = null;
 
         foreach (var entry in context.ChangeTracker.Entries<BaseEntity>().ToList())
         {
@@ -70,21 +97,24 @@ public sealed class TenantAndAuditInterceptor(
             if (AuditedTypes.Contains(entry.Entity.GetType()) &&
                 entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
             {
-                auditLogs.Add(BuildAuditLog(entry));
+                auditEntries ??= [];
+                auditEntries.Add(entry);
             }
         }
 
-        if (tenant.CompanyId is not { } companyId)
-        {
-            return;
-        }
+        return (now, auditEntries);
+    }
 
-        var appUserId = currentUserService.User.IsAuthenticated
-            ? ResolveAppUserId(context, currentUserService.User.Id)
-            : null;
-
-        foreach (var log in auditLogs)
+    private static void WriteAuditLogs(
+        DbContext context,
+        List<EntityEntry<BaseEntity>> entries,
+        DateTime now,
+        Guid companyId,
+        Guid? appUserId)
+    {
+        foreach (var entry in entries)
         {
+            var log = BuildAuditLog(entry);
             log.Id = Guid.CreateVersion7();
             log.CreatedAt = now;
             log.CompanyId = companyId;
@@ -96,6 +126,7 @@ public sealed class TenantAndAuditInterceptor(
     private bool _appUserResolved;
     private Guid? _appUserId;
 
+    // Sync path: blocking query is acceptable on the synchronous SaveChanges path.
     private Guid? ResolveAppUserId(DbContext context, Guid authUserId)
     {
         if (_appUserResolved)
@@ -112,9 +143,29 @@ public sealed class TenantAndAuditInterceptor(
         return _appUserId;
     }
 
+    private bool _asyncAppUserResolved;
+    private Guid? _asyncAppUserId;
+
+    // Async path: uses FirstOrDefaultAsync to avoid blocking I/O on the thread pool.
+    private async ValueTask<Guid?> ResolveAppUserIdAsync(DbContext context, Guid authUserId, CancellationToken cancellationToken)
+    {
+        if (_asyncAppUserResolved)
+        {
+            return _asyncAppUserId;
+        }
+
+        _asyncAppUserId = await context.Set<AppUser>()
+            .Where(u => u.AuthUserId == authUserId)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        _asyncAppUserResolved = true;
+        return _asyncAppUserId;
+    }
+
     private static AuditLog BuildAuditLog(EntityEntry<BaseEntity> entry)
     {
-        var props = entry.Properties.Where(p => !p.Metadata.IsPrimaryKey());
+        // Materialize once to avoid double enumeration when both old and new values are needed.
+        var props = entry.Properties.Where(p => !p.Metadata.IsPrimaryKey()).ToList();
 
         string? oldValue = null;
         string? newValue = null;

@@ -9,14 +9,27 @@ public sealed class MonthlyInvoiceGenerationService(
     IServiceScopeFactory scopeFactory,
     ILogger<MonthlyInvoiceGenerationService> logger) : BackgroundService
 {
-    private static readonly TimeSpan Interval = TimeSpan.FromHours(24);
+    // Set to true once the migration check passes; never checked again afterwards.
+    private bool _migrationsVerified;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(Interval);
-
-        do
+        // No run on startup. Compute delay to next 02:00 UTC, wait, then run.
+        while (!stoppingToken.IsCancellationRequested)
         {
+            var now = DateTime.UtcNow;
+            var today2Am = now.Date.AddHours(2);
+            var next2Am = now < today2Am ? today2Am : today2Am.AddDays(1);
+
+            try
+            {
+                await Task.Delay(next2Am - now, stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+
             try
             {
                 await RunAsync(stoppingToken);
@@ -30,7 +43,6 @@ public sealed class MonthlyInvoiceGenerationService(
                 logger.LogError(ex, "Monthly invoice generation run failed.");
             }
         }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
     private async Task RunAsync(CancellationToken cancellationToken)
@@ -38,16 +50,21 @@ public sealed class MonthlyInvoiceGenerationService(
         List<CompanyBilling> companies;
         using (var scope = scopeFactory.CreateScope())
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var pendingMigrations = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
-            if (pendingMigrations.Count > 0)
+            if (!_migrationsVerified)
             {
-                var migrationNames = string.Join(", ", pendingMigrations);
-                logger.LogError(
-                    "Skipping monthly invoice generation: {Count} pending database migration(s): {Migrations}. " +
-                    "Apply migrations and the job will resume on its next tick.",
-                    pendingMigrations.Count, migrationNames);
-                return;
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
+                if (pending.Count > 0)
+                {
+                    var migrationNames = string.Join(", ", pending);
+                    logger.LogError(
+                        "Skipping monthly invoice generation: {Count} pending database migration(s): {Migrations}. " +
+                        "Apply migrations and the job will resume on its next tick.",
+                        pending.Count, migrationNames);
+                    return;
+                }
+
+                _migrationsVerified = true;
             }
 
             var db = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();

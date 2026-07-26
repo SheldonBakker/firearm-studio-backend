@@ -1,5 +1,4 @@
 using FirearmStudio.Domain.Entities;
-using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -23,6 +22,18 @@ internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(x => x.PostalCode).HasMaxLength(20);
         builder.Property(x => x.Notes).HasMaxLength(4000);
         builder.Property(x => x.IsActive).HasDefaultValue(true);
+
+        // Unique per-tenant email invariant enforced by a functional index in raw migration SQL
+        // (migrations 20260706202625 and 20260713212044):
+        //   CREATE UNIQUE INDEX ix_customers_company_id_email
+        //     ON customers (company_id, lower(email))
+        //     WHERE email IS NOT NULL;
+        // EF HasIndex cannot express lower() expressions, so the index lives only in the migration.
+
+        builder.HasIndex(x => x.FullName).HasMethod("gin").HasOperators("gin_trgm_ops");
+        builder.HasIndex(x => x.CompanyName).HasMethod("gin").HasOperators("gin_trgm_ops");
+        builder.HasIndex(x => x.Email).HasMethod("gin").HasOperators("gin_trgm_ops");
+        builder.HasIndex(x => x.Phone).HasMethod("gin").HasOperators("gin_trgm_ops");
     }
 }
 
@@ -41,6 +52,7 @@ internal sealed class FirearmConfiguration : IEntityTypeConfiguration<Firearm>
         builder.Property(x => x.Notes).HasMaxLength(4000);
 
         builder.HasIndex(x => x.SerialNumber);
+        builder.HasIndex(x => x.SerialNumber, "ix_firearms_serial_number_trgm").HasDatabaseName("ix_firearms_serial_number_trgm").HasMethod("gin").HasOperators("gin_trgm_ops");
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => new { x.CompanyId, x.SerialNumber }).IsUnique();
 
@@ -75,6 +87,7 @@ internal sealed class FirearmLicenceConfiguration : IEntityTypeConfiguration<Fir
         builder.HasIndex(x => x.RenewalDueOn);
         builder.HasIndex(x => new { x.CompanyId, x.Status });
         builder.HasIndex(x => new { x.FirearmId, x.LicenceNumber }).IsUnique();
+        builder.HasIndex(x => x.LicenceNumber).HasMethod("gin").HasOperators("gin_trgm_ops");
 
         builder.HasOne(l => l.Firearm)
             .WithMany(f => f.Licences)

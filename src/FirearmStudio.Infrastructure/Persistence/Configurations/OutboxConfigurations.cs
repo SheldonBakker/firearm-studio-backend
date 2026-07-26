@@ -11,6 +11,7 @@ internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outb
         builder.Property(x => x.Type).IsRequired().HasMaxLength(100);
         builder.Property(x => x.Payload).IsRequired().HasColumnType("jsonb");
         builder.Property(x => x.Error).HasMaxLength(4000);
+        builder.Property(x => x.LockedUntil);
 
         builder.HasIndex(x => x.CreatedAt)
             .HasFilter("processed_at IS NULL")

@@ -1,4 +1,5 @@
 using ErrorOr;
+using FirearmStudio.Application.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Common;
@@ -31,14 +32,24 @@ public static class ErrorOrExtensions
         };
     }
 
-    private static int StatusCode<T>(ErrorOr<T> result) => result.Errors.FirstOrDefault().Type switch
+    private static int StatusCode<T>(ErrorOr<T> result)
     {
-        ErrorType.Validation => StatusCodes.Status400BadRequest,
-        ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
-        ErrorType.Forbidden => StatusCodes.Status403Forbidden,
-        ErrorType.NotFound => StatusCodes.Status404NotFound,
-        ErrorType.Conflict => StatusCodes.Status409Conflict,
-        ErrorType.Failure => StatusCodes.Status502BadGateway,
-        _ => StatusCodes.Status500InternalServerError,
-    };
+        var error = result.Errors.FirstOrDefault();
+        // Custom numeric type 100 = upstream/external service failure (502).
+        if ((int)error.Type == UpstreamErrorTypes.UpstreamFailure)
+        {
+            return StatusCodes.Status502BadGateway;
+        }
+
+        return error.Type switch
+        {
+            ErrorType.Validation => StatusCodes.Status400BadRequest,
+            ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
+            ErrorType.Forbidden => StatusCodes.Status403Forbidden,
+            ErrorType.NotFound => StatusCodes.Status404NotFound,
+            ErrorType.Conflict => StatusCodes.Status409Conflict,
+            ErrorType.Failure => StatusCodes.Status500InternalServerError,
+            _ => StatusCodes.Status500InternalServerError,
+        };
+    }
 }

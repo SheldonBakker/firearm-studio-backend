@@ -30,8 +30,71 @@ public sealed class CreateBookingCommandHandler(IApplicationDbContext db, ITenan
                 return;
             }
 
-            var result = await BookingCreation.AddBookingAsync(
-                db,
+            // Load the single range with all operating hours.
+            var rawRange = await db.ShootingRanges
+                .AsNoTracking()
+                .Where(r => r.Id == request.ShootingRangeId && r.IsActive)
+                .Select(r => new
+                {
+                    r.Name,
+                    r.LaneCount,
+                    r.SlotIntervalMinutes,
+                    Hours = r.OperatingHours
+                        .Select(h => new { h.Day, h.OpenTime, h.CloseTime })
+                        .ToList(),
+                })
+                .FirstOrDefaultAsync(ct);
+
+            var rangeData = rawRange is null
+                ? null
+                : new BookingCreation.RangeData(
+                    rawRange.Name,
+                    rawRange.LaneCount,
+                    rawRange.SlotIntervalMinutes,
+                    rawRange.Hours
+                        .Select(h => new BookingCreation.OperatingHoursEntry(h.Day, h.OpenTime, h.CloseTime))
+                        .ToList());
+
+            // Load the single package with items.
+            var rawPackage = await db.Packages
+                .AsNoTracking()
+                .Where(p => p.Id == request.PackageId && p.IsActive)
+                .Select(p => new
+                {
+                    p.Name,
+                    p.Price,
+                    p.DurationMinutes,
+                    p.MaxShooters,
+                    Items = p.Items
+                        .OrderBy(i => i.SortOrder)
+                        .ThenBy(i => i.Id)
+                        .Select(i => new BookingInvoiceFactory.IncludedItem(i.Description, i.Quantity))
+                        .ToList(),
+                })
+                .FirstOrDefaultAsync(ct);
+
+            var packageData = rawPackage is null
+                ? null
+                : new BookingCreation.PackageData(
+                    rawPackage.Name,
+                    rawPackage.Price,
+                    rawPackage.DurationMinutes,
+                    rawPackage.MaxShooters,
+                    rawPackage.Items);
+
+            // Load occupancy windows for the (range, date) pair.
+            var occupancyWindows = await db.Bookings
+                .AsNoTracking()
+                .Where(b => b.ShootingRangeId == request.ShootingRangeId
+                            && b.BookingDate == request.BookingDate
+                            && (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed))
+                .Select(b => new BookingCreation.OccupancyWindow(
+                    b.ShootingRangeId, b.BookingDate, b.StartTime, b.EndTime))
+                .ToListAsync(ct);
+
+            var bookingNumber = await db.NextBookingNumberAsync(ct);
+
+            var result = BookingCreation.CreateBooking(
                 new BookingCreation.SlotRequest(
                     request.ShootingRangeId,
                     request.PackageId,
@@ -41,8 +104,11 @@ public sealed class CreateBookingCommandHandler(IApplicationDbContext db, ITenan
                     request.ShooterCount,
                     request.Notes,
                     BookingSource.Staff),
+                rangeData,
+                packageData,
+                occupancyWindows,
                 pendingBookings: [],
-                ct);
+                bookingNumber);
 
             if (result.IsError)
             {
@@ -51,6 +117,7 @@ public sealed class CreateBookingCommandHandler(IApplicationDbContext db, ITenan
             }
 
             var booking = result.Value.Booking;
+            await db.Bookings.AddAsync(booking, ct);
 
             if (request.ConfirmImmediately)
             {

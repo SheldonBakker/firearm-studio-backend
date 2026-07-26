@@ -1,5 +1,6 @@
 using System.Threading.RateLimiting;
 using FirearmStudio.Application.Extensions;
+using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.Infrastructure.Extensions;
 using FirearmStudio.WebApi.BackgroundJobs;
@@ -14,8 +15,9 @@ try
 {
     DotNetEnv.Env.TraversePath().Load();
 }
-catch (Exception)
+catch (Exception ex)
 {
+    Console.Error.WriteLine($"Failed to load .env file: {ex.Message}");
 }
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,11 +28,34 @@ builder.Host.UseSerilog((context, loggerConfig) =>
         .Enrich.FromLogContext()
         .WriteTo.Console());
 
+var fhSettings = builder.Configuration
+    .GetSection(ForwardedHeadersSettings.SectionName)
+    .Get<ForwardedHeadersSettings>() ?? new ForwardedHeadersSettings();
+
+// Parse eagerly so a bad CIDR or IP fails at startup, not on the first request.
+var knownNetworks = fhSettings.KnownNetworks
+    .Select(cidr => System.Net.IPNetwork.Parse(cidr))
+    .ToList();
+var knownProxies = fhSettings.KnownProxies
+    .Select(ip => System.Net.IPAddress.Parse(ip))
+    .ToList();
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = fhSettings.ForwardLimit;
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
+
+    foreach (var network in knownNetworks)
+    {
+        options.KnownIPNetworks.Add(network);
+    }
+
+    foreach (var proxy in knownProxies)
+    {
+        options.KnownProxies.Add(proxy);
+    }
 });
 
 builder.Services.AddHealthChecks();
@@ -48,6 +73,15 @@ builder.Services.AddHostedService<OutboxProcessorService>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+            }));
 
     options.AddPolicy("public", context =>
         RateLimitPartition.GetFixedWindowLimiter(
@@ -80,9 +114,37 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
+// Only GET requests returning 200 OK are cached (framework default).
+builder.Services.AddOutputCache(options =>
+{
+    options.AddPolicy("public-options", policy =>
+        policy
+            .Expire(TimeSpan.FromSeconds(60))
+            .SetVaryByRouteValue("companyId"));
+
+    options.AddPolicy("public-day", policy =>
+        policy
+            .Expire(TimeSpan.FromSeconds(20))
+            .SetVaryByRouteValue("companyId", "rangeId")
+            .SetVaryByQuery("packageId", "date"));
+
+    options.AddPolicy("public-month", policy =>
+        policy
+            .Expire(TimeSpan.FromSeconds(60))
+            .SetVaryByRouteValue("companyId", "rangeId")
+            .SetVaryByQuery("year", "month", "packageId"));
+});
+
 var app = builder.Build();
 
-await app.Services.ApplyPendingMigrationsAsync();
+var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
+if (startupLogger.IsEnabled(LogLevel.Information))
+{
+    startupLogger.LogInformation(
+        "ForwardedHeaders: {NetworkCount} known network(s), {ProxyCount} known proxy/proxies",
+        fhSettings.KnownNetworks.Count,
+        fhSettings.KnownProxies.Count);
+}
 
 app.UseForwardedHeaders();
 
@@ -96,11 +158,13 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionHandler();
 app.UseSerilogRequestLogging();
 
-app.UseMiddleware<ApiKeyMiddleware>();
+app.UseRouting();
 
 app.UseAuthentication();
-app.UseAuthorization();
 app.UseRateLimiter();
+app.UseMiddleware<ApiKeyMiddleware>();
+app.UseOutputCache();
+app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/health");

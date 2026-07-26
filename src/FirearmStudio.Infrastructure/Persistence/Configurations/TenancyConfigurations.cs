@@ -65,6 +65,8 @@ internal sealed class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
 
         builder.HasIndex(x => new { x.CompanyId, x.Email }).IsUnique();
 
+        builder.HasIndex(x => x.FullName).HasMethod("gin").HasOperators("gin_trgm_ops");
+
         builder.HasOne(u => u.Company)
             .WithMany(c => c.Users)
             .HasForeignKey(u => u.CompanyId)

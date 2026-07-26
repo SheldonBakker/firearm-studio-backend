@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Application.Common;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 
@@ -35,12 +36,12 @@ public sealed class SageAccountingClient(
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return Error.Failure(ErrorCodes.Unavailable, "Sage Accounting did not respond in time.");
+            return Error.Custom(UpstreamErrorTypes.UpstreamFailure, ErrorCodes.Unavailable, "Sage Accounting did not respond in time.");
         }
         catch (HttpRequestException ex)
         {
             logger.LogWarning(ex, "Sage Accounting request failed while validating credentials.");
-            return Error.Failure(ErrorCodes.Unavailable, "Sage Accounting could not be reached.");
+            return Error.Custom(UpstreamErrorTypes.UpstreamFailure, ErrorCodes.Unavailable, "Sage Accounting could not be reached.");
         }
     }
 
@@ -124,9 +125,9 @@ public sealed class SageAccountingClient(
         HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden =>
             Error.Validation(ErrorCodes.InvalidCredentials, "Sage rejected the supplied credentials."),
         HttpStatusCode.TooManyRequests =>
-            Error.Failure(ErrorCodes.RateLimited, "Sage Accounting rate limit was reached. Try again later."),
+            Error.Custom(UpstreamErrorTypes.UpstreamFailure, ErrorCodes.RateLimited, "Sage Accounting rate limit was reached. Try again later."),
         _ when statusCode >= HttpStatusCode.InternalServerError =>
-            Error.Failure(ErrorCodes.Unavailable, "Sage Accounting is temporarily unavailable."),
+            Error.Custom(UpstreamErrorTypes.UpstreamFailure, ErrorCodes.Unavailable, "Sage Accounting is temporarily unavailable."),
         _ =>
             Error.Validation(ErrorCodes.InvalidRequest, "Sage rejected the registration request."),
     };

@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Extensions;
 using FirearmStudio.Application.Model;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,8 +21,8 @@ public sealed class GetFirearmsQueryHandler(IApplicationDbContext db)
 
         if (!string.IsNullOrWhiteSpace(query.SerialNumber))
         {
-            var term = query.SerialNumber.Trim().ToLower();
-            queryable = queryable.Where(f => f.SerialNumber.ToLower().Contains(term));
+            var pattern = SearchPatternHelper.ToILikeContainsPattern(query.SerialNumber.Trim());
+            queryable = queryable.Where(f => EF.Functions.ILike(f.SerialNumber, pattern));
         }
 
         if (query.Status.HasValue)
@@ -31,10 +32,10 @@ public sealed class GetFirearmsQueryHandler(IApplicationDbContext db)
 
         if (!string.IsNullOrWhiteSpace(query.CustomerName))
         {
-            var term = query.CustomerName.Trim().ToLower();
+            var pattern = SearchPatternHelper.ToILikeContainsPattern(query.CustomerName.Trim());
             queryable = queryable.Where(f =>
-                (f.Customer!.FullName != null && f.Customer.FullName.ToLower().Contains(term)) ||
-                (f.Customer!.CompanyName != null && f.Customer.CompanyName.ToLower().Contains(term)));
+                (f.Customer!.FullName != null && EF.Functions.ILike(f.Customer.FullName, pattern)) ||
+                (f.Customer!.CompanyName != null && EF.Functions.ILike(f.Customer.CompanyName, pattern)));
         }
 
         queryable = queryable

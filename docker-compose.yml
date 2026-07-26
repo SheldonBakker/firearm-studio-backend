@@ -9,5 +9,6 @@ services:
       SupabaseJwtSettings__Authority: ${SupabaseJwtSettings__Authority}
       ApiKeySettings__Key: ${ApiKeySettings__Key}
       KlaviyoSettings__ApiKey: ${KlaviyoSettings__ApiKey}
+      # ForwardedHeaders__KnownNetworks__0: ${ForwardedHeaders__KnownNetworks__0}
     ports:
       - "5146:5146"

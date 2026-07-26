@@ -25,6 +25,30 @@ public sealed class CancelBookingCommandHandler(IApplicationDbContext db)
         booking.Status = BookingStatus.Cancelled;
         booking.CancelledAt = DateTime.UtcNow;
 
+        if (booking.InvoiceId is Guid invoiceId)
+        {
+            var invoiceInfo = await db.Invoices
+                .Where(i => i.Id == invoiceId)
+                .Select(i => new
+                {
+                    Invoice = i,
+                    HasPayments = i.Payments.Any(),
+                    OtherActiveCount = db.Bookings.Count(b =>
+                        b.InvoiceId == i.Id &&
+                        b.Id != command.Id &&
+                        b.Status != BookingStatus.Cancelled),
+                })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (invoiceInfo is not null
+                && invoiceInfo.OtherActiveCount == 0
+                && !invoiceInfo.HasPayments
+                && invoiceInfo.Invoice.Status is InvoiceStatus.Draft or InvoiceStatus.Sent or InvoiceStatus.Overdue)
+            {
+                invoiceInfo.Invoice.Status = InvoiceStatus.Cancelled;
+            }
+        }
+
         try
         {
             await db.SaveChangesAsync(cancellationToken);

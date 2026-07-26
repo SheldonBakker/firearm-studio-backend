@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Extensions;
 using FirearmStudio.Application.Model;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,8 +22,8 @@ public sealed class GetShootingRangesQueryHandler(IApplicationDbContext db)
 
         if (!string.IsNullOrWhiteSpace(query.Name))
         {
-            var term = query.Name.Trim().ToLower();
-            queryable = queryable.Where(r => r.Name.ToLower().Contains(term));
+            var pattern = SearchPatternHelper.ToILikeContainsPattern(query.Name.Trim());
+            queryable = queryable.Where(r => EF.Functions.ILike(r.Name, pattern));
         }
 
         if (query.IsActive.HasValue)

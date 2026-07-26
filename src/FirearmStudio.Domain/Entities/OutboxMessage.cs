@@ -15,4 +15,6 @@ public sealed class OutboxMessage : BaseEntity
     public string? Error { get; set; }
 
     public Guid CompanyId { get; set; }
+
+    public DateTime? LockedUntil { get; set; }
 }

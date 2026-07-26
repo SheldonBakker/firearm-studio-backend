@@ -18,23 +18,46 @@ public sealed class ChangeUserRoleCommandHandler(IApplicationDbContext db)
             return Error.Validation(ErrorCodes.UnknownRole, "Unknown role.");
         }
 
-        var user = await db.AppUsers.FirstOrDefaultAsync(candidate => candidate.Id == command.Id, cancellationToken);
-        if (user is null)
+        ErrorOr<AppUserResponse> outcome = Error.Conflict(
+            ErrorCodes.ConcurrentModification,
+            "The user was modified by another request. Please retry.");
+
+        var committed = await db.TryExecuteInSerializableTransactionAsync(async ct =>
         {
-            return Error.NotFound(ErrorCodes.NotFound, "User not found.");
+            var user = await db.AppUsers.FirstOrDefaultAsync(candidate => candidate.Id == command.Id, ct);
+            if (user is null)
+            {
+                outcome = Error.NotFound(ErrorCodes.NotFound, "User not found.");
+                return;
+            }
+
+            if (user.Role == AppRole.Admin
+                && command.Request.Role != AppRole.Admin
+                && await IsLastActiveAdminAsync(ct))
+            {
+                outcome = Error.Conflict(ErrorCodes.LastActiveAdmin, "The company must retain at least one active admin.");
+                return;
+            }
+
+            user.Role = command.Request.Role;
+            await db.SaveChangesAsync(ct);
+
+            outcome = AppUserResponse.FromEntity(user);
+        }, cancellationToken);
+
+        if (outcome.IsError)
+        {
+            return outcome.Errors;
         }
 
-        if (user.Role == AppRole.Admin
-            && command.Request.Role != AppRole.Admin
-            && await IsLastActiveAdminAsync(cancellationToken))
+        if (!committed)
         {
-            return Error.Conflict(ErrorCodes.LastActiveAdmin, "The company must retain at least one active admin.");
+            return Error.Conflict(
+                ErrorCodes.ConcurrentModification,
+                "The user was modified by another request. Please retry.");
         }
 
-        user.Role = command.Request.Role;
-        await db.SaveChangesAsync(cancellationToken);
-
-        return AppUserResponse.FromEntity(user);
+        return outcome;
     }
 
     private async Task<bool> IsLastActiveAdminAsync(CancellationToken cancellationToken)
@@ -50,5 +73,6 @@ public sealed class ChangeUserRoleCommandHandler(IApplicationDbContext db)
         public const string UnknownRole = "ChangeUserRoleCommand.UnknownRole";
         public const string NotFound = "ChangeUserRoleCommand.NotFound";
         public const string LastActiveAdmin = "ChangeUserRoleCommand.LastActiveAdmin";
+        public const string ConcurrentModification = "ChangeUserRoleCommand.ConcurrentModification";
     }
 }

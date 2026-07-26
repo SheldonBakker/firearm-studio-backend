@@ -131,6 +131,7 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
 
         // Drives every availability/overlap query.
         builder.HasIndex(x => new { x.CompanyId, x.ShootingRangeId, x.BookingDate });
+        builder.HasIndex(x => new { x.CompanyId, x.BookingDate });
         builder.HasIndex(x => new { x.CompanyId, x.Status });
         builder.HasIndex(x => new { x.CompanyId, x.BookingNumber }).IsUnique();
         builder.HasIndex(x => x.CustomerId);

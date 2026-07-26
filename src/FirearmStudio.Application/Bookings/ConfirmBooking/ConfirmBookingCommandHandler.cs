@@ -12,7 +12,6 @@ public sealed class ConfirmBookingCommandHandler(IApplicationDbContext db)
     public async Task<ErrorOr<Updated>> Handle(ConfirmBookingCommand command, CancellationToken cancellationToken)
     {
         var booking = await db.Bookings
-            .Include(b => b.ShootingRange)
             .FirstOrDefaultAsync(b => b.Id == command.Id, cancellationToken);
 
         if (booking is null)
@@ -44,11 +43,17 @@ public sealed class ConfirmBookingCommandHandler(IApplicationDbContext db)
                 .Select(i => new BookingInvoiceFactory.IncludedItem(i.Description, i.Quantity))
                 .ToListAsync(cancellationToken);
 
+            var rangeName = await db.ShootingRanges
+                .AsNoTracking()
+                .Where(r => r.Id == booking.ShootingRangeId)
+                .Select(r => r.Name)
+                .FirstAsync(cancellationToken);
+
             var invoice = BookingInvoiceFactory.Create(
                 booking,
                 company.VatNumber,
                 company.DueDays,
-                booking.ShootingRange!.Name,
+                rangeName,
                 packageItems);
 
             db.Invoices.Add(invoice);

@@ -5,6 +5,7 @@ using FirearmStudio.WebApi.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace FirearmStudio.WebApi.Controllers;
 
@@ -15,6 +16,7 @@ namespace FirearmStudio.WebApi.Controllers;
 public sealed class ContactController(IMediator mediator) : ControllerBase
 {
     [HttpPost]
+    [EnableRateLimiting("public-write")]
     public async Task<ActionResult> Submit(ContactFormRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new SubmitContactFormCommand(request), ct);

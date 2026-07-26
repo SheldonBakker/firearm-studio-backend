@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Extensions;
 using FirearmStudio.Application.Model;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,16 +27,16 @@ public sealed class GetInvoicesQueryHandler(IApplicationDbContext db)
 
         if (!string.IsNullOrWhiteSpace(query.InvoiceNumber))
         {
-            var term = query.InvoiceNumber.Trim().ToLower();
-            queryable = queryable.Where(i => i.InvoiceNumber.ToLower().Contains(term));
+            var pattern = SearchPatternHelper.ToILikeContainsPattern(query.InvoiceNumber.Trim());
+            queryable = queryable.Where(i => EF.Functions.ILike(i.InvoiceNumber, pattern));
         }
 
         if (!string.IsNullOrWhiteSpace(query.CustomerName))
         {
-            var term = query.CustomerName.Trim().ToLower();
+            var pattern = SearchPatternHelper.ToILikeContainsPattern(query.CustomerName.Trim());
             queryable = queryable.Where(i =>
-                (i.Customer!.FullName != null && i.Customer.FullName.ToLower().Contains(term)) ||
-                (i.Customer!.CompanyName != null && i.Customer.CompanyName.ToLower().Contains(term)));
+                (i.Customer!.FullName != null && EF.Functions.ILike(i.Customer.FullName, pattern)) ||
+                (i.Customer!.CompanyName != null && EF.Functions.ILike(i.Customer.CompanyName, pattern)));
         }
 
         var desc = query.SortOrder.Equals("desc", StringComparison.OrdinalIgnoreCase);

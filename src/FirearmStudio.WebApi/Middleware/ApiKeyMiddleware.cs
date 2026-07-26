@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using FirearmStudio.Application.Model.Options;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Primitives;
 
 namespace FirearmStudio.WebApi.Middleware;
@@ -11,7 +12,16 @@ public sealed class ApiKeyMiddleware(ApiKeySettings settings) : IMiddleware
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
+        // Pass through non-API paths (health, swagger, etc.)
         if (!context.Request.Path.StartsWithSegments("/api"))
+        {
+            await next(context);
+            return;
+        }
+
+        // Pass through endpoints marked [AllowAnonymous]
+        var ep = context.GetEndpoint();
+        if (ep?.Metadata.GetMetadata<IAllowAnonymous>() is not null)
         {
             await next(context);
             return;

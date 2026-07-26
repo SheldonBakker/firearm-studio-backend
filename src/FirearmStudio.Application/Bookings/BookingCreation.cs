@@ -1,9 +1,7 @@
 using System.Globalization;
 using ErrorOr;
-using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
-using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Bookings;
 
@@ -19,17 +17,55 @@ internal static class BookingCreation
         string? Notes,
         BookingSource Source);
 
+    /// <summary>Operating hours for a single day of week, pre-loaded with the range.</summary>
+    internal sealed record OperatingHoursEntry(DayOfWeek Day, TimeOnly OpenTime, TimeOnly CloseTime);
+
     /// <summary>
-    /// Validates and stages a booking on the change tracker without saving. Returns the booking
-    /// together with its range name and package items so callers can build invoice lines without
-    /// extra queries. <paramref name="pendingBookings"/> are same-transaction bookings not yet
-    /// saved; they count toward lane occupancy so multi-session carts need no intermediate saves.
+    /// Preloaded shooting range data used by <see cref="CreateBooking"/>. All operating-hours
+    /// rows for the range are included so that callers can batch-load ranges for multiple sessions.
     /// </summary>
-    internal static async Task<ErrorOr<BookingInvoiceFactory.BookingLine>> AddBookingAsync(
-        IApplicationDbContext db,
+    internal sealed record RangeData(
+        string Name,
+        int LaneCount,
+        int SlotIntervalMinutes,
+        IReadOnlyList<OperatingHoursEntry> OperatingHours);
+
+    /// <summary>Preloaded package data used by <see cref="CreateBooking"/>.</summary>
+    internal sealed record PackageData(
+        string Name,
+        decimal Price,
+        int DurationMinutes,
+        int MaxShooters,
+        IReadOnlyList<BookingInvoiceFactory.IncludedItem> Items);
+
+    /// <summary>
+    /// A booked window from the database, used for in-memory lane-occupancy counting.
+    /// Includes <see cref="ShootingRangeId"/> and <see cref="BookingDate"/> so that a single
+    /// pre-loaded collection can cover multiple (range, date) combinations.
+    /// </summary>
+    internal sealed record OccupancyWindow(
+        Guid ShootingRangeId,
+        DateOnly BookingDate,
+        TimeOnly StartTime,
+        TimeOnly EndTime);
+
+    /// <summary>
+    /// Pure in-memory validation and booking construction. No database I/O. Callers are
+    /// responsible for pre-loading <paramref name="range"/> and <paramref name="package"/>
+    /// (pass <c>null</c> if not found) and for adding the resulting booking to the change tracker.
+    /// <para>
+    /// <paramref name="occupancyWindows"/> must cover at minimum the (rangeId, date) pair in
+    /// <paramref name="request"/>. <paramref name="pendingBookings"/> are same-transaction bookings
+    /// not yet saved; they count toward lane occupancy so multi-session carts need no intermediate saves.
+    /// </para>
+    /// </summary>
+    internal static ErrorOr<BookingInvoiceFactory.BookingLine> CreateBooking(
         SlotRequest request,
+        RangeData? range,
+        PackageData? package,
+        IReadOnlyCollection<OccupancyWindow> occupancyWindows,
         IReadOnlyCollection<Booking> pendingBookings,
-        CancellationToken cancellationToken)
+        long bookingNumber)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
         if (request.BookingDate < today)
@@ -37,42 +73,10 @@ internal static class BookingCreation
             return Error.Validation(ErrorCodes.DateInPast, "Booking date may not be in the past.");
         }
 
-        var range = await db.ShootingRanges
-            .AsNoTracking()
-            .Where(r => r.Id == request.ShootingRangeId && r.IsActive)
-            .Select(r => new
-            {
-                r.Name,
-                r.LaneCount,
-                r.SlotIntervalMinutes,
-                Hours = r.OperatingHours
-                    .Where(h => h.Day == request.BookingDate.DayOfWeek)
-                    .Select(h => new { h.OpenTime, h.CloseTime })
-                    .FirstOrDefault(),
-            })
-            .FirstOrDefaultAsync(cancellationToken);
-
         if (range is null)
         {
             return Error.NotFound(ErrorCodes.RangeNotFound, "Shooting range not found.");
         }
-
-        var package = await db.Packages
-            .AsNoTracking()
-            .Where(p => p.Id == request.PackageId && p.IsActive)
-            .Select(p => new
-            {
-                p.Name,
-                p.Price,
-                p.DurationMinutes,
-                p.MaxShooters,
-                Items = p.Items
-                    .OrderBy(i => i.SortOrder)
-                    .ThenBy(i => i.Id)
-                    .Select(i => new BookingInvoiceFactory.IncludedItem(i.Description, i.Quantity))
-                    .ToList(),
-            })
-            .FirstOrDefaultAsync(cancellationToken);
 
         if (package is null)
         {
@@ -86,12 +90,14 @@ internal static class BookingCreation
                 $"The package allows at most {package.MaxShooters} shooter(s).");
         }
 
-        if (range.Hours is null)
+        var dayHours = range.OperatingHours.FirstOrDefault(h => h.Day == request.BookingDate.DayOfWeek);
+
+        if (dayHours is null)
         {
             return Error.Validation(ErrorCodes.OutsideOperatingHours, "The range is closed on that day.");
         }
 
-        if (!AvailabilityCalculator.IsOnSlotGrid(range.Hours.OpenTime, request.StartTime, range.SlotIntervalMinutes))
+        if (!AvailabilityCalculator.IsOnSlotGrid(dayHours.OpenTime, request.StartTime, range.SlotIntervalMinutes))
         {
             return Error.Validation(
                 ErrorCodes.InvalidStartTime,
@@ -99,8 +105,8 @@ internal static class BookingCreation
         }
 
         var endTime = request.StartTime.AddMinutes(package.DurationMinutes);
-        if (request.StartTime < range.Hours.OpenTime
-            || endTime > range.Hours.CloseTime
+        if (request.StartTime < dayHours.OpenTime
+            || endTime > dayHours.CloseTime
             || endTime <= request.StartTime)
         {
             return Error.Validation(
@@ -108,13 +114,11 @@ internal static class BookingCreation
                 "The requested time window falls outside the range's operating hours.");
         }
 
-        var overlapping = await db.Bookings
-            .Where(b => b.ShootingRangeId == request.ShootingRangeId
-                        && b.BookingDate == request.BookingDate
-                        && (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed)
-                        && b.StartTime < endTime
-                        && b.EndTime > request.StartTime)
-            .CountAsync(cancellationToken);
+        var overlapping = occupancyWindows.Count(w =>
+            w.ShootingRangeId == request.ShootingRangeId
+            && w.BookingDate == request.BookingDate
+            && w.StartTime < endTime
+            && w.EndTime > request.StartTime);
 
         overlapping += pendingBookings.Count(b =>
             b.ShootingRangeId == request.ShootingRangeId
@@ -127,8 +131,6 @@ internal static class BookingCreation
             return Error.Conflict(ErrorCodes.SlotUnavailable, "No lane is available for the requested time.");
         }
 
-        var sequenceValue = await db.NextBookingNumberAsync(cancellationToken);
-
         var dateLabel = request.BookingDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
 
         var booking = new Booking
@@ -137,7 +139,7 @@ internal static class BookingCreation
             ShootingRangeId = request.ShootingRangeId,
             PackageId = request.PackageId,
             CustomerId = request.CustomerId,
-            BookingNumber = $"BKG-{dateLabel}-{sequenceValue:D4}",
+            BookingNumber = $"BKG-{dateLabel}-{bookingNumber:D4}",
             BookingDate = request.BookingDate,
             StartTime = request.StartTime,
             EndTime = endTime,
@@ -147,8 +149,6 @@ internal static class BookingCreation
             ShooterCount = request.ShooterCount,
             Notes = request.Notes,
         };
-
-        await db.Bookings.AddAsync(booking, cancellationToken);
 
         return new BookingInvoiceFactory.BookingLine(booking, range.Name, package.Items);
     }

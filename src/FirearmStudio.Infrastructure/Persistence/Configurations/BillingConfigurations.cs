@@ -28,6 +28,7 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.HasIndex(x => new { x.CustomerId, x.InvoiceMonth });
         builder.HasIndex(x => new { x.CompanyId, x.Status });
         builder.HasIndex(x => new { x.CompanyId, x.InvoiceNumber }).IsUnique();
+        builder.HasIndex(x => x.InvoiceNumber).HasMethod("gin").HasOperators("gin_trgm_ops");
 
         builder.HasIndex(x => new { x.CompanyId, x.CustomerId, x.InvoiceMonth })
             .IsUnique()
@@ -111,6 +112,7 @@ internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 
         builder.HasIndex(x => new { x.EntityType, x.EntityId });
         builder.HasIndex(x => x.AppUserId);
+        builder.HasIndex(x => new { x.CompanyId, x.CreatedAt });
 
         builder.HasOne(x => x.AppUser)
             .WithMany()
