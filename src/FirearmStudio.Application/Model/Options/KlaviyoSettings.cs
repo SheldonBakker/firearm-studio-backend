@@ -16,5 +16,7 @@ public sealed class KlaviyoSettings
 
     public string BookingRequestedMetricName { get; init; } = "Booking Requested";
 
+    public string LicenceRenewalMetricName { get; init; } = "Licence Renewal Reminder";
+
     public string? ContactListId { get; init; }
 }
