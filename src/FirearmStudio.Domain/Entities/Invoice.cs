@@ -24,6 +24,10 @@ public sealed class Invoice : BaseEntity, ITenantEntity
     public DateTime? SentAt { get; set; }
     public DateOnly? DueOn { get; set; }
 
+    public decimal? DepositAmount { get; set; }
+    public DateTime? DepositDueAt { get; set; }
+    public DateTime? DepositPaidAt { get; set; }
+
     public Customer? Customer { get; set; }
     public ICollection<InvoiceLine> Lines { get; set; } = [];
     public ICollection<Payment> Payments { get; set; } = [];

@@ -178,6 +178,15 @@ public sealed class CreatePublicBookingCommandHandler(
             }
 
             var invoice = BookingInvoiceFactory.CreateCombined(invoiceLines, company.VatNumber, company.DueDays);
+
+            var depositAmount = DepositCalculator.Calculate(company.DepositMode, company.DepositValue, invoice.Total);
+            var depositDueAt = depositAmount is null
+                ? (DateTime?)null
+                : DateTime.UtcNow.AddHours(company.DepositWindowHours);
+
+            invoice.DepositAmount = depositAmount;
+            invoice.DepositDueAt = depositDueAt;
+
             db.Invoices.Add(invoice);
 
             foreach (var line in invoiceLines)
@@ -191,6 +200,8 @@ public sealed class CreatePublicBookingCommandHandler(
                 invoice.Subtotal,
                 invoice.VatAmount,
                 invoice.Total,
+                depositAmount,
+                depositDueAt,
                 invoiceLines
                     .Select(line => new PublicBookingConfirmationResponse(
                         line.Booking.Id,

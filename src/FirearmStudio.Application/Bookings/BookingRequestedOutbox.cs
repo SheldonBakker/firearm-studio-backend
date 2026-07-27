@@ -25,7 +25,7 @@ internal sealed class BookingRequestedOutbox(IApplicationDbContext db, Notificat
             {
                 if (!bookingsById.TryGetValue(line.Id, out var booking))
                 {
-                    return new BookingRequestedBookingDetail(line.Id, null, null, null, null);
+                    return new BookingRequestedBookingDetail(line.Id, null, null, response.DepositAmount, response.DepositDueAt);
                 }
 
                 var links = BookingCalendarLinkBuilder.Build(
@@ -42,8 +42,10 @@ internal sealed class BookingRequestedOutbox(IApplicationDbContext db, Notificat
                         booking.ShooterCount),
                     companyIcsData);
 
-                // Deposit fields on Invoice do not exist yet; left null until that lands.
-                return new BookingRequestedBookingDetail(line.Id, links.IcsUrl, links.GoogleCalendarUrl, null, null);
+                // The deposit applies to the combined invoice, so every booking on it shares the
+                // same deposit terms.
+                return new BookingRequestedBookingDetail(
+                    line.Id, links.IcsUrl, links.GoogleCalendarUrl, response.DepositAmount, response.DepositDueAt);
             })
             .ToList();
 

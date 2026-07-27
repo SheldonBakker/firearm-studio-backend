@@ -125,6 +125,8 @@ public sealed record PublicBookingResponse(
     decimal Subtotal,
     decimal VatAmount,
     decimal Total,
+    decimal? DepositAmount,
+    DateTime? DepositDueAt,
     IReadOnlyList<PublicBookingConfirmationResponse> Bookings,
     PublicInvoiceBankingResponse Banking);
 

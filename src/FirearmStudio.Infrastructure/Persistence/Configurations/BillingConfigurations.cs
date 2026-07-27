@@ -14,6 +14,7 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(x => x.Subtotal).HasPrecision(12, 2);
         builder.Property(x => x.VatAmount).HasPrecision(12, 2);
         builder.Property(x => x.Total).HasPrecision(12, 2);
+        builder.Property(x => x.DepositAmount).HasPrecision(12, 2);
 
         builder.ToTable(table =>
         {
