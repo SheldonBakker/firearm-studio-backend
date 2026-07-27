@@ -6,7 +6,20 @@ internal sealed record BookingRequestedPayload(
     string Email,
     string? FullName,
     PublicBookingResponse Response,
+    IReadOnlyList<BookingRequestedBookingDetail> BookingDetails,
     CompanyNotificationData Company);
+
+/// <summary>
+/// Per-booking notification-only data that does not belong in the public HTTP response
+/// (<see cref="PublicBookingResponse"/>): calendar links and deposit terms, keyed by booking ID so
+/// <see cref="BookingRequestedNotifier"/> can join it back onto <c>Response.Bookings</c>.
+/// </summary>
+internal sealed record BookingRequestedBookingDetail(
+    Guid BookingId,
+    string? IcsUrl,
+    string? GoogleCalendarUrl,
+    decimal? DepositAmount,
+    DateTime? DepositDueAt);
 
 internal sealed record CompanyNotificationData(
     Guid Id,

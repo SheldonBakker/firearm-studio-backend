@@ -211,7 +211,7 @@ public sealed class CreatePublicBookingCommandHandler(
                     company.BankAccountType,
                     company.BankSwiftCode));
 
-            outbox.Add(company, email, fullName, response);
+            outbox.Add(company, email, fullName, response, pendingBookings);
 
             await db.SaveChangesAsync(ct);
 

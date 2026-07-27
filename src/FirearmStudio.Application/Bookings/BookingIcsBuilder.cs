@@ -60,7 +60,9 @@ public static class BookingIcsBuilder
         return Encoding.UTF8.GetBytes(text);
     }
 
-    private static string BuildLocation(CompanyIcsData company)
+    /// <summary>Exposed internally so <see cref="BookingCalendarLinkBuilder"/> can reuse the same
+    /// address-joining rules for the Google Calendar link's location field.</summary>
+    internal static string BuildLocation(CompanyIcsData company)
     {
         var parts = new[]
         {

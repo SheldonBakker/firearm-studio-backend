@@ -5,5 +5,10 @@ namespace FirearmStudio.Application.Abstractions;
 
 public interface IBookingRequestedOutbox
 {
-    void Add(Company company, string email, string? fullName, PublicBookingResponse response);
+    void Add(
+        Company company,
+        string email,
+        string? fullName,
+        PublicBookingResponse response,
+        IReadOnlyList<Booking> bookings);
 }
