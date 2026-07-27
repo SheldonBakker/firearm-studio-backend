@@ -6,10 +6,12 @@ using FirearmStudio.Application.Bookings.CheckInBooking;
 using FirearmStudio.Application.Bookings.CompleteBooking;
 using FirearmStudio.Application.Bookings.ConfirmBooking;
 using FirearmStudio.Application.Bookings.CreateBooking;
+using FirearmStudio.Application.Bookings.ExportRegister;
 using FirearmStudio.Application.Bookings.GetBooking;
 using FirearmStudio.Application.Bookings.GetBookingAttendees;
 using FirearmStudio.Application.Bookings.GetBookingCalendar;
 using FirearmStudio.Application.Bookings.GetBookings;
+using FirearmStudio.Application.Bookings.GetRegister;
 using FirearmStudio.Application.Bookings.MarkBookingNoShow;
 using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Authentication;
@@ -128,5 +130,38 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
     {
         var result = await mediator.Send(new GetBookingAttendeesQuery(id), ct);
         return result.ToActionResult();
+    }
+
+    [HttpGet("register")]
+    [Authorize(Roles = AppRoles.Policy.StaffOrAbove)]
+    public async Task<ActionResult<PaginatedResponse<RegisterRowDto>>> GetRegister(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] DateOnly? dateFrom = null,
+        [FromQuery] DateOnly? dateTo = null,
+        [FromQuery] Guid? rangeId = null,
+        CancellationToken ct = default)
+    {
+        var result = await mediator.Send(new GetRegisterQuery(pageNumber, pageSize, dateFrom, dateTo, rangeId), ct);
+        return result.ToActionResult();
+    }
+
+    [HttpGet("register/export")]
+    [Authorize(Roles = AppRoles.Policy.ManagerOrAbove)]
+    public async Task<ActionResult> ExportRegister(
+        [FromQuery] DateOnly? dateFrom = null,
+        [FromQuery] DateOnly? dateTo = null,
+        [FromQuery] Guid? rangeId = null,
+        CancellationToken ct = default)
+    {
+        var result = await mediator.Send(new ExportRegisterQuery(dateFrom, dateTo, rangeId), ct);
+        if (result.IsError)
+        {
+            return result.ToActionResult();
+        }
+
+        var from = dateFrom?.ToString("yyyy-MM-dd") ?? "all";
+        var to = dateTo?.ToString("yyyy-MM-dd") ?? "all";
+        return File(result.Value, "text/csv; charset=utf-8", $"range-register-{from}-{to}.csv");
     }
 }
