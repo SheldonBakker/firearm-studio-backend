@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FirearmStudio.Domain.Entities;
 
 namespace FirearmStudio.Application.Bookings;
@@ -46,9 +45,4 @@ internal sealed record CompanyNotificationData(
         company.BankBranchCode,
         company.BankAccountType,
         company.BankSwiftCode);
-}
-
-internal static class OutboxJson
-{
-    public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
 }

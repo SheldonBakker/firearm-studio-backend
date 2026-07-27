@@ -5,4 +5,7 @@
     <Project Path="src/FirearmStudio.Infrastructure/FirearmStudio.Infrastructure.csproj" />
     <Project Path="src/FirearmStudio.WebApi/FirearmStudio.WebApi.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FirearmStudio.Domain.Tests/FirearmStudio.Domain.Tests.csproj" />
+  </Folder>
 </Solution>

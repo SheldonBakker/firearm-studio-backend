@@ -11,6 +11,7 @@ public interface IApplicationDbContext
     DbSet<Customer> Customers { get; }
     DbSet<Firearm> Firearms { get; }
     DbSet<FirearmLicence> FirearmLicences { get; }
+    DbSet<LicenceReminder> LicenceReminders { get; }
     DbSet<StorageRecord> StorageRecords { get; }
     DbSet<Invoice> Invoices { get; }
     DbSet<InvoiceLine> InvoiceLines { get; }

@@ -58,6 +58,7 @@ public sealed class OutboxProcessorService(
 
         var db = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
         var dispatcher = scope.ServiceProvider.GetRequiredService<IBookingRequestedDispatcher>();
+        var licenceReminderDispatcher = scope.ServiceProvider.GetRequiredService<ILicenceRenewalReminderDispatcher>();
 
         var messages = await db.ClaimOutboxBatchAsync(BatchSize, cancellationToken);
 
@@ -76,6 +77,9 @@ public sealed class OutboxProcessorService(
                 {
                     case OutboxMessageTypes.BookingRequested:
                         await dispatcher.DispatchAsync(message.Payload, cancellationToken);
+                        break;
+                    case OutboxMessageTypes.LicenceRenewalReminder:
+                        await licenceReminderDispatcher.DispatchAsync(message.Payload, cancellationToken);
                         break;
                     default:
                         throw new InvalidOperationException($"Unknown outbox message type '{message.Type}'.");
