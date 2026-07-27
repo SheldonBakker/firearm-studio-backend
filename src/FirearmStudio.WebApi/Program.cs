@@ -71,6 +71,7 @@ builder.Services.AddHostedService<MonthlyInvoiceGenerationService>();
 builder.Services.AddHostedService<OutboxProcessorService>();
 builder.Services.AddHostedService<LicenceReminderService>();
 builder.Services.AddHostedService<BookingReminderService>();
+builder.Services.AddHostedService<BookingDepositExpiryService>();
 
 builder.Services.AddRateLimiter(options =>
 {
