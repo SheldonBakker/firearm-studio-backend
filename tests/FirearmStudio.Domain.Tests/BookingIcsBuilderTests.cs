@@ -11,10 +11,12 @@ public class BookingIcsBuilderTests
 
     private static BookingIcsBuilder.BookingIcsData DefaultBooking(
         string packageName = "Standard Range Package",
+        string rangeName = "Main Range",
         int shooterCount = 2) => new(
         BookingId,
         "BKG-20260801-0001",
         packageName,
+        rangeName,
         new DateOnly(2026, 8, 1),
         new TimeOnly(9, 0),
         new TimeOnly(10, 0),
@@ -104,11 +106,11 @@ public class BookingIcsBuilderTests
     }
 
     [Fact]
-    public void Build_uses_package_name_as_summary()
+    public void Build_combines_package_and_range_name_in_summary()
     {
-        var text = BuildText(booking: DefaultBooking(packageName: "VIP Package"));
+        var text = BuildText(booking: DefaultBooking(packageName: "VIP Package", rangeName: "North Range"));
 
-        Assert.Contains("SUMMARY:VIP Package\r\n", text);
+        Assert.Contains("SUMMARY:VIP Package - North Range\r\n", text);
     }
 
     [Fact]
@@ -132,11 +134,11 @@ public class BookingIcsBuilderTests
     [Fact]
     public void Build_escapes_commas_semicolons_and_backslashes_in_text_fields()
     {
-        var booking = DefaultBooking(packageName: "Range, Time; Slot\\Test");
+        var booking = DefaultBooking(packageName: "Range, Time; Slot\\Test", rangeName: "Range");
 
         var text = BuildText(booking: booking);
 
-        Assert.Contains("SUMMARY:Range\\, Time\\; Slot\\\\Test\r\n", text);
+        Assert.Contains("SUMMARY:Range\\, Time\\; Slot\\\\Test - Range\r\n", text);
     }
 
     [Fact]

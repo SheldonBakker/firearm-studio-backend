@@ -16,6 +16,7 @@ public static class BookingIcsBuilder
         Guid BookingId,
         string BookingNumber,
         string PackageName,
+        string RangeName,
         DateOnly BookingDate,
         TimeOnly StartTime,
         TimeOnly EndTime,
@@ -34,6 +35,7 @@ public static class BookingIcsBuilder
         var start = booking.BookingDate.ToDateTime(booking.StartTime);
         var end = booking.BookingDate.ToDateTime(booking.EndTime);
         var location = BuildLocation(company);
+        var summary = $"{booking.PackageName} - {booking.RangeName}";
         var description = $"Booking {booking.BookingNumber} for {booking.ShooterCount} shooter(s).";
 
         var lines = new[]
@@ -47,7 +49,7 @@ public static class BookingIcsBuilder
             $"DTSTAMP:{utcNow.ToString(DateTimeFormat, CultureInfo.InvariantCulture)}Z",
             $"DTSTART;TZID={SouthAfricaTimeZone.Instance.Id}:{start.ToString(DateTimeFormat, CultureInfo.InvariantCulture)}",
             $"DTEND;TZID={SouthAfricaTimeZone.Instance.Id}:{end.ToString(DateTimeFormat, CultureInfo.InvariantCulture)}",
-            $"SUMMARY:{EscapeText(booking.PackageName)}",
+            $"SUMMARY:{EscapeText(summary)}",
             $"LOCATION:{EscapeText(location)}",
             $"DESCRIPTION:{EscapeText(description)}",
             "END:VEVENT",
