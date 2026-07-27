@@ -1,10 +1,13 @@
 using Asp.Versioning;
 using FirearmStudio.Application.Bookings;
+using FirearmStudio.Application.Bookings.AddAttendee;
 using FirearmStudio.Application.Bookings.CancelBooking;
+using FirearmStudio.Application.Bookings.CheckInBooking;
 using FirearmStudio.Application.Bookings.CompleteBooking;
 using FirearmStudio.Application.Bookings.ConfirmBooking;
 using FirearmStudio.Application.Bookings.CreateBooking;
 using FirearmStudio.Application.Bookings.GetBooking;
+using FirearmStudio.Application.Bookings.GetBookingAttendees;
 using FirearmStudio.Application.Bookings.GetBookingCalendar;
 using FirearmStudio.Application.Bookings.GetBookings;
 using FirearmStudio.Application.Bookings.MarkBookingNoShow;
@@ -98,6 +101,32 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
     public async Task<ActionResult> NoShow(Guid id, CancellationToken ct)
     {
         var result = await mediator.Send(new MarkBookingNoShowCommand(id), ct);
+        return result.ToActionResult();
+    }
+
+    [HttpPost("{id:guid}/check-in")]
+    [Authorize(Roles = AppRoles.Policy.StaffOrAbove)]
+    public async Task<ActionResult> CheckIn(Guid id, CheckInBookingRequest request, CancellationToken ct)
+    {
+        var result = await mediator.Send(new CheckInBookingCommand(id, request), ct);
+        return result.ToActionResult();
+    }
+
+    [HttpPost("{id:guid}/attendees")]
+    [Authorize(Roles = AppRoles.Policy.StaffOrAbove)]
+    public async Task<ActionResult> AddAttendee(Guid id, AttendeeRequest request, CancellationToken ct)
+    {
+        var result = await mediator.Send(new AddAttendeeCommand(id, request), ct);
+        return result.IsError
+            ? result.ToActionResult()
+            : Created($"/api/v1/bookings/{id}/attendees", new { Id = result.Value });
+    }
+
+    [HttpGet("{id:guid}/attendees")]
+    [Authorize(Roles = AppRoles.Policy.StaffOrAbove)]
+    public async Task<ActionResult<IReadOnlyList<AttendeeResponse>>> GetAttendees(Guid id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetBookingAttendeesQuery(id), ct);
         return result.ToActionResult();
     }
 }

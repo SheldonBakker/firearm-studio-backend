@@ -1,4 +1,5 @@
 using FirearmStudio.Domain.Entities;
+using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -164,5 +165,30 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .WithMany()
             .HasForeignKey(b => b.InvoiceId)
             .OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+internal sealed class BookingAttendeeConfiguration : IEntityTypeConfiguration<BookingAttendee>
+{
+    public void Configure(EntityTypeBuilder<BookingAttendee> builder)
+    {
+        builder.ConfigureTenant();
+
+        builder.Property(x => x.FullName).IsRequired().HasMaxLength(200);
+        builder.Property(x => x.IdNumber).IsRequired().HasMaxLength(20);
+        builder.Property(x => x.LicenceNumber).HasMaxLength(50);
+        builder.Property(x => x.FirearmMakeModel).HasMaxLength(200);
+        builder.Property(x => x.FirearmSerialNumber).HasMaxLength(100);
+        builder.Property(x => x.Calibre).HasMaxLength(50);
+        builder.Property(x => x.FirearmOrigin).HasDefaultValue(FirearmOrigin.Own);
+        builder.Property(x => x.SignedIndemnity).HasDefaultValue(false);
+        builder.Property(x => x.Notes).HasMaxLength(500);
+
+        builder.HasIndex(x => x.BookingId);
+
+        builder.HasOne(x => x.Booking)
+            .WithMany()
+            .HasForeignKey(x => x.BookingId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

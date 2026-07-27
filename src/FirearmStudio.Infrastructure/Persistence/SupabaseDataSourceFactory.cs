@@ -18,6 +18,7 @@ public static class SupabaseDataSourceFactory
         builder.MapEnum<PaymentMethod>("payment_method");
         builder.MapEnum<LicenceReminderTier>("licence_reminder_tier");
         builder.MapEnum<DepositMode>("deposit_mode");
+        builder.MapEnum<FirearmOrigin>("firearm_origin");
 
         return builder.Build();
     }
@@ -32,5 +33,6 @@ public static class SupabaseDataSourceFactory
         options.MapEnum<PaymentMethod>("payment_method");
         options.MapEnum<LicenceReminderTier>("licence_reminder_tier");
         options.MapEnum<DepositMode>("deposit_mode");
+        options.MapEnum<FirearmOrigin>("firearm_origin");
     }
 }
