@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
         AddKlaviyo(services, configuration);
+        AddNotificationSettings(services, configuration);
         AddSageAccounting(services);
 
         return services;
@@ -84,6 +85,14 @@ public static class DependencyInjection
             client.DefaultRequestHeaders.TryAddWithoutValidation("revision", settings.ApiRevision);
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         });
+    }
+
+    private static void AddNotificationSettings(IServiceCollection services, IConfiguration configuration)
+    {
+        var settings = configuration.GetSection(NotificationSettings.SectionName).Get<NotificationSettings>()
+            ?? new NotificationSettings();
+
+        services.AddSingleton(settings);
     }
 
     private static void AddCredentialProtection(IServiceCollection services, IConfiguration configuration)

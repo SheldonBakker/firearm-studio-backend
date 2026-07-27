@@ -20,6 +20,8 @@ public static class DependencyInjection
         services.AddScoped<IMonthlyInvoiceGenerator, MonthlyInvoiceGenerator>();
         services.AddScoped<IBookingRequestedOutbox, BookingRequestedOutbox>();
         services.AddScoped<IBookingRequestedDispatcher, BookingRequestedDispatcher>();
+        services.AddScoped<IBookingLifecycleOutbox, BookingLifecycleOutbox>();
+        services.AddScoped<IBookingLifecycleDispatcher, BookingLifecycleDispatcher>();
         services.AddScoped<ILicenceRenewalReminderDispatcher, LicenceRenewalReminderDispatcher>();
         services.AddScoped<ILicenceReminderGenerator, LicenceReminderGenerator>();
 

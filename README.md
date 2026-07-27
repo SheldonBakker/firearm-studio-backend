@@ -70,6 +70,7 @@ cp .env.example .env
 | `SupabaseJwtSettings__Authority` | Supabase auth URL, e.g. `https://<ref>.supabase.co/auth/v1`. Issuer is derived from it; audience defaults to `authenticated`. |
 | `ApiKeySettings__Key` | Shared secret required on every `/api/*` request via the `X-Api-Key` header (e.g. `openssl rand -base64 32`). |
 | `CredentialProtectionSettings__Key` | Base64 32-byte key used to encrypt stored external API credentials (e.g. `openssl rand -base64 32`). |
+| `NotificationSettings__PublicBaseUrl` | Public origin used to build absolute links (ICS download, Google Calendar) in booking notification emails. |
 | `ASPNETCORE_ENVIRONMENT` | `Development` or `Production`. |
 
 ### Connection string
