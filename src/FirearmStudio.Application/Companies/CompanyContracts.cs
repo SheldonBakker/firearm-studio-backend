@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Entities;
+using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Companies;
 
@@ -23,6 +24,9 @@ public sealed record CompanyDetailsResponse(
     string? BankAccountType,
     string? BankSwiftCode,
     bool IsActive,
+    DepositMode DepositMode,
+    decimal DepositValue,
+    int DepositWindowHours,
     DateTime CreatedAt,
     DateTime? UpdatedAt)
 {
@@ -30,7 +34,7 @@ public sealed record CompanyDetailsResponse(
         c.Id, c.Name, c.RegistrationNumber, c.VatNumber, c.Email, c.Phone,
         c.AddressLine1, c.AddressLine2, c.City, c.Province, c.PostalCode,
         c.BankName, c.BankAccountHolder, c.BankAccountNumber, c.BankBranchCode, c.BankAccountType, c.BankSwiftCode,
-        c.IsActive, c.CreatedAt, c.UpdatedAt);
+        c.IsActive, c.DepositMode, c.DepositValue, c.DepositWindowHours, c.CreatedAt, c.UpdatedAt);
 }
 
 public sealed record UpdateCompanyRequest(
@@ -49,4 +53,7 @@ public sealed record UpdateCompanyRequest(
     Optional<string?> BankAccountNumber,
     Optional<string?> BankBranchCode,
     Optional<string?> BankAccountType,
-    Optional<string?> BankSwiftCode);
+    Optional<string?> BankSwiftCode,
+    Optional<DepositMode> DepositMode,
+    Optional<decimal> DepositValue,
+    Optional<int> DepositWindowHours);

@@ -1,4 +1,5 @@
 using FirearmStudio.Domain.Common;
+using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Domain.Entities;
 
@@ -29,6 +30,10 @@ public sealed class Company : BaseEntity
 
     public int DueDays { get; set; } = 30;
     public bool AutoBillingEnabled { get; set; } = true;
+
+    public DepositMode DepositMode { get; set; } = DepositMode.None;
+    public decimal DepositValue { get; set; }
+    public int DepositWindowHours { get; set; } = 48;
 
     public ICollection<AppUser> Users { get; set; } = [];
 }

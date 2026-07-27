@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Companies.UpdateCompany;
@@ -104,6 +105,26 @@ public sealed class UpdateCompanyCommandHandler(
             company.BankSwiftCode = request.BankSwiftCode.Value;
         }
 
+        if (request.DepositMode.IsSet)
+        {
+            company.DepositMode = request.DepositMode.Value;
+        }
+
+        if (request.DepositValue.IsSet)
+        {
+            company.DepositValue = request.DepositValue.Value;
+        }
+
+        if (request.DepositWindowHours.IsSet)
+        {
+            company.DepositWindowHours = request.DepositWindowHours.Value;
+        }
+
+        if (company.DepositMode == DepositMode.Percentage && company.DepositValue > 100)
+        {
+            return Error.Validation(ErrorCodes.InvalidDepositPercentage, "DepositValue must be 100 or less when DepositMode is Percentage.");
+        }
+
         await db.SaveChangesAsync(cancellationToken);
 
         return Result.Updated;
@@ -112,5 +133,6 @@ public sealed class UpdateCompanyCommandHandler(
     public static class ErrorCodes
     {
         public const string NotFound = "UpdateCompanyCommand.NotFound";
+        public const string InvalidDepositPercentage = "UpdateCompanyCommand.InvalidDepositPercentage";
     }
 }
