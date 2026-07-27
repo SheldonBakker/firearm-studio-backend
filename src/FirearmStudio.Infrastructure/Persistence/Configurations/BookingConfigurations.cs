@@ -112,6 +112,7 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(x => x.PackagePrice).HasPrecision(12, 2);
         builder.Property(x => x.ShooterCount).HasDefaultValue(1);
         builder.Property(x => x.Notes).HasMaxLength(2000);
+        builder.Property(x => x.CalendarToken).IsRequired().HasMaxLength(64);
 
         builder.ToTable(table =>
         {
@@ -134,6 +135,7 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.HasIndex(x => new { x.CompanyId, x.BookingDate });
         builder.HasIndex(x => new { x.CompanyId, x.Status });
         builder.HasIndex(x => new { x.CompanyId, x.BookingNumber }).IsUnique();
+        builder.HasIndex(x => x.CalendarToken).IsUnique();
         builder.HasIndex(x => x.CustomerId);
         builder.HasIndex(x => x.PackageId);
         builder.HasIndex(x => x.InvoiceId);
