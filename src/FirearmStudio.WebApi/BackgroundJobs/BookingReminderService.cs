@@ -90,11 +90,13 @@ public sealed class BookingReminderService(
                     var result = await RunForCompanyAsync(
                         db, lifecycleOutbox, notificationSettings, companyId, fromDate, toDate, nowUtc, cancellationToken);
 
-                    if ((result.Queued > 0 || result.SkippedNoEmail > 0) && logger.IsEnabled(LogLevel.Information))
+                    if ((result.Queued > 0 || result.SkippedNoEmail > 0 || result.SkippedMissingRange > 0)
+                        && logger.IsEnabled(LogLevel.Information))
                     {
                         logger.LogInformation(
-                            "Booking reminders for company {CompanyId}: {Queued} queued, {Skipped} skipped (no email).",
-                            companyId, result.Queued, result.SkippedNoEmail);
+                            "Booking reminders for company {CompanyId}: {Queued} queued, {SkippedNoEmail} skipped " +
+                            "(no email), {SkippedMissingRange} skipped (missing range).",
+                            companyId, result.Queued, result.SkippedNoEmail, result.SkippedMissingRange);
                     }
                 }
             }
@@ -132,7 +134,7 @@ public sealed class BookingReminderService(
 
         if (dueBookings.Count == 0)
         {
-            return new BookingReminderRunResult(0, 0);
+            return new BookingReminderRunResult(0, 0, 0);
         }
 
         var company = await db.Companies
@@ -169,11 +171,31 @@ public sealed class BookingReminderService(
 
         var queued = 0;
         var skippedNoEmail = 0;
+        var skippedMissingRange = 0;
 
         foreach (var booking in dueBookings)
         {
-            // Stamp unconditionally, even when there is no email to send to, so a booking with no
-            // customer email is not re-evaluated on every future tick.
+            // A dangling ShootingRangeId FK is a data-quality problem, not a "nothing to send"
+            // outcome: leave ReminderSentAt unset so this booking is retried once the range is
+            // fixed, rather than stamping it and silently losing the reminder forever. Checked
+            // before stamping anything so one bad booking can never affect the others in this
+            // tenant's batch.
+            if (!rangeNames.TryGetValue(booking.ShootingRangeId, out var rangeName))
+            {
+                skippedMissingRange++;
+                if (logger.IsEnabled(LogLevel.Warning))
+                {
+                    logger.LogWarning(
+                        "Skipped BookingReminder event for booking {BookingNumber}: shooting range " +
+                        "{ShootingRangeId} not found. ReminderSentAt left unset so this retries once fixed.",
+                        booking.BookingNumber, booking.ShootingRangeId);
+                }
+
+                continue;
+            }
+
+            // Stamp unconditionally from here on, even when there is no email to send to, so a
+            // booking with no customer email is not re-evaluated on every future tick.
             booking.ReminderSentAt = nowUtc;
 
             if (!customers.TryGetValue(booking.CustomerId, out var customer)
@@ -191,7 +213,6 @@ public sealed class BookingReminderService(
             }
 
             string email = customer.Email;
-            var rangeName = rangeNames[booking.ShootingRangeId];
             var invoiceNumber = booking.InvoiceId is Guid invoiceId ? invoiceNumbers.GetValueOrDefault(invoiceId) : null;
 
             var links = BookingCalendarLinkBuilder.Build(
@@ -232,8 +253,8 @@ public sealed class BookingReminderService(
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return new BookingReminderRunResult(queued, skippedNoEmail);
+        return new BookingReminderRunResult(queued, skippedNoEmail, skippedMissingRange);
     }
 
-    private sealed record BookingReminderRunResult(int Queued, int SkippedNoEmail);
+    private sealed record BookingReminderRunResult(int Queued, int SkippedNoEmail, int SkippedMissingRange);
 }
