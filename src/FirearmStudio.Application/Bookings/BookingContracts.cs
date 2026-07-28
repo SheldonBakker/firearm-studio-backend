@@ -25,6 +25,8 @@ public sealed record BookingResponse(
     string? Notes,
     DateTime? ConfirmedAt,
     DateTime? CancelledAt,
+    DateTime? ReminderSentAt,
+    DateTime? CheckedInAt,
     DateTime CreatedAt)
 {
     public static Expression<Func<Booking, BookingResponse>> QueryProjection => b => new BookingResponse(
@@ -35,7 +37,7 @@ public sealed record BookingResponse(
         b.InvoiceId,
         b.BookingDate, b.StartTime, b.EndTime,
         b.Status, b.Source, b.ShooterCount, b.Notes,
-        b.ConfirmedAt, b.CancelledAt, b.CreatedAt);
+        b.ConfirmedAt, b.CancelledAt, b.ReminderSentAt, b.CheckedInAt, b.CreatedAt);
 }
 
 public sealed record BookingListItemDto(
