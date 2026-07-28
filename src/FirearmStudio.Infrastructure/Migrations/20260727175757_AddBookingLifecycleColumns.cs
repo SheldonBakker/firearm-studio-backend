@@ -36,7 +36,7 @@ namespace FirearmStudio.Infrastructure.Migrations
             migrationBuilder.Sql(
                 """
                 UPDATE public.bookings
-                SET calendar_token = translate(encode(gen_random_uuid()::bytea, 'base64'), '+/=', '-_')
+                SET calendar_token = replace(gen_random_uuid()::text, '-', '')
                 WHERE calendar_token = '';
                 """);
 
