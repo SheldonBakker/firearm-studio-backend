@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using FirearmStudio.Application.Packages;
 using FirearmStudio.Application.ShootingRanges;
 using FirearmStudio.Domain.Entities;
+using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Bookings.GetPublicBookingOptions;
 
@@ -14,10 +15,15 @@ public sealed record PublicCompanyResponse(
     string? AddressLine2,
     string? City,
     string? Province,
-    string? PostalCode)
+    string? PostalCode,
+    DepositMode DepositMode,
+    decimal DepositValue,
+    int DepositWindowHours,
+    bool IsVatRegistered)
 {
     public static Expression<Func<Company, PublicCompanyResponse>> QueryProjection => c => new PublicCompanyResponse(
-        c.Id, c.Name, c.Email, c.Phone, c.AddressLine1, c.AddressLine2, c.City, c.Province, c.PostalCode);
+        c.Id, c.Name, c.Email, c.Phone, c.AddressLine1, c.AddressLine2, c.City, c.Province, c.PostalCode,
+        c.DepositMode, c.DepositValue, c.DepositWindowHours, !string.IsNullOrWhiteSpace(c.VatNumber));
 }
 
 public sealed record PublicBookingOptionsResponse(

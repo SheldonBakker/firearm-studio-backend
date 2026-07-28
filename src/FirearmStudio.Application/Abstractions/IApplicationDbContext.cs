@@ -22,6 +22,7 @@ public interface IApplicationDbContext
     DbSet<Package> Packages { get; }
     DbSet<PackageItem> PackageItems { get; }
     DbSet<Booking> Bookings { get; }
+    DbSet<BookingAttendee> BookingAttendees { get; }
     DbSet<SageConnection> SageConnections { get; }
     DbSet<OutboxMessage> OutboxMessages { get; }
 

@@ -1,13 +1,20 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FirearmStudio.Application.Bookings.CreateBooking;
 
-public sealed class CreateBookingCommandHandler(IApplicationDbContext db, ITenantContext tenant)
+public sealed class CreateBookingCommandHandler(
+    IApplicationDbContext db,
+    ITenantContext tenant,
+    IBookingLifecycleOutbox lifecycleOutbox,
+    NotificationSettings notificationSettings,
+    ILogger<CreateBookingCommandHandler> logger)
     : ICommandHandler<CreateBookingCommand, ErrorOr<BookingResponse>>
 {
     public async Task<ErrorOr<BookingResponse>> Handle(CreateBookingCommand command, CancellationToken cancellationToken)
@@ -127,7 +134,6 @@ public sealed class CreateBookingCommandHandler(IApplicationDbContext db, ITenan
                 var company = await db.Companies
                     .AsNoTracking()
                     .Where(c => c.Id == tenant.CompanyId)
-                    .Select(c => new { c.VatNumber, c.DueDays })
                     .FirstAsync(ct);
 
                 var invoice = BookingInvoiceFactory.Create(
@@ -135,6 +141,61 @@ public sealed class CreateBookingCommandHandler(IApplicationDbContext db, ITenan
 
                 db.Invoices.Add(invoice);
                 booking.InvoiceId = invoice.Id;
+
+                var customer = await db.Customers
+                    .AsNoTracking()
+                    .Where(c => c.Id == request.CustomerId)
+                    .Select(c => new
+                    {
+                        c.Email,
+                        Name = c.CustomerType == CustomerType.Company ? c.CompanyName : c.FullName,
+                    })
+                    .FirstAsync(ct);
+
+                if (string.IsNullOrWhiteSpace(customer.Email))
+                {
+                    if (logger.IsEnabled(LogLevel.Information))
+                    {
+                        logger.LogInformation(
+                            "Skipped BookingConfirmed event for booking {BookingNumber}: customer has no email.",
+                            booking.BookingNumber);
+                    }
+                }
+                else
+                {
+                    var links = BookingCalendarLinkBuilder.Build(
+                        notificationSettings.PublicBaseUrl,
+                        booking.CalendarToken,
+                        new BookingIcsBuilder.BookingIcsData(
+                            booking.Id,
+                            booking.BookingNumber,
+                            booking.PackageName,
+                            result.Value.RangeName,
+                            booking.BookingDate,
+                            booking.StartTime,
+                            booking.EndTime,
+                            booking.ShooterCount),
+                        new BookingIcsBuilder.CompanyIcsData(
+                            company.Name,
+                            company.AddressLine1,
+                            company.AddressLine2,
+                            company.City,
+                            company.Province,
+                            company.PostalCode));
+
+                    lifecycleOutbox.Add(
+                        OutboxMessageTypes.BookingConfirmed,
+                        company,
+                        booking,
+                        result.Value.RangeName,
+                        customer.Email,
+                        customer.Name,
+                        icsUrl: links.IcsUrl,
+                        googleCalendarUrl: links.GoogleCalendarUrl,
+                        depositAmount: null,
+                        depositDueAt: null,
+                        invoiceNumber: invoice.InvoiceNumber);
+                }
             }
 
             await db.SaveChangesAsync(ct);

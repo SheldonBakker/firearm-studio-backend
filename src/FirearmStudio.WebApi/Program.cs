@@ -13,7 +13,12 @@ using Serilog;
 
 try
 {
-    DotNetEnv.Env.TraversePath().Load();
+    // NoClobber: an explicitly-set environment variable (e.g. a connection string override
+    // passed inline) must win over .env - .env should only fill in variables that are unset.
+    DotNetEnv.Env
+        .NoClobber()
+        .TraversePath()
+        .Load();
 }
 catch (Exception ex)
 {
@@ -70,6 +75,8 @@ builder.Services
 builder.Services.AddHostedService<MonthlyInvoiceGenerationService>();
 builder.Services.AddHostedService<OutboxProcessorService>();
 builder.Services.AddHostedService<LicenceReminderService>();
+builder.Services.AddHostedService<BookingReminderService>();
+builder.Services.AddHostedService<BookingDepositExpiryService>();
 
 builder.Services.AddRateLimiter(options =>
 {

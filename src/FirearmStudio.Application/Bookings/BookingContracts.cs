@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 
@@ -24,6 +25,8 @@ public sealed record BookingResponse(
     string? Notes,
     DateTime? ConfirmedAt,
     DateTime? CancelledAt,
+    DateTime? ReminderSentAt,
+    DateTime? CheckedInAt,
     DateTime CreatedAt)
 {
     public static Expression<Func<Booking, BookingResponse>> QueryProjection => b => new BookingResponse(
@@ -34,7 +37,7 @@ public sealed record BookingResponse(
         b.InvoiceId,
         b.BookingDate, b.StartTime, b.EndTime,
         b.Status, b.Source, b.ShooterCount, b.Notes,
-        b.ConfirmedAt, b.CancelledAt, b.CreatedAt);
+        b.ConfirmedAt, b.CancelledAt, b.ReminderSentAt, b.CheckedInAt, b.CreatedAt);
 }
 
 public sealed record BookingListItemDto(
@@ -125,6 +128,8 @@ public sealed record PublicBookingResponse(
     decimal Subtotal,
     decimal VatAmount,
     decimal Total,
+    decimal? DepositAmount,
+    DateTime? DepositDueAt,
     IReadOnlyList<PublicBookingConfirmationResponse> Bookings,
     PublicInvoiceBankingResponse Banking);
 
@@ -135,3 +140,47 @@ public sealed record PublicInvoiceBankingResponse(
     string? BankBranchCode,
     string? BankAccountType,
     string? BankSwiftCode);
+
+public sealed record AttendeeRequest(
+    string FullName,
+    string IdNumber,
+    string? LicenceNumber,
+    string? FirearmMakeModel,
+    string? FirearmSerialNumber,
+    string? Calibre,
+    FirearmOrigin FirearmOrigin,
+    bool SignedIndemnity,
+    string? Notes);
+
+public sealed record AttendeeResponse(
+    Guid Id,
+    Guid BookingId,
+    string FullName,
+    string IdNumber,
+    string? LicenceNumber,
+    string? FirearmMakeModel,
+    string? FirearmSerialNumber,
+    string? Calibre,
+    FirearmOrigin FirearmOrigin,
+    bool SignedIndemnity,
+    string? Notes,
+    DateTime CreatedAt)
+{
+    public static Expression<Func<BookingAttendee, AttendeeResponse>> QueryProjection => a => new AttendeeResponse(
+        a.Id, a.BookingId, a.FullName, a.IdNumber,
+        a.LicenceNumber, a.FirearmMakeModel, a.FirearmSerialNumber, a.Calibre,
+        a.FirearmOrigin, a.SignedIndemnity, a.Notes, a.CreatedAt);
+}
+
+public sealed record UpdateAttendeeRequest(
+    Optional<string> FullName,
+    Optional<string> IdNumber,
+    Optional<string?> LicenceNumber,
+    Optional<string?> FirearmMakeModel,
+    Optional<string?> FirearmSerialNumber,
+    Optional<string?> Calibre,
+    Optional<FirearmOrigin> FirearmOrigin,
+    Optional<bool> SignedIndemnity,
+    Optional<string?> Notes);
+
+public sealed record CheckInBookingRequest(IReadOnlyList<AttendeeRequest> Attendees);

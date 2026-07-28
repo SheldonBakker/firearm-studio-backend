@@ -22,6 +22,8 @@ namespace FirearmStudio.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "customer_type", new[] { "company", "individual" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "deposit_mode", new[] { "fixed_amount", "none", "percentage" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "firearm_origin", new[] { "own", "range_rental" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "firearm_status", new[] { "in_storage", "inactive", "pending_transfer", "released" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "invoice_status", new[] { "cancelled", "draft", "overdue", "paid", "sent" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "licence_reminder_tier", new[] { "days30", "days60", "days90", "expired" });
@@ -194,9 +196,19 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("booking_number");
 
+                    b.Property<string>("CalendarToken")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("calendar_token");
+
                     b.Property<DateTime?>("CancelledAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("cancelled_at");
+
+                    b.Property<DateTime?>("CheckedInAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("checked_in_at");
 
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid")
@@ -242,6 +254,10 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnType("numeric(12,2)")
                         .HasColumnName("package_price");
 
+                    b.Property<DateTime?>("ReminderSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reminder_sent_at");
+
                     b.Property<int>("ShooterCount")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -276,6 +292,10 @@ namespace FirearmStudio.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_bookings");
+
+                    b.HasIndex("CalendarToken")
+                        .IsUnique()
+                        .HasDatabaseName("ix_bookings_calendar_token");
 
                     b.HasIndex("CompanyId")
                         .HasDatabaseName("ix_bookings_company_id");
@@ -315,6 +335,90 @@ namespace FirearmStudio.Infrastructure.Migrations
 
                             t.HasCheckConstraint("ck_bookings_times", "end_time > start_time");
                         });
+                });
+
+            modelBuilder.Entity("FirearmStudio.Domain.Entities.BookingAttendee", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_id");
+
+                    b.Property<string>("Calibre")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("calibre");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FirearmMakeModel")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("firearm_make_model");
+
+                    b.Property<FirearmOrigin>("FirearmOrigin")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("firearm_origin")
+                        .HasDefaultValue(FirearmOrigin.Own)
+                        .HasColumnName("firearm_origin");
+
+                    b.Property<string>("FirearmSerialNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("firearm_serial_number");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("IdNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("id_number");
+
+                    b.Property<string>("LicenceNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("licence_number");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<bool>("SignedIndemnity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("signed_indemnity");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_booking_attendees");
+
+                    b.HasIndex("BookingId")
+                        .HasDatabaseName("ix_booking_attendees_booking_id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_booking_attendees_company_id");
+
+                    b.ToTable("booking_attendees", (string)null);
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.Company", b =>
@@ -379,6 +483,25 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<DepositMode>("DepositMode")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("deposit_mode")
+                        .HasDefaultValue(DepositMode.None)
+                        .HasColumnName("deposit_mode");
+
+                    b.Property<decimal>("DepositValue")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("deposit_value");
+
+                    b.Property<int>("DepositWindowHours")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(48)
+                        .HasColumnName("deposit_window_hours");
+
                     b.Property<int>("DueDays")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -436,6 +559,12 @@ namespace FirearmStudio.Infrastructure.Migrations
 
                     b.ToTable("companies", null, t =>
                         {
+                            t.HasCheckConstraint("ck_companies_deposit_percentage", "deposit_mode <> 'percentage' or deposit_value <= 100");
+
+                            t.HasCheckConstraint("ck_companies_deposit_value", "deposit_value >= 0");
+
+                            t.HasCheckConstraint("ck_companies_deposit_window_hours", "deposit_window_hours between 1 and 336");
+
                             t.HasCheckConstraint("ck_companies_due_days", "due_days between 0 and 365");
                         });
                 });
@@ -762,6 +891,19 @@ namespace FirearmStudio.Infrastructure.Migrations
                     b.Property<Guid>("CustomerId")
                         .HasColumnType("uuid")
                         .HasColumnName("customer_id");
+
+                    b.Property<decimal?>("DepositAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("deposit_amount");
+
+                    b.Property<DateTime?>("DepositDueAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deposit_due_at");
+
+                    b.Property<DateTime?>("DepositPaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deposit_paid_at");
 
                     b.Property<DateOnly?>("DueOn")
                         .HasColumnType("date")
@@ -1528,6 +1670,25 @@ namespace FirearmStudio.Infrastructure.Migrations
                     b.Navigation("Package");
 
                     b.Navigation("ShootingRange");
+                });
+
+            modelBuilder.Entity("FirearmStudio.Domain.Entities.BookingAttendee", b =>
+                {
+                    b.HasOne("FirearmStudio.Domain.Entities.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_booking_attendees_bookings_booking_id");
+
+                    b.HasOne("FirearmStudio.Domain.Entities.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_booking_attendees_companies_company_id");
+
+                    b.Navigation("Booking");
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.Customer", b =>

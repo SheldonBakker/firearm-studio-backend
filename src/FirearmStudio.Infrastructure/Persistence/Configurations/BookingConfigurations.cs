@@ -1,4 +1,5 @@
 using FirearmStudio.Domain.Entities;
+using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -112,6 +113,7 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(x => x.PackagePrice).HasPrecision(12, 2);
         builder.Property(x => x.ShooterCount).HasDefaultValue(1);
         builder.Property(x => x.Notes).HasMaxLength(2000);
+        builder.Property(x => x.CalendarToken).IsRequired().HasMaxLength(64);
 
         builder.ToTable(table =>
         {
@@ -134,6 +136,7 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.HasIndex(x => new { x.CompanyId, x.BookingDate });
         builder.HasIndex(x => new { x.CompanyId, x.Status });
         builder.HasIndex(x => new { x.CompanyId, x.BookingNumber }).IsUnique();
+        builder.HasIndex(x => x.CalendarToken).IsUnique();
         builder.HasIndex(x => x.CustomerId);
         builder.HasIndex(x => x.PackageId);
         builder.HasIndex(x => x.InvoiceId);
@@ -162,5 +165,30 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .WithMany()
             .HasForeignKey(b => b.InvoiceId)
             .OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+internal sealed class BookingAttendeeConfiguration : IEntityTypeConfiguration<BookingAttendee>
+{
+    public void Configure(EntityTypeBuilder<BookingAttendee> builder)
+    {
+        builder.ConfigureTenant();
+
+        builder.Property(x => x.FullName).IsRequired().HasMaxLength(200);
+        builder.Property(x => x.IdNumber).IsRequired().HasMaxLength(20);
+        builder.Property(x => x.LicenceNumber).HasMaxLength(50);
+        builder.Property(x => x.FirearmMakeModel).HasMaxLength(200);
+        builder.Property(x => x.FirearmSerialNumber).HasMaxLength(100);
+        builder.Property(x => x.Calibre).HasMaxLength(50);
+        builder.Property(x => x.FirearmOrigin).HasDefaultValue(FirearmOrigin.Own);
+        builder.Property(x => x.SignedIndemnity).HasDefaultValue(false);
+        builder.Property(x => x.Notes).HasMaxLength(500);
+
+        builder.HasIndex(x => x.BookingId);
+
+        builder.HasOne(x => x.Booking)
+            .WithMany()
+            .HasForeignKey(x => x.BookingId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

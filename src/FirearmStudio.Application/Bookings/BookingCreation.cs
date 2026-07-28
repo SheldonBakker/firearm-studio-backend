@@ -148,6 +148,7 @@ internal static class BookingCreation
             PackagePrice = package.Price,
             ShooterCount = request.ShooterCount,
             Notes = request.Notes,
+            CalendarToken = CalendarTokenGenerator.Generate(),
         };
 
         return new BookingInvoiceFactory.BookingLine(booking, range.Name, package.Items);

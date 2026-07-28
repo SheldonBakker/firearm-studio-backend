@@ -31,6 +31,10 @@ public sealed class Booking : BaseEntity, ITenantEntity
     public DateTime? ConfirmedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
 
+    public required string CalendarToken { get; set; }
+    public DateTime? ReminderSentAt { get; set; }
+    public DateTime? CheckedInAt { get; set; }
+
     public ShootingRange? ShootingRange { get; set; }
     public Package? Package { get; set; }
     public Customer? Customer { get; set; }

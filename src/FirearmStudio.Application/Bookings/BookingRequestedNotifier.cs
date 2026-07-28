@@ -35,6 +35,7 @@ internal static class BookingRequestedNotifier
     internal static Dictionary<string, object?> BuildProperties(BookingRequestedPayload payload)
     {
         var response = payload.Response;
+        var detailsByBookingId = payload.BookingDetails.ToDictionary(detail => detail.BookingId);
 
         return new Dictionary<string, object?>
         {
@@ -45,17 +46,26 @@ internal static class BookingRequestedNotifier
             ["vat_amount"] = response.VatAmount,
             ["total"] = response.Total,
             ["bookings"] = response.Bookings
-                .Select(booking => new Dictionary<string, object?>
+                .Select(booking =>
                 {
-                    ["booking_id"] = booking.Id,
-                    ["booking_number"] = booking.BookingNumber,
-                    ["status"] = booking.Status.ToString(),
-                    ["booking_date"] = booking.BookingDate.ToString("yyyy-MM-dd"),
-                    ["start_time"] = booking.StartTime.ToString("HH\\:mm"),
-                    ["end_time"] = booking.EndTime.ToString("HH\\:mm"),
-                    ["range_name"] = booking.RangeName,
-                    ["package_name"] = booking.PackageName,
-                    ["package_price"] = booking.PackagePrice,
+                    detailsByBookingId.TryGetValue(booking.Id, out var detail);
+
+                    return new Dictionary<string, object?>
+                    {
+                        ["booking_id"] = booking.Id,
+                        ["booking_number"] = booking.BookingNumber,
+                        ["status"] = booking.Status.ToString(),
+                        ["booking_date"] = booking.BookingDate.ToString("yyyy-MM-dd"),
+                        ["start_time"] = booking.StartTime.ToString("HH\\:mm"),
+                        ["end_time"] = booking.EndTime.ToString("HH\\:mm"),
+                        ["range_name"] = booking.RangeName,
+                        ["package_name"] = booking.PackageName,
+                        ["package_price"] = booking.PackagePrice,
+                        ["ics_url"] = detail?.IcsUrl,
+                        ["google_calendar_url"] = detail?.GoogleCalendarUrl,
+                        ["deposit_amount"] = detail?.DepositAmount,
+                        ["deposit_due_at"] = detail?.DepositDueAt,
+                    };
                 })
                 .ToList(),
             ["company"] = BuildCompanyProperties(payload.Company),

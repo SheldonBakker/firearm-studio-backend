@@ -1,3 +1,4 @@
+using FirearmStudio.Domain.Enums;
 using FluentValidation;
 
 namespace FirearmStudio.Application.Companies.UpdateCompany;
@@ -76,6 +77,25 @@ public sealed class UpdateCompanyRequestValidator : AbstractValidator<UpdateComp
             .MaximumLength(11)
             .OverridePropertyName(nameof(UpdateCompanyRequest.BankSwiftCode))
             .When(request => request.BankSwiftCode.IsSet);
+        RuleFor(request => request.DepositMode.Value)
+            .IsInEnum()
+            .OverridePropertyName(nameof(UpdateCompanyRequest.DepositMode))
+            .When(request => request.DepositMode.IsSet);
+        RuleFor(request => request.DepositValue.Value)
+            .GreaterThanOrEqualTo(0)
+            .OverridePropertyName(nameof(UpdateCompanyRequest.DepositValue))
+            .When(request => request.DepositValue.IsSet);
+        RuleFor(request => request.DepositWindowHours.Value)
+            .InclusiveBetween(1, 336)
+            .OverridePropertyName(nameof(UpdateCompanyRequest.DepositWindowHours))
+            .When(request => request.DepositWindowHours.IsSet);
+        RuleFor(request => request)
+            .Must(request => request.DepositMode.Value != DepositMode.Percentage
+                             || request.DepositValue.Value <= 100)
+            .WithMessage("DepositValue must be 100 or less when DepositMode is Percentage.")
+            .When(request => request.DepositMode.IsSet
+                             && request.DepositMode.Value == DepositMode.Percentage
+                             && request.DepositValue.IsSet);
     }
 
     private static bool HasAtLeastOneChange(UpdateCompanyRequest request) =>
@@ -94,5 +114,8 @@ public sealed class UpdateCompanyRequestValidator : AbstractValidator<UpdateComp
         || request.BankAccountNumber.IsSet
         || request.BankBranchCode.IsSet
         || request.BankAccountType.IsSet
-        || request.BankSwiftCode.IsSet;
+        || request.BankSwiftCode.IsSet
+        || request.DepositMode.IsSet
+        || request.DepositValue.IsSet
+        || request.DepositWindowHours.IsSet;
 }

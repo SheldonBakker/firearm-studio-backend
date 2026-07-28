@@ -22,7 +22,16 @@ public sealed class TenantAndAuditInterceptor(
         typeof(ShootingRange),
         typeof(Package),
         typeof(Booking),
+        typeof(BookingAttendee),
     ];
+
+    // Properties that must never be written to AuditLog.OldValue/NewValue: capability credentials
+    // and sensitive identifiers that would otherwise be logged in plaintext.
+    private static readonly Dictionary<Type, HashSet<string>> AuditExcludedProperties = new()
+    {
+        [typeof(Booking)] = [nameof(Booking.CalendarToken)],
+        [typeof(BookingAttendee)] = [nameof(BookingAttendee.IdNumber)],
+    };
 
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData, InterceptionResult<int> result)
@@ -165,7 +174,11 @@ public sealed class TenantAndAuditInterceptor(
     private static AuditLog BuildAuditLog(EntityEntry<BaseEntity> entry)
     {
         // Materialize once to avoid double enumeration when both old and new values are needed.
-        var props = entry.Properties.Where(p => !p.Metadata.IsPrimaryKey()).ToList();
+        var excluded = AuditExcludedProperties.GetValueOrDefault(entry.Entity.GetType());
+        var props = entry.Properties
+            .Where(p => !p.Metadata.IsPrimaryKey())
+            .Where(p => excluded is null || !excluded.Contains(p.Metadata.Name))
+            .ToList();
 
         string? oldValue = null;
         string? newValue = null;

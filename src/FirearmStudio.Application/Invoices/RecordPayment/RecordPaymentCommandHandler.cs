@@ -1,13 +1,20 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Bookings;
+using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FirearmStudio.Application.Invoices.RecordPayment;
 
-public sealed class RecordPaymentCommandHandler(IApplicationDbContext db)
+public sealed class RecordPaymentCommandHandler(
+    IApplicationDbContext db,
+    IBookingLifecycleOutbox lifecycleOutbox,
+    NotificationSettings notificationSettings,
+    ILogger<RecordPaymentCommandHandler> logger)
     : ICommandHandler<RecordPaymentCommand, ErrorOr<Updated>>
 {
     public async Task<ErrorOr<Updated>> Handle(RecordPaymentCommand command, CancellationToken cancellationToken)
@@ -60,19 +67,125 @@ public sealed class RecordPaymentCommandHandler(IApplicationDbContext db)
                 Notes = request.Notes,
             }, ct);
 
-            if (alreadyPaid + request.Amount >= invoice.Total)
+            var totalPaid = alreadyPaid + request.Amount;
+
+            if (totalPaid >= invoice.Total)
             {
                 invoice.Status = InvoiceStatus.Paid;
             }
 
-            var pendingBookings = await db.Bookings
-                .Where(b => b.InvoiceId == command.Id && b.Status == BookingStatus.Pending)
-                .ToListAsync(ct);
+            var depositJustCovered = invoice.DepositAmount is not null
+                && invoice.DepositPaidAt is null
+                && totalPaid >= invoice.DepositAmount.Value;
 
-            foreach (var booking in pendingBookings)
+            if (depositJustCovered)
             {
-                booking.Status = BookingStatus.Confirmed;
-                booking.ConfirmedAt = DateTime.UtcNow;
+                invoice.DepositPaidAt = DateTime.UtcNow;
+            }
+
+            // No deposit policy on this invoice: preserve the pre-deposit behaviour of confirming
+            // pending bookings as soon as any payment is recorded. When a deposit policy applies,
+            // only confirm once the deposit threshold is actually reached.
+            var shouldConfirmPendingBookings = invoice.DepositAmount is null || depositJustCovered;
+
+            if (shouldConfirmPendingBookings)
+            {
+                var pendingBookings = await db.Bookings
+                    .Where(b => b.InvoiceId == command.Id && b.Status == BookingStatus.Pending)
+                    .ToListAsync(ct);
+
+                if (pendingBookings.Count > 0)
+                {
+                    var company = await db.Companies
+                        .AsNoTracking()
+                        .FirstAsync(c => c.Id == invoice.CompanyId, ct);
+
+                    var customer = await db.Customers
+                        .AsNoTracking()
+                        .Where(c => c.Id == invoice.CustomerId)
+                        .Select(c => new
+                        {
+                            c.Email,
+                            Name = c.CustomerType == CustomerType.Company ? c.CompanyName : c.FullName,
+                        })
+                        .FirstAsync(ct);
+
+                    var rangeIds = pendingBookings.Select(b => b.ShootingRangeId).Distinct().ToList();
+                    var rangeNames = await db.ShootingRanges
+                        .AsNoTracking()
+                        .Where(r => rangeIds.Contains(r.Id))
+                        .ToDictionaryAsync(r => r.Id, r => r.Name, ct);
+
+                    foreach (var booking in pendingBookings)
+                    {
+                        booking.Status = BookingStatus.Confirmed;
+                        booking.ConfirmedAt = DateTime.UtcNow;
+
+                        var rangeName = rangeNames[booking.ShootingRangeId];
+
+                        if (string.IsNullOrWhiteSpace(customer.Email))
+                        {
+                            if (logger.IsEnabled(LogLevel.Information))
+                            {
+                                logger.LogInformation(
+                                    "Skipped BookingConfirmed event for booking {BookingNumber}: customer has no email.",
+                                    booking.BookingNumber);
+                            }
+
+                            continue;
+                        }
+
+                        var links = BookingCalendarLinkBuilder.Build(
+                            notificationSettings.PublicBaseUrl,
+                            booking.CalendarToken,
+                            new BookingIcsBuilder.BookingIcsData(
+                                booking.Id,
+                                booking.BookingNumber,
+                                booking.PackageName,
+                                rangeName,
+                                booking.BookingDate,
+                                booking.StartTime,
+                                booking.EndTime,
+                                booking.ShooterCount),
+                            new BookingIcsBuilder.CompanyIcsData(
+                                company.Name,
+                                company.AddressLine1,
+                                company.AddressLine2,
+                                company.City,
+                                company.Province,
+                                company.PostalCode));
+
+                        lifecycleOutbox.Add(
+                            OutboxMessageTypes.BookingConfirmed,
+                            company,
+                            booking,
+                            rangeName,
+                            customer.Email,
+                            customer.Name,
+                            icsUrl: links.IcsUrl,
+                            googleCalendarUrl: links.GoogleCalendarUrl,
+                            depositAmount: invoice.DepositAmount,
+                            depositDueAt: invoice.DepositDueAt,
+                            invoiceNumber: invoice.InvoiceNumber);
+                    }
+                }
+                else if (depositJustCovered)
+                {
+                    var bookingStatuses = await db.Bookings
+                        .Where(b => b.InvoiceId == command.Id)
+                        .Select(b => b.Status)
+                        .ToListAsync(ct);
+
+                    if (bookingStatuses.Count > 0 && bookingStatuses.All(s => s == BookingStatus.Cancelled))
+                    {
+                        logger.LogWarning(
+                            "Deposit of {DepositAmount:F2} was recorded as paid on invoice {InvoiceNumber}, " +
+                            "but all bookings on this invoice are already cancelled - likely an orphaned " +
+                            "deposit payment after expiry cancellation.",
+                            invoice.DepositAmount!.Value,
+                            invoice.InvoiceNumber);
+                    }
+                }
             }
 
             await db.SaveChangesAsync(ct);

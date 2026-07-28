@@ -1,5 +1,6 @@
 using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Entities;
+using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -40,10 +41,25 @@ internal sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
         builder.Property(x => x.IsActive).HasDefaultValue(true);
         builder.Property(x => x.DueDays).HasDefaultValue(30);
         builder.Property(x => x.AutoBillingEnabled).HasDefaultValue(true);
+        builder.Property(x => x.DepositMode).HasDefaultValue(DepositMode.None);
+        builder.Property(x => x.DepositValue).HasPrecision(12, 2).HasDefaultValue(0m);
+        builder.Property(x => x.DepositWindowHours).HasDefaultValue(48);
 
-        builder.ToTable(table => table.HasCheckConstraint(
-            "ck_companies_due_days",
-            "due_days between 0 and 365"));
+        builder.ToTable(table =>
+        {
+            table.HasCheckConstraint(
+                "ck_companies_due_days",
+                "due_days between 0 and 365");
+            table.HasCheckConstraint(
+                "ck_companies_deposit_value",
+                "deposit_value >= 0");
+            table.HasCheckConstraint(
+                "ck_companies_deposit_percentage",
+                "deposit_mode <> 'percentage' or deposit_value <= 100");
+            table.HasCheckConstraint(
+                "ck_companies_deposit_window_hours",
+                "deposit_window_hours between 1 and 336");
+        });
     }
 }
 

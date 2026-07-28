@@ -40,6 +40,7 @@ public sealed class ApplicationDbContext(
     public DbSet<Package> Packages => Set<Package>();
     public DbSet<PackageItem> PackageItems => Set<PackageItem>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<BookingAttendee> BookingAttendees => Set<BookingAttendee>();
     public DbSet<SageConnection> SageConnections => Set<SageConnection>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 

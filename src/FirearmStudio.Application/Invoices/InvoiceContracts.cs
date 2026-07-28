@@ -16,10 +16,14 @@ public sealed record InvoiceListItemDto(
     decimal VatAmount,
     decimal Total,
     InvoiceStatus Status,
-    DateOnly? DueOn)
+    DateOnly? DueOn,
+    decimal? DepositAmount,
+    DateTime? DepositDueAt,
+    DateTime? DepositPaidAt)
 {
     public static Expression<Func<Invoice, InvoiceListItemDto>> QueryProjection => i => new InvoiceListItemDto(
-        i.Id, i.CustomerId, i.InvoiceNumber, i.InvoiceMonth, i.Subtotal, i.VatAmount, i.Total, i.Status, i.DueOn);
+        i.Id, i.CustomerId, i.InvoiceNumber, i.InvoiceMonth, i.Subtotal, i.VatAmount, i.Total, i.Status, i.DueOn,
+        i.DepositAmount, i.DepositDueAt, i.DepositPaidAt);
 }
 
 public sealed record InvoiceLineDto(Guid Id, string Description, decimal Quantity, decimal UnitPrice, decimal LineTotal);
@@ -37,6 +41,9 @@ public sealed record InvoiceDetailDto(
     InvoiceStatus Status,
     DateTime? SentAt,
     DateOnly? DueOn,
+    decimal? DepositAmount,
+    DateTime? DepositDueAt,
+    DateTime? DepositPaidAt,
     CustomerResponse? Customer,
     IReadOnlyList<InvoiceLineDto> Lines,
     IReadOnlyList<InvoicePaymentDto> Payments)
@@ -52,6 +59,9 @@ public sealed record InvoiceDetailDto(
         invoice.Status,
         invoice.SentAt,
         invoice.DueOn,
+        invoice.DepositAmount,
+        invoice.DepositDueAt,
+        invoice.DepositPaidAt,
         invoice.Customer == null
             ? null
             : new CustomerResponse(

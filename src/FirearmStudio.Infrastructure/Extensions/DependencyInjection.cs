@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
         AddKlaviyo(services, configuration);
+        AddNotificationSettings(services, configuration);
         AddSageAccounting(services);
 
         return services;
@@ -84,6 +85,34 @@ public static class DependencyInjection
             client.DefaultRequestHeaders.TryAddWithoutValidation("revision", settings.ApiRevision);
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         });
+    }
+
+    private static void AddNotificationSettings(IServiceCollection services, IConfiguration configuration)
+    {
+        var settings = configuration.GetSection(NotificationSettings.SectionName).Get<NotificationSettings>()
+            ?? new NotificationSettings();
+
+        var isAbsoluteUri = Uri.TryCreate(settings.PublicBaseUrl, UriKind.Absolute, out _);
+
+        if (string.IsNullOrWhiteSpace(settings.PublicBaseUrl) || !isAbsoluteUri)
+        {
+            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+                ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+                ?? string.Empty;
+
+            if (!string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Missing or invalid required configuration '{NotificationSettings.SectionName}:PublicBaseUrl'. " +
+                    "Set it to an absolute URI via NotificationSettings__PublicBaseUrl in .env or user-secrets.");
+            }
+
+            Console.Error.WriteLine(
+                $"[WARNING] {NotificationSettings.SectionName}:PublicBaseUrl is not configured. " +
+                "Booking calendar links will not function. Set NotificationSettings__PublicBaseUrl in .env or user-secrets.");
+        }
+
+        services.AddSingleton(settings);
     }
 
     private static void AddCredentialProtection(IServiceCollection services, IConfiguration configuration)
