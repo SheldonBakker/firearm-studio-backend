@@ -18,11 +18,12 @@ public sealed record PublicCompanyResponse(
     string? PostalCode,
     DepositMode DepositMode,
     decimal DepositValue,
-    int DepositWindowHours)
+    int DepositWindowHours,
+    bool IsVatRegistered)
 {
     public static Expression<Func<Company, PublicCompanyResponse>> QueryProjection => c => new PublicCompanyResponse(
         c.Id, c.Name, c.Email, c.Phone, c.AddressLine1, c.AddressLine2, c.City, c.Province, c.PostalCode,
-        c.DepositMode, c.DepositValue, c.DepositWindowHours);
+        c.DepositMode, c.DepositValue, c.DepositWindowHours, !string.IsNullOrWhiteSpace(c.VatNumber));
 }
 
 public sealed record PublicBookingOptionsResponse(

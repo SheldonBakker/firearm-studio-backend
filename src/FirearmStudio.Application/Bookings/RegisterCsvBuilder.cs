@@ -7,10 +7,14 @@ namespace FirearmStudio.Application.Bookings;
 /// Pure builder for the attendance register CSV export. No database or file I/O; callers
 /// pre-load the rows. Quoting follows RFC 4180: any field containing a comma, double quote,
 /// carriage return, or line feed is wrapped in double quotes, and embedded double quotes are
-/// doubled.
+/// doubled. Fields whose first character could be interpreted as a spreadsheet formula
+/// (=, +, -, @, tab, or carriage return) are neutralized with a leading apostrophe before
+/// RFC 4180 quoting is applied.
 /// </summary>
 public static class RegisterCsvBuilder
 {
+    private static readonly char[] FormulaTriggerChars = ['=', '+', '-', '@', '\t', '\r'];
+
     private static readonly string[] Headers =
     [
         "Date",
@@ -80,11 +84,15 @@ public static class RegisterCsvBuilder
 
     private static string QuoteField(string value)
     {
-        if (value.IndexOfAny([',', '"', '\r', '\n']) < 0)
+        var neutralized = value.Length > 0 && Array.IndexOf(FormulaTriggerChars, value[0]) >= 0
+            ? "'" + value
+            : value;
+
+        if (neutralized.IndexOfAny([',', '"', '\r', '\n']) < 0)
         {
-            return value;
+            return neutralized;
         }
 
-        return $"\"{value.Replace("\"", "\"\"")}\"";
+        return $"\"{neutralized.Replace("\"", "\"\"")}\"";
     }
 }

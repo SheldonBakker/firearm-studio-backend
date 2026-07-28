@@ -87,9 +87,11 @@ prefer the pooler. `.env` is git-ignored; never commit real credentials.
 
 ## Database setup
 
-The schema is managed by EF Core migrations. The API applies any pending migrations automatically
-on startup, so a fresh deployment brings its database up to date on first launch. You can also
-apply them manually against a target database:
+The schema is managed by EF Core migrations. The API does not apply pending migrations on startup;
+migrations must be applied manually against the target database before deploying new code that
+depends on them. Apply migrations first, then deploy/restart the API - PostgreSQL enum type
+catalogs are cached per data source, so a running API instance cannot see enum types created after
+it started until it restarts.
 
 ```bash
 dotnet ef database update -p src/FirearmStudio.Infrastructure -s src/FirearmStudio.WebApi
@@ -127,8 +129,11 @@ non-root `aspnet:10.0-noble-chiseled`) plus a `docker-compose.yml` for a Portain
   Environment variables), using the `Section__Key` convention.
 - Liveness endpoint: `GET /health` (anonymous, no API key). Point your reverse proxy's health check
   there — the chiseled runtime has no shell, so a container-level `HEALTHCHECK` is intentionally omitted.
-- Database migrations run automatically when the API starts (including inside the container), so the
-  target database is migrated on deployment. Ensure the configured connection has DDL privileges.
+- Database migrations are not run automatically by the API (including inside the container); apply
+  them manually against the target database before rolling out a new image. Apply migrations first,
+  then deploy/restart - PostgreSQL enum type catalogs are cached per data source, so a running API
+  cannot see enum types created after it started until it restarts. Ensure the connection used to
+  apply migrations has DDL privileges.
 
 The image is **built by GitHub Actions** (`.github/workflows/docker-publish.yml`) on every push to
 `main` and pushed to **GHCR** as `ghcr.io/sheldonbakker/firearm-studio-api:latest`. `docker-compose.yml`

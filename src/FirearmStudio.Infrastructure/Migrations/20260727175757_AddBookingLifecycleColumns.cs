@@ -40,6 +40,14 @@ namespace FirearmStudio.Infrastructure.Migrations
                 WHERE calendar_token = '';
                 """);
 
+            // The empty-string default only existed to satisfy the NOT NULL constraint during
+            // backfill above; every row now has a real token, so no further inserts should ever
+            // rely on this default.
+            migrationBuilder.Sql(
+                """
+                ALTER TABLE public.bookings ALTER COLUMN calendar_token DROP DEFAULT;
+                """);
+
             migrationBuilder.CreateIndex(
                 name: "ix_bookings_calendar_token",
                 table: "bookings",

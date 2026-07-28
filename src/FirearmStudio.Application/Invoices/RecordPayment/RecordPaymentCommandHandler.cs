@@ -169,6 +169,23 @@ public sealed class RecordPaymentCommandHandler(
                             invoiceNumber: invoice.InvoiceNumber);
                     }
                 }
+                else if (depositJustCovered)
+                {
+                    var bookingStatuses = await db.Bookings
+                        .Where(b => b.InvoiceId == command.Id)
+                        .Select(b => b.Status)
+                        .ToListAsync(ct);
+
+                    if (bookingStatuses.Count > 0 && bookingStatuses.All(s => s == BookingStatus.Cancelled))
+                    {
+                        logger.LogWarning(
+                            "Deposit of {DepositAmount:F2} was recorded as paid on invoice {InvoiceNumber}, " +
+                            "but all bookings on this invoice are already cancelled - likely an orphaned " +
+                            "deposit payment after expiry cancellation.",
+                            invoice.DepositAmount!.Value,
+                            invoice.InvoiceNumber);
+                    }
+                }
             }
 
             await db.SaveChangesAsync(ct);

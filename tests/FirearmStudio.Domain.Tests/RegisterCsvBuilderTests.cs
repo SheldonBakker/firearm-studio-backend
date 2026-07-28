@@ -159,4 +159,26 @@ public class RegisterCsvBuilderTests
 
         Assert.DoesNotContain("null", text, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Theory]
+    [InlineData("=cmd|'/c calc'!A1")]
+    [InlineData("+1+1")]
+    [InlineData("-1+1")]
+    [InlineData("@SUM(1+1)")]
+    [InlineData("\tmalicious")]
+    [InlineData("\rmalicious")]
+    public void Build_neutralizes_leading_formula_trigger_characters(string customerName)
+    {
+        var text = BuildText(DefaultRow(customerName: customerName));
+
+        Assert.Contains("'" + customerName, text);
+    }
+
+    [Fact]
+    public void Build_does_not_neutralize_a_value_without_a_leading_formula_trigger()
+    {
+        var text = BuildText(DefaultRow(customerName: "Acme Corp"));
+
+        Assert.DoesNotContain("'Acme Corp", text);
+    }
 }
