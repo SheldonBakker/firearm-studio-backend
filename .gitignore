@@ -11,6 +11,7 @@ bin?Debug/
 CONVENTIONS.md
 # dotenv files
 .env
+docs
 
 # User-specific files
 *.rsuser
