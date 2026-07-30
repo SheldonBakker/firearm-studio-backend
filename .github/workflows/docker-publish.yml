@@ -48,4 +48,4 @@ jobs:
 
       - name: Trigger Portainer redeploy
         run: |
-          curl -fsSL -X POST "https://admin.firearmstudio.com/api/stacks/webhooks/190c6c1c-8147-4a47-99ee-3c45b3c2da1c"
+          curl -fsSL -X POST "https://admin.firearmstudio.com/api/stacks/webhooks/5b49c4d8-570c-468a-a3e7-ae94e33a7337"
