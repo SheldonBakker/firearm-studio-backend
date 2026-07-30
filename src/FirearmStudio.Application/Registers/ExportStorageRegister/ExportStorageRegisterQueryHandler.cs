@@ -16,6 +16,7 @@ public sealed class ExportStorageRegisterQueryHandler(
     : IQueryHandler<ExportStorageRegisterQuery, ErrorOr<RegisterExportResult>>
 {
     private const int MaxExportRows = 20000;
+    private const int MaxPdfExportRows = 5000;
 
     public async Task<ErrorOr<RegisterExportResult>> Handle(
         ExportStorageRegisterQuery query, CancellationToken cancellationToken)
@@ -27,7 +28,7 @@ public sealed class ExportStorageRegisterQueryHandler(
 
         if (tenant.CompanyId is not { } companyId)
         {
-            return Error.Unauthorized(ErrorCodes.NoCompany, "The current user has no company scope.");
+            return Error.Forbidden(ErrorCodes.NoCompany, "The current user has no company scope.");
         }
 
         var queryable = db.StorageRecords
@@ -36,11 +37,13 @@ public sealed class ExportStorageRegisterQueryHandler(
 
         var totalCount = await queryable.CountAsync(cancellationToken);
 
-        if (totalCount > MaxExportRows)
+        var maxRows = query.Format == RegisterExportFormat.Csv ? MaxExportRows : MaxPdfExportRows;
+
+        if (totalCount > maxRows)
         {
             return Error.Validation(
                 ErrorCodes.TooManyRows,
-                $"The register export is limited to {MaxExportRows} rows. Narrow the date range and try again.");
+                $"The {(query.Format == RegisterExportFormat.Csv ? "CSV" : "PDF")} register export is limited to {maxRows} rows. Narrow the date range{(query.Format == RegisterExportFormat.Csv ? string.Empty : " or export CSV for wider ranges")} and try again.");
         }
 
         var rows = await queryable
@@ -59,7 +62,12 @@ public sealed class ExportStorageRegisterQueryHandler(
 
         var company = await db.Companies
             .AsNoTracking()
-            .FirstAsync(c => c.Id == companyId, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == companyId, cancellationToken);
+
+        if (company is null)
+        {
+            return Error.NotFound(ErrorCodes.CompanyNotFound, "Company not found.");
+        }
 
         var generatedBy = currentUserService.User.Email ?? "unknown";
 
@@ -90,6 +98,8 @@ public sealed class ExportStorageRegisterQueryHandler(
 
     // Reads are invisible to the audit interceptor (it only sees mutations), so compliance
     // exports self-record: who produced which register, over what range, and how many rows.
+    // The EF interceptor still stamps Id, CreatedAt, and CompanyId on insert, which is why
+    // they are not set here.
     private async Task WriteAuditLogAsync(
         ExportStorageRegisterQuery query, int rowCount, CancellationToken cancellationToken)
     {
@@ -122,5 +132,6 @@ public sealed class ExportStorageRegisterQueryHandler(
         public const string InvalidRange = "ExportStorageRegisterQuery.InvalidRange";
         public const string NoCompany = "ExportStorageRegisterQuery.NoCompany";
         public const string TooManyRows = "ExportStorageRegisterQuery.TooManyRows";
+        public const string CompanyNotFound = "ExportStorageRegisterQuery.CompanyNotFound";
     }
 }

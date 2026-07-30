@@ -69,7 +69,7 @@ public sealed class QuestPdfRegisterRenderer : IRegisterPdfRenderer
             {
                 for (var i = 0; i < document.Columns.Count; i++)
                 {
-                    columns.RelativeColumn();
+                    columns.RelativeColumn(document.ColumnWeights?[i] ?? 1f);
                 }
             });
 

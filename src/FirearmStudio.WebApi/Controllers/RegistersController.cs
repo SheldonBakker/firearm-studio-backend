@@ -6,6 +6,7 @@ using FirearmStudio.WebApi.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace FirearmStudio.WebApi.Controllers;
 
@@ -17,17 +18,17 @@ public sealed class RegistersController(IMediator mediator) : ControllerBase
 {
     [HttpGet("firearms/export")]
     public Task<ActionResult> ExportFirearmsRegister(
-        [FromQuery] DateOnly from,
-        [FromQuery] DateOnly to,
-        [FromQuery] RegisterExportFormat format,
+        [FromQuery][BindRequired] DateOnly from,
+        [FromQuery][BindRequired] DateOnly to,
+        [FromQuery][BindRequired] RegisterExportFormat format,
         CancellationToken ct) =>
         Export(RegisterKind.Firearms, from, to, format, ct);
 
     [HttpGet("safe-custody/export")]
     public Task<ActionResult> ExportSafeCustodyRegister(
-        [FromQuery] DateOnly from,
-        [FromQuery] DateOnly to,
-        [FromQuery] RegisterExportFormat format,
+        [FromQuery][BindRequired] DateOnly from,
+        [FromQuery][BindRequired] DateOnly to,
+        [FromQuery][BindRequired] RegisterExportFormat format,
         CancellationToken ct) =>
         Export(RegisterKind.SafeCustody, from, to, format, ct);
 

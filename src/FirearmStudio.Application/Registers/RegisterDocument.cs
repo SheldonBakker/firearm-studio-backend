@@ -16,4 +16,5 @@ public sealed record RegisterDocument(
     string GeneratedBy,
     IReadOnlyList<string> Columns,
     IReadOnlyList<string[]> Rows,
-    string EmptyStateText);
+    string EmptyStateText,
+    IReadOnlyList<float>? ColumnWeights = null);

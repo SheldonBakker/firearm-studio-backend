@@ -88,4 +88,15 @@ public class RegisterDocumentFactoryTests
         Assert.Empty(document.Rows);
         Assert.Equal("No movements in period.", document.EmptyStateText);
     }
+
+    [Theory]
+    [InlineData(RegisterKind.Firearms)]
+    [InlineData(RegisterKind.SafeCustody)]
+    public void Create_sets_column_weights_matching_column_count(RegisterKind kind)
+    {
+        var document = Create(kind, SampleRow());
+
+        Assert.NotNull(document.ColumnWeights);
+        Assert.Equal(document.Columns.Count, document.ColumnWeights!.Count);
+    }
 }

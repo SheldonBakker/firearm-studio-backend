@@ -74,14 +74,17 @@ public sealed record StorageRegisterRow
         PostalCode = r.Firearm.Customer.PostalCode,
         LicenceNumber = r.Firearm.Licences
             .OrderByDescending(l => l.ExpiresOn)
+            .ThenByDescending(l => l.Id)
             .Select(l => (string?)l.LicenceNumber)
             .FirstOrDefault(),
         LicenceIssuedOn = r.Firearm.Licences
             .OrderByDescending(l => l.ExpiresOn)
+            .ThenByDescending(l => l.Id)
             .Select(l => l.IssuedOn)
             .FirstOrDefault(),
         LicenceExpiresOn = r.Firearm.Licences
             .OrderByDescending(l => l.ExpiresOn)
+            .ThenByDescending(l => l.Id)
             .Select(l => (DateOnly?)l.ExpiresOn)
             .FirstOrDefault(),
         StoredFrom = r.StoredFrom,
