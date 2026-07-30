@@ -1,20 +1,15 @@
 using System.Globalization;
 using System.Text;
+using FirearmStudio.Application.Common;
 
 namespace FirearmStudio.Application.Bookings;
 
 /// <summary>
 /// Pure builder for the attendance register CSV export. No database or file I/O; callers
-/// pre-load the rows. Quoting follows RFC 4180: any field containing a comma, double quote,
-/// carriage return, or line feed is wrapped in double quotes, and embedded double quotes are
-/// doubled. Fields whose first character could be interpreted as a spreadsheet formula
-/// (=, +, -, @, tab, or carriage return) are neutralized with a leading apostrophe before
-/// RFC 4180 quoting is applied.
+/// pre-load the rows. CSV quoting behaviour is documented on <see cref="CsvWriting"/>.
 /// </summary>
 public static class RegisterCsvBuilder
 {
-    private static readonly char[] FormulaTriggerChars = ['=', '+', '-', '@', '\t', '\r'];
-
     private static readonly string[] Headers =
     [
         "Date",
@@ -38,11 +33,11 @@ public static class RegisterCsvBuilder
     {
         var builder = new StringBuilder();
 
-        WriteRow(builder, Headers);
+        CsvWriting.WriteRow(builder, Headers);
 
         foreach (var row in rows)
         {
-            WriteRow(builder, FormatRow(row));
+            CsvWriting.WriteRow(builder, FormatRow(row));
         }
 
         return Encoding.UTF8.GetBytes(builder.ToString());
@@ -66,33 +61,4 @@ public static class RegisterCsvBuilder
         row.SignedIndemnity ? "Yes" : "No",
         row.CheckedInAt?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) ?? string.Empty,
     ];
-
-    private static void WriteRow(StringBuilder builder, string[] fields)
-    {
-        for (var i = 0; i < fields.Length; i++)
-        {
-            if (i > 0)
-            {
-                builder.Append(',');
-            }
-
-            builder.Append(QuoteField(fields[i]));
-        }
-
-        builder.Append("\r\n");
-    }
-
-    private static string QuoteField(string value)
-    {
-        var neutralized = value.Length > 0 && Array.IndexOf(FormulaTriggerChars, value[0]) >= 0
-            ? "'" + value
-            : value;
-
-        if (neutralized.IndexOfAny([',', '"', '\r', '\n']) < 0)
-        {
-            return neutralized;
-        }
-
-        return $"\"{neutralized.Replace("\"", "\"\"")}\"";
-    }
 }
