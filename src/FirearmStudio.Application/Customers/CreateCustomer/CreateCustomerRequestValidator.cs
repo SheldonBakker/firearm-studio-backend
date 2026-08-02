@@ -1,4 +1,5 @@
 using FirearmStudio.Domain.Enums;
+using FirearmStudio.Domain.Services;
 using FluentValidation;
 
 namespace FirearmStudio.Application.Customers.CreateCustomer;
@@ -28,5 +29,10 @@ public sealed class CreateCustomerRequestValidator : AbstractValidator<CreateCus
         RuleFor(request => request.Province).MaximumLength(120);
         RuleFor(request => request.PostalCode).MaximumLength(20);
         RuleFor(request => request.Notes).MaximumLength(4000);
+        RuleFor(request => request.IdNumber)
+            .MaximumLength(20)
+            .Must(idNumber => SouthAfricanIdValidator.IsValid(idNumber!))
+            .WithMessage("IdNumber must be a valid South African ID number or passport number.")
+            .When(request => !string.IsNullOrWhiteSpace(request.IdNumber));
     }
 }

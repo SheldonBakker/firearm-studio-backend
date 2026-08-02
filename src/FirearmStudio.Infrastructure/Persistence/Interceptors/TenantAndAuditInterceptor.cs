@@ -31,6 +31,7 @@ public sealed class TenantAndAuditInterceptor(
     {
         [typeof(Booking)] = [nameof(Booking.CalendarToken)],
         [typeof(BookingAttendee)] = [nameof(BookingAttendee.IdNumber)],
+        [typeof(Customer)] = [nameof(Customer.IdNumberCiphertext)],
     };
 
     public override InterceptionResult<int> SavingChanges(

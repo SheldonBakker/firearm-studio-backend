@@ -1,3 +1,4 @@
+using FirearmStudio.Domain.Services;
 using FluentValidation;
 
 namespace FirearmStudio.Application.Customers.UpdateCustomer;
@@ -12,7 +13,8 @@ public sealed class UpdateCustomerRequestValidator : AbstractValidator<UpdateCus
                              || request.Email.IsSet
                              || request.Phone.IsSet
                              || request.Notes.IsSet
-                             || request.IsActive.IsSet)
+                             || request.IsActive.IsSet
+                             || request.IdNumber.IsSet)
             .WithMessage("At least one field must be supplied.");
 
         RuleFor(request => request.FullName.Value)
@@ -39,5 +41,11 @@ public sealed class UpdateCustomerRequestValidator : AbstractValidator<UpdateCus
             .MaximumLength(4000)
             .OverridePropertyName(nameof(UpdateCustomerRequest.Notes))
             .When(request => request.Notes.IsSet);
+        RuleFor(request => request.IdNumber.Value)
+            .MaximumLength(20)
+            .Must(idNumber => SouthAfricanIdValidator.IsValid(idNumber!))
+            .WithMessage("IdNumber must be a valid South African ID number or passport number.")
+            .OverridePropertyName(nameof(UpdateCustomerRequest.IdNumber))
+            .When(request => request.IdNumber.IsSet && !string.IsNullOrWhiteSpace(request.IdNumber.Value));
     }
 }

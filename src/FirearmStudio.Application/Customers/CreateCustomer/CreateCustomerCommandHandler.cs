@@ -5,7 +5,9 @@ using FirearmStudio.Domain.Entities;
 
 namespace FirearmStudio.Application.Customers.CreateCustomer;
 
-public sealed class CreateCustomerCommandHandler(IApplicationDbContext db)
+public sealed class CreateCustomerCommandHandler(
+    IApplicationDbContext db,
+    ICredentialProtector credentialProtector)
     : ICommandHandler<CreateCustomerCommand, ErrorOr<CustomerResponse>>
 {
     public async Task<ErrorOr<CustomerResponse>> Handle(CreateCustomerCommand command, CancellationToken cancellationToken)
@@ -26,6 +28,9 @@ public sealed class CreateCustomerCommandHandler(IApplicationDbContext db)
             Province = request.Province,
             PostalCode = request.PostalCode,
             Notes = request.Notes,
+            IdNumberCiphertext = string.IsNullOrWhiteSpace(request.IdNumber)
+                ? null
+                : credentialProtector.Protect(request.IdNumber),
         };
 
         await db.Customers.AddAsync(customer, cancellationToken);

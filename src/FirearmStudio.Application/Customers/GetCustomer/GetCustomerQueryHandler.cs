@@ -1,11 +1,14 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Domain.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Customers.GetCustomer;
 
-public sealed class GetCustomerQueryHandler(IApplicationDbContext db)
+public sealed class GetCustomerQueryHandler(
+    IApplicationDbContext db,
+    ICredentialProtector credentialProtector)
     : IQueryHandler<GetCustomerQuery, ErrorOr<CustomerDetailResponse>>
 {
     public async Task<ErrorOr<CustomerDetailResponse>> Handle(GetCustomerQuery query, CancellationToken cancellationToken)
@@ -16,9 +19,17 @@ public sealed class GetCustomerQueryHandler(IApplicationDbContext db)
             .Select(CustomerDetailResponse.QueryProjection)
             .FirstOrDefaultAsync(cancellationToken);
 
-        return customer is null
-            ? Error.NotFound(ErrorCodes.NotFound, "Customer not found.")
-            : customer;
+        if (customer is null)
+        {
+            return Error.NotFound(ErrorCodes.NotFound, "Customer not found.");
+        }
+
+        return customer.IdNumberCiphertext is null
+            ? customer
+            : customer with
+            {
+                IdNumberMasked = IdNumberMask.Mask(credentialProtector.Unprotect(customer.IdNumberCiphertext)),
+            };
     }
 
     public static class ErrorCodes
