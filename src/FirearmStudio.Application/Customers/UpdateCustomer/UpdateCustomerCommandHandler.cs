@@ -5,7 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Customers.UpdateCustomer;
 
-public sealed class UpdateCustomerCommandHandler(IApplicationDbContext db)
+public sealed class UpdateCustomerCommandHandler(
+    IApplicationDbContext db,
+    ICredentialProtector credentialProtector)
     : ICommandHandler<UpdateCustomerCommand, ErrorOr<Updated>>
 {
     public async Task<ErrorOr<Updated>> Handle(UpdateCustomerCommand command, CancellationToken cancellationToken)
@@ -45,6 +47,13 @@ public sealed class UpdateCustomerCommandHandler(IApplicationDbContext db)
         if (request.IsActive.IsSet)
         {
             customer.IsActive = request.IsActive.Value;
+        }
+
+        if (request.IdNumber.IsSet)
+        {
+            customer.IdNumberCiphertext = string.IsNullOrWhiteSpace(request.IdNumber.Value)
+                ? null
+                : credentialProtector.Protect(request.IdNumber.Value);
         }
 
         await db.SaveChangesAsync(cancellationToken);

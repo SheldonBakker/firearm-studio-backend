@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Text.Json.Serialization;
 using FirearmStudio.Application.Model;
 using FirearmStudio.Application.StorageRecords;
 using FirearmStudio.Domain.Entities;
@@ -36,6 +37,11 @@ public sealed record CustomerDetailResponse(
     IReadOnlyList<CustomerInvoiceListItemDto> Invoices,
     IReadOnlyList<CustomerStorageRecordDto> StorageRecords)
 {
+    [JsonIgnore]
+    public string? IdNumberCiphertext { get; init; }
+
+    public string? IdNumberMasked { get; init; }
+
     public static Expression<Func<Customer, CustomerDetailResponse>> QueryProjection => c => new CustomerDetailResponse(
         c.Id, c.CustomerType, c.FullName, c.CompanyName, c.Email, c.Phone, c.Notes, c.IsActive,
         c.Firearms
@@ -53,7 +59,10 @@ public sealed record CustomerDetailResponse(
             .OrderByDescending(s => s.StoredFrom)
             .ThenBy(s => s.Id)
             .Select(s => new CustomerStorageRecordDto(s.Id, s.FirearmId, s.MonthlyRate, s.StorageStatus, s.StoredFrom, s.StoredUntil))
-            .ToList());
+            .ToList())
+    {
+        IdNumberCiphertext = c.IdNumberCiphertext,
+    };
 }
 
 public sealed record CustomerListItemDto(
@@ -85,7 +94,7 @@ public sealed record CustomerInvoiceListItemDto(Guid Id, string? InvoiceNumber, 
 public sealed record CreateCustomerRequest(
     CustomerType CustomerType, string? FullName, string? CompanyName, string? RegistrationNumber,
     string? VatNumber, string? Email, string? Phone, string? AddressLine1, string? City,
-    string? Province, string? PostalCode, string? Notes);
+    string? Province, string? PostalCode, string? Notes, string? IdNumber);
 
 public sealed record UpdateCustomerRequest(
     Optional<string> FullName,
@@ -93,4 +102,5 @@ public sealed record UpdateCustomerRequest(
     Optional<string> Email,
     Optional<string> Phone,
     Optional<string?> Notes,
-    Optional<bool> IsActive);
+    Optional<bool> IsActive,
+    Optional<string?> IdNumber);
