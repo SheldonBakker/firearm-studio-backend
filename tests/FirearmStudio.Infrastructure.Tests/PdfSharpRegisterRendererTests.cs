@@ -1,6 +1,7 @@
 using System.Text;
 using FirearmStudio.Application.Registers;
 using FirearmStudio.Infrastructure.Services;
+using PdfSharp.Pdf.Advanced;
 using PdfSharp.Pdf.IO;
 using Xunit;
 
@@ -34,6 +35,26 @@ public class PdfSharpRegisterRendererTests
         using var stream = new MemoryStream(bytes);
         using var pdf = PdfReader.Open(stream, PdfDocumentOpenMode.Import);
         return (pdf.PageCount, pdf.Pages[0].Width.Point, pdf.Pages[0].Height.Point);
+    }
+
+    // Content streams are FlateDecode-compressed by default; PdfContent.Stream.UnfilteredValue
+    // decodes them so a test can assert on the actual PDF text-show ("Tj") operators rather than
+    // just "it produced some bytes".
+    private static string ExtractContentStreamText(byte[] bytes)
+    {
+        using var stream = new MemoryStream(bytes);
+        using var pdf = PdfReader.Open(stream, PdfDocumentOpenMode.Import);
+
+        var builder = new StringBuilder();
+        for (var i = 0; i < pdf.PageCount; i++)
+        {
+            foreach (PdfContent content in pdf.Pages[i].Contents)
+            {
+                builder.Append(Encoding.Latin1.GetString(content.Stream.UnfilteredValue));
+            }
+        }
+
+        return builder.ToString();
     }
 
     [Fact]
@@ -94,7 +115,17 @@ public class PdfSharpRegisterRendererTests
         var bytes = _renderer.Render(SampleDocument(rows, columns, weights));
 
         Assert.Equal("%PDF", Encoding.ASCII.GetString(bytes, 0, 4));
-        Assert.True(Inspect(bytes).PageCount >= 1);
+
+        // 40 rows at the same 8pt row height as every other case in this suite fits 24 rows per
+        // page under the reserved header/footer space, so this must land on exactly two pages.
+        Assert.Equal(2, Inspect(bytes).PageCount);
+
+        // MigraDoc splits text into a "Tj" run per word, so "Column 15" shows up as two separate
+        // show-text operators rather than one. Their presence confirms the 16th column header
+        // actually reached the table instead of being silently dropped by the width calculation.
+        var text = ExtractContentStreamText(bytes);
+        Assert.Contains("(Column) Tj", text);
+        Assert.Contains("(15) Tj", text);
     }
 
     [Fact]
@@ -117,37 +148,101 @@ public class PdfSharpRegisterRendererTests
         ]));
 
         Assert.Equal("%PDF", Encoding.ASCII.GetString(bytes, 0, 4));
+
+        var text = ExtractContentStreamText(bytes);
+
+        // The four-column default has room for "only-one" (its own row's remaining three cells
+        // render blank, which shows up as nothing to assert on rather than a token) and for the
+        // first four values of the six-value row. MigraDoc line-wraps at the hyphen, so
+        // "only-one" is two show-text operators, not one.
+        Assert.Contains("(only-)", text);
+        Assert.Contains("(one) Tj", text);
+        Assert.Contains("(d) Tj", text);
+
+        // The fifth and sixth values of the long row must never reach the page.
+        Assert.DoesNotContain("(e) Tj", text);
+        Assert.DoesNotContain("(f) Tj", text);
     }
 
     [Fact]
     public void Render_tolerates_control_characters_and_missing_company_details()
     {
-        var document = SampleDocument([["a\nb", "c\td", "e", ""]]) with
+        var withControlCharacters = SampleDocument([["a\nb", "c\td", "e", ""]]) with
         {
             CompanyRegistrationNumber = null,
             CompanyAddress = string.Empty,
         };
 
-        var bytes = _renderer.Render(document);
+        var bytes = _renderer.Render(withControlCharacters);
 
         Assert.Equal("%PDF", Encoding.ASCII.GetString(bytes, 0, 4));
+
+        // MigraDoc does not throw on a raw newline or tab inside a paragraph - it turns them into
+        // layout, which silently changes row heights and pagination instead of raising an error.
+        // RegisterCellText.Sanitise collapses "a\nb" and "c\td" to "a b" and "c d" before they
+        // reach MigraDoc, so a document built from the pre-collapsed strings must render
+        // byte-length identical to one built from the raw control characters. If Sanitise were
+        // bypassed, the raw control characters would add layout the equivalent-spaces document
+        // does not have, and the lengths would diverge.
+        var withEquivalentSpaces = SampleDocument([["a b", "c d", "e", ""]]) with
+        {
+            CompanyRegistrationNumber = null,
+            CompanyAddress = string.Empty,
+        };
+
+        var equivalentBytes = _renderer.Render(withEquivalentSpaces);
+
+        Assert.Equal(equivalentBytes.Length, bytes.Length);
     }
 
     [Fact]
     public void Render_is_safe_to_call_concurrently()
     {
-        // Registered as a singleton and called from parallel request threads.
-        var results = new byte[8][];
+        // Registered as a singleton and called from parallel request threads. PDFsharp's global
+        // font cache is not thread-safe, so an unsynchronised Render can corrupt a glyph under
+        // contention without throwing - a passing "%PDF" + non-null check would not catch that.
+        //
+        // PdfDocument.Info.CreationDate/ModificationDate are pinned from GeneratedAt, so repeated
+        // renders of the same document agree there, but PdfSharp's internal per-document Guid
+        // (used for the trailer /ID and XMP DocumentID/InstanceID) is regenerated on every render
+        // and has no public setter, so byte-for-byte equality across renders is not achievable.
+        // Byte length is: the glyph corruption this guards against injects an extra font-switch
+        // operator into the content stream, which changes the length.
+        var document = SampleDocument(
+            Enumerable.Range(0, 50)
+                .Select(i => new[] { $"2026-02-{(i % 28) + 1:00}", "CZ", $"SN{i:0000}", "" })
+                .ToList());
 
-        Parallel.For(0, 8, i =>
+        var baselineLength = _renderer.Render(document).Length; // warm the font pipeline serially
+
+        var results = new byte[32][];
+
+        Parallel.For(0, 32, new ParallelOptions { MaxDegreeOfParallelism = 16 }, i =>
         {
-            results[i] = _renderer.Render(SampleDocument([[$"row{i}", "CZ", "SN1", ""]]));
+            results[i] = _renderer.Render(document);
         });
 
         Assert.All(results, bytes =>
         {
-            Assert.NotNull(bytes);
             Assert.Equal("%PDF", Encoding.ASCII.GetString(bytes, 0, 4));
+            Assert.Equal(baselineLength, bytes.Length);
         });
+    }
+
+    [Fact]
+    public void Reserved_header_and_footer_space_yields_the_expected_page_count()
+    {
+        // Pins the exact page count for a fixed row count so a regression in the reserved
+        // header/footer space - the TopMargin/BottomMargin constants that keep the table clear of
+        // the header and footer - shows up as a failing assertion instead of a silently corrupted
+        // layout. 24 rows fit on a single page under the current reservation; one more does not,
+        // so 25 rows is the smallest row count that must span two pages.
+        var rows = Enumerable.Range(0, 25)
+            .Select(i => new[] { $"2026-02-{(i % 28) + 1:00}", "CZ", $"SN{i:0000}", "" })
+            .ToList();
+
+        var bytes = _renderer.Render(SampleDocument(rows));
+
+        Assert.Equal(2, Inspect(bytes).PageCount);
     }
 }
