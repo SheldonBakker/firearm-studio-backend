@@ -21,9 +21,9 @@ public class RegisterTableLayoutTests
     {
         var widths = RegisterTableLayout.ColumnWidths(3, [1f, 2f, 1f], Content);
 
-        Assert.Equal(200d, widths[0], 6);
-        Assert.Equal(400d, widths[1], 6);
-        Assert.Equal(200d, widths[2], 6);
+        Assert.Equal(200.25d, widths[0], 6);
+        Assert.Equal(399.5d, widths[1], 6);
+        Assert.Equal(200.25d, widths[2], 6);
     }
 
     [Fact]
@@ -65,8 +65,8 @@ public class RegisterTableLayoutTests
         var widths = RegisterTableLayout.ColumnWidths(2, [1f, 3f, 99f], Content);
 
         Assert.Equal(2, widths.Length);
-        Assert.Equal(200d, widths[0], 6);
-        Assert.Equal(600d, widths[1], 6);
+        Assert.Equal(200.5d, widths[0], 6);
+        Assert.Equal(599.5d, widths[1], 6);
     }
 
     [Fact]
@@ -99,6 +99,48 @@ public class RegisterTableLayoutTests
         var widths = RegisterTableLayout.ColumnWidths(3, [1f, 0f, 1f], Content);
 
         Assert.All(widths, w => Assert.True(w > 0, $"Expected a positive width, got {w}."));
+        Assert.Equal(Content, widths.Sum(), 9);
+    }
+
+    [Fact]
+    public void A_negative_weight_anywhere_falls_back_to_equal_widths_even_when_the_total_is_positive()
+    {
+        // A negative weight is nonsense input; an even layout beats a distorted one.
+        var widths = RegisterTableLayout.ColumnWidths(2, [-1f, 5f], Content);
+
+        Assert.Equal(400d, widths[0], 6);
+        Assert.Equal(400d, widths[1], 6);
+    }
+
+    [Fact]
+    public void Widths_sum_exactly_when_the_minimum_width_floor_engages()
+    {
+        float[] weights = [97f, .. Enumerable.Repeat(1f, 97)];
+
+        var widths = RegisterTableLayout.ColumnWidths(98, weights, 10d);
+
+        Assert.Equal(98, widths.Length);
+        Assert.Equal(10d, widths.Sum(), 9);
+    }
+
+    [Fact]
+    public void Widths_sum_exactly_for_the_safe_custody_shape_at_an_absurdly_small_content_width()
+    {
+        float[] weights = [0.9f, 0.9f, 0.9f, 0.9f, 0.8f, 1.1f, 1.3f, 1.2f, 1.8f, 1.2f, 0.9f, 0.8f, 0.8f, 1.2f, 0.9f, 1.0f];
+
+        var widths = RegisterTableLayout.ColumnWidths(weights.Length, weights, 10d);
+
+        Assert.Equal(10d, widths.Sum(), 9);
+    }
+
+    [Fact]
+    public void Every_column_meets_the_minimum_width_when_the_content_width_allows_it()
+    {
+        float[] weights = [500f, 0.01f, 0.01f];
+
+        var widths = RegisterTableLayout.ColumnWidths(3, weights, Content);
+
+        Assert.All(widths, w => Assert.True(w >= 1d, $"Expected at least the 1pt floor, got {w}."));
         Assert.Equal(Content, widths.Sum(), 9);
     }
 }
