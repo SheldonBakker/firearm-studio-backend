@@ -12,7 +12,6 @@
     <PackageReference Include="Npgsql" />
     <PackageReference Include="EFCore.NamingConventions" />
     <PackageReference Include="DotNetEnv" />
-    <PackageReference Include="QuestPDF" />
     <PackageReference Include="PDFsharp-MigraDoc" />
   </ItemGroup>
 

@@ -19,8 +19,8 @@ public sealed class PdfSharpRegisterRenderer : IRegisterPdfRenderer
     private const double BorderWidth = 0.5;
     private const double CellPadding = 3;
 
-    // MigraDoc does NOT reserve body space for a page header/footer the way QuestPDF's
-    // page.Header()/page.Footer() do - HeaderDistance/FooterDistance only place the header and
+    // MigraDoc does NOT reserve body space for a page header/footer automatically -
+    // HeaderDistance/FooterDistance only place the header and
     // footer frames relative to the page edge, and TopMargin/BottomMargin only place the body.
     // Left alone, the body overlaps the header and footer on every page.
     //
