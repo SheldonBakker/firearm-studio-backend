@@ -33,7 +33,7 @@
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageVersion Include="ErrorOr" Version="2.1.1" />
 
-    <!-- PDF generation (MIT, pure managed: no native binaries, no revenue threshold) -->
+    <!-- PDF generation -->
     <PackageVersion Include="PDFsharp-MigraDoc" Version="6.2.4" />
 
     <!-- CQRS mediator (12.x is the last MIT-licensed line; 13+ is commercial) -->

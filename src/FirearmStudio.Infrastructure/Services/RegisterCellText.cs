@@ -2,11 +2,6 @@ using System.Text;
 
 namespace FirearmStudio.Infrastructure.Services;
 
-/// <summary>
-/// Flattens a register cell to a single line. MigraDoc parses tabs and newlines inside paragraph
-/// text into layout nodes, which distorts row heights in the dense register table, so free-text
-/// fields are collapsed to single spaces before they reach the document.
-/// </summary>
 internal static class RegisterCellText
 {
     public static string Sanitise(string? value)

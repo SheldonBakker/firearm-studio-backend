@@ -8,14 +8,8 @@ namespace FirearmStudio.Infrastructure.Tests;
 
 public class PdfSharpRegisterRendererPerformanceTests(ITestOutputHelper output)
 {
-    // ExportStorageRegisterQueryHandler caps PDF exports at 5000 rows and renders them
-    // synchronously inside the HTTP request, so this is a product requirement, not a benchmark.
     private const int MaxPdfExportRows = 5000;
 
-    // Measured baseline on 2026-08-10: about 3.5 seconds for the 5000-row maximum export,
-    // in both Debug and Release. The budget is deliberately loose so CI hardware variance
-    // cannot make this flaky; it exists to catch a super-linear regression, not to track
-    // small drifts.
     private const int BudgetSeconds = 20;
 
     [Fact]

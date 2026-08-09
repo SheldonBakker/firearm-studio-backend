@@ -44,8 +44,6 @@ public class EmbeddedFontResolverTests
     [InlineData("")]
     public void ResolveTypeface_falls_back_to_the_embedded_family_for_any_other_request(string family)
     {
-        // A chiseled container has no system fonts, so an unresolved family would be a
-        // runtime failure mid-export. The resolver is total by design.
         var info = _resolver.ResolveTypeface(family, bold: false, italic: false);
 
         Assert.NotNull(info);
@@ -61,7 +59,6 @@ public class EmbeddedFontResolverTests
 
         Assert.NotNull(bytes);
         Assert.True(bytes!.Length > 100_000, $"Expected a real TTF, got {bytes.Length} bytes.");
-        // TrueType files start with the 0x00010000 sfnt version tag.
         Assert.Equal(new byte[] { 0x00, 0x01, 0x00, 0x00 }, bytes.Take(4).ToArray());
     }
 

@@ -24,8 +24,6 @@ public class RegisterCellTextTests
     [InlineData("a\vb", "a b")]
     public void Control_characters_become_spaces(string input, string expected)
     {
-        // MigraDoc turns these into tab and line-break DOM nodes, which silently
-        // distorts row heights in the dense register table.
         Assert.Equal(expected, RegisterCellText.Sanitise(input));
     }
 
@@ -50,7 +48,6 @@ public class RegisterCellTextTests
     [Fact]
     public void Non_ascii_latin_text_survives_intact()
     {
-        // South African place and person names carry accented Latin characters; Roboto covers them.
         Assert.Equal("Muizenberg Straße", RegisterCellText.Sanitise("Muizenberg Straße"));
     }
 }

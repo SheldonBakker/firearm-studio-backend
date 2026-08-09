@@ -29,8 +29,6 @@ public class RegisterTableLayoutTests
     [Fact]
     public void Widths_always_sum_to_the_content_width_exactly()
     {
-        // The real safe-custody register: 16 columns whose weights sum to 16.6, a value that
-        // does not divide cleanly. Any rounding drift here pushes a column off the page.
         float[] weights = [0.9f, 0.9f, 0.9f, 0.9f, 0.8f, 1.1f, 1.3f, 1.2f, 1.8f, 1.2f, 0.9f, 0.8f, 0.8f, 1.2f, 0.9f, 1.0f];
 
         var widths = RegisterTableLayout.ColumnWidths(weights.Length, weights, Content);
@@ -105,7 +103,6 @@ public class RegisterTableLayoutTests
     [Fact]
     public void A_negative_weight_anywhere_falls_back_to_equal_widths_even_when_the_total_is_positive()
     {
-        // A negative weight is nonsense input; an even layout beats a distorted one.
         var widths = RegisterTableLayout.ColumnWidths(2, [-1f, 5f], Content);
 
         Assert.Equal(400d, widths[0], 6);
