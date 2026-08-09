@@ -16,6 +16,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The production container is a chiseled image with no system fonts, so the
+         register PDF ships its own typeface instead of resolving one from the OS. -->
+    <EmbeddedResource Include="Fonts\Roboto-Regular.ttf" />
+    <EmbeddedResource Include="Fonts\Roboto-Bold.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FirearmStudio.Application\FirearmStudio.Application.csproj" />
   </ItemGroup>
 
