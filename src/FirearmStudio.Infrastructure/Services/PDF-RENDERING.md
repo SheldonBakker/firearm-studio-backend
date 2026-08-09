@@ -107,18 +107,37 @@ PDFsharp's global font cache and font-resolution machinery are not thread-safe. 
 concurrently: the renderer is registered as a **singleton** and invoked from parallel request
 threads.
 
-An earlier, otherwise-identical build without the lock was measured under 32-way parallelism
-(`Parallel.For` with `MaxDegreeOfParallelism` well above 1): it corrupted 250 of 384 rendered
-documents, injecting spurious font switches mid-cell into the PDF content stream, and **raised no
-exception**. The corruption is invisible unless you inspect the content stream - the PDF still
-opens and looks plausible. Wrapping the entire compose-plus-render-plus-save sequence in a single
-process-wide `lock` (the static `RenderGate`) eliminated the corruption entirely under the same
-test.
+The race was reproduced independently in two separate experiments, run at different times against
+different builds, with different document shapes and different detection methods, both under
+32-way parallelism (`Parallel.For` with `MaxDegreeOfParallelism` well above 1) with the lock
+removed:
+
+- Experiment A, against the original unlocked renderer, 30-row documents, comparing rendered
+  content streams: 12 of 384 documents deviated, about 3 percent.
+- Experiment B, a deliberate positive control run after the lock was added, using a byte-identical
+  replica with the lock removed, 50-row documents, comparing both byte length and content-stream
+  hashes: 250 of 384 deviated by length and 258 of 384 by content-stream hash, about 65 percent.
+
+Both experiments recorded **zero** deviations across 384 documents with the lock in place.
+
+Do not read either number as *the* corruption rate. The observed rate varies with document shape,
+degree of parallelism and how corruption is detected - it ranged from roughly 3 percent to roughly
+65 percent between these two runs alone, and a different shape or a different concurrency level
+could land outside that range in either direction. The only reliable statement is that the race
+exists, it is not rare enough to ignore, and the lock removes it entirely in every experiment run
+so far.
+
+Critically, the failure mode is **silent**: rendering never throws. Corruption shows up as a
+spurious font switch injected mid-cell into the PDF content stream - the resulting PDF still opens
+and looks plausible without careful inspection. A passing functional test suite is not evidence
+that concurrent rendering is safe, because ordinary assertions (`"%PDF"` prefix, non-empty bytes,
+row/column counts) do not look inside the content stream closely enough to catch it.
 
 Serialising every export process-wide is an accepted cost: the largest register (5000 rows)
 renders in a few seconds, and register PDF exports are infrequent admin operations, not a hot
 request path. Do not remove or narrow this lock without re-running a high-concurrency corruption
-test, not just the functional test suite - the failure mode does not throw, so ordinary test
+test of the kind described above, comparing byte length and content-stream hashes across many
+parallel renders of the same document - the failure mode does not throw, so ordinary test
 assertions will not catch a regression here.
 
 ## 7. Column widths are absolute; MigraDoc never scales a table to fit
