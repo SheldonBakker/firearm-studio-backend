@@ -1,4 +1,5 @@
 using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Application.Common;
 using FirearmStudio.Application.Registers;
 using FirearmStudio.Infrastructure.Services.Fonts;
 using MigraDoc.DocumentObjectModel;
@@ -71,8 +72,17 @@ public sealed class PdfSharpRegisterRenderer : IRegisterPdfRenderer
             // makes same-document renders reproducible aside from PdfSharp's internal, read-only
             // per-document Guid (used for the trailer /ID and XMP DocumentID/InstanceID), which
             // cannot be pinned.
-            pdf.PdfDocument.Info.CreationDate = document.GeneratedAt;
-            pdf.PdfDocument.Info.ModificationDate = document.GeneratedAt;
+            //
+            // GeneratedAt is SAST wall-clock time with DateTimeKind.Unspecified (RegisterDocumentFactory
+            // converts it from UTC via TimeZoneInfo.ConvertTimeFromUtc). PdfSharp writes the PDF's
+            // /CreationDate offset from the DateTime's Kind, and an Unspecified Kind is stamped
+            // with the machine's own local UTC offset rather than South Africa's - correct only by
+            // accident on a UTC+2 host, and two hours wrong under the production container's UTC
+            // clock. Converting back through the same TimeZoneInfo yields a true UTC instant with
+            // Kind.Utc, so PdfSharp writes a genuine +00'00 offset instead.
+            var generatedAtUtc = TimeZoneInfo.ConvertTimeToUtc(document.GeneratedAt, SouthAfricaTimeZone.Instance);
+            pdf.PdfDocument.Info.CreationDate = generatedAtUtc;
+            pdf.PdfDocument.Info.ModificationDate = generatedAtUtc;
 
             using var stream = new MemoryStream();
             pdf.PdfDocument.Save(stream, false);

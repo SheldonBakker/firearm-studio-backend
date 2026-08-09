@@ -245,4 +245,31 @@ public class PdfSharpRegisterRendererTests
 
         Assert.Equal(2, Inspect(bytes).PageCount);
     }
+
+    [Fact]
+    public void Render_stamps_the_creation_date_as_a_true_utc_instant()
+    {
+        // SampleDocument's GeneratedAt is 2026-07-29 12:00:00, which RegisterDocumentFactory
+        // produces as SAST wall-clock time (South Africa has no DST, a constant UTC+2), so the
+        // true UTC instant is 2026-07-29 10:00:00. This expected value is hardcoded rather than
+        // recomputed via TimeZoneInfo/SouthAfricaTimeZone, the same conversion the renderer itself
+        // performs, so a bug in that conversion cannot cancel out between production code and test.
+        //
+        // This must hold regardless of the host's own time zone - PdfSharp derives the PDF's
+        // /CreationDate offset from the DateTime's Kind, not from the host clock, once the
+        // renderer hands it a true DateTimeKind.Utc value. The CI/production run of this test does
+        // not control TZ, so a value that only matched under the developer's local offset would be
+        // a false negative for what actually shipped.
+        var expectedUtc = new DateTime(2026, 7, 29, 10, 0, 0, DateTimeKind.Utc);
+
+        var bytes = _renderer.Render(SampleDocument([["2026-02-01", "CZ", "SN0000", ""]]));
+
+        using var stream = new MemoryStream(bytes);
+        using var pdf = PdfReader.Open(stream, PdfDocumentOpenMode.Import);
+
+        Assert.Equal(DateTimeKind.Utc, pdf.Info.CreationDate.Kind);
+        Assert.Equal(expectedUtc, pdf.Info.CreationDate);
+        Assert.Equal(DateTimeKind.Utc, pdf.Info.ModificationDate.Kind);
+        Assert.Equal(expectedUtc, pdf.Info.ModificationDate);
+    }
 }
