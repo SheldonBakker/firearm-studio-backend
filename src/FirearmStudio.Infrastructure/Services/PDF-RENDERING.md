@@ -112,10 +112,41 @@ reserved = max(HeaderMinimumReservedHeightPoints,
   (Regular 8) + 6pt `SpaceBefore` on the title + 8pt `SpaceAfter` on the attribution line =
   **90.4933pt**, which reproduces the old hand-derived ~90.5pt to within 0.01pt. That agreement is
   the check that the measurement is modelling the right thing.
-- `lineCount` is a greedy space-by-space wrap measured with `XGraphics.MeasureString` against the
-  content width. It breaks only at spaces, while MigraDoc also breaks at hyphens, so it can
-  **over**-count lines for a hyphenated company name. Over-reservation is safe; under-reservation
-  reintroduces the overprint.
+- `lineCount` is a greedy chunk-by-chunk wrap measured with `XGraphics.MeasureString` against the
+  content width. **It must split on every character MigraDoc treats as a break opportunity, not
+  just on spaces.** An earlier version of this measurement split on spaces only and argued that
+  doing so could only ever over-count lines, which is safe. That argument is wrong, and the
+  overprint above came straight back through the gap: a single space-free token wider than the
+  793.8898pt content width counts as **one** line under a space-only split, while MigraDoc breaks it
+  at its hyphens onto **two**. `CreateCompanyRequestValidator` allows `MaximumLength(200)` on the
+  company name, so a hyphen-joined 200-character name arrives through the public onboarding
+  endpoint. Measured on the space-only version, every hyphen-joined length from 116 to 200
+  characters put the attribution baseline at 472.49 against a table top of 479.28 - covered, in
+  every case.
+
+  The split set was determined by rendering, not assumed. A 20-token name joined by each candidate
+  character was rendered as the 14pt bold company line against the 793.8898pt content width, and the
+  number of lines the paragraph occupied was read back out of the content stream:
+
+  | Character | MigraDoc breaks? |
+  |-----------|------------------|
+  | space, `-` (U+002D), U+200B ZERO WIDTH SPACE, U+00AD SOFT HYPHEN | **yes** |
+  | `/` `\` `.` `,` `_` `+` `=` `:` `;` `)` `]` `?` `!` `*` `&` `\|` U+2013 EN DASH | no |
+
+  `LineCount` splits on exactly those four, keeping the break character attached to the chunk that
+  precedes it so the measured chunk widths match what MigraDoc lays out, and trimming a trailing
+  space before measuring because MigraDoc does not count one against a line. `U+200B` and `U+00AD`
+  are included because `Sanitise` passes both through (neither is `char.IsWhiteSpace` nor
+  `char.IsControl`), so a tenant can put either in a company name and MigraDoc will honour it.
+
+  Slash is **not** in the set, and that is not an oversight - it is the same MigraDoc behaviour
+  documented in item 11, where `RegisterCellText` has to insert an explicit `U+200B` after a slash
+  precisely because MigraDoc will not break there. A slash-joined 200-character company name renders
+  on one line, so a space-only split never under-counted it.
+
+  Over-counting that survives this (a chunk MigraDoc would have fitted that this model pushes to the
+  next line) is still safe: over-reservation costs a little body height, under-reservation brings the
+  overprint back.
 - `HeaderSafetyPadPoints = 1` absorbs rounding between this model and MigraDoc's own layout.
 - `HeaderMinimumReservedHeightPoints = 91` is a floor, not a target. A document that omits the
   registration number and the address measures 70.39pt including the pad, and still gets 91pt, so
@@ -452,12 +483,15 @@ text box and the border and provide real slack.
 choice and it is the difference between a readable register and a mangled one:
 
 - The defect being fixed is text **crossing into the neighbouring column**. Text that leaves its
-  text box but stops inside its own right-hand padding collides with nothing.
+  text box but stops inside its own right-hand padding does not collide with the neighbouring cell's
+  text. It is not free of visual cost, though - see "The narrowest column is tight for 8pt text"
+  below.
 - Several real column headings sit between the two figures. `Number` measures 28.797pt in bold at
   8pt: wider than the 25.1855pt text box of the `Safe Number` and `Rack Number` columns, narrower
   than their 31.5871pt break width. Triggering on the text box would have rendered `Safe` / `Num` /
   `ber` on three lines; triggering on the break width renders `Safe` / `Number` on two, with
-  `Number` running 3.6pt into its own padding and stopping 2.8pt short of the rule. The same
+  `Number` running 3.6pt into its own padding and its advance box stopping about 2.8pt short of the
+  rule. The same
   applies to `Calibre` (25.512pt bold, against a 25.1855pt text box), `Signature` (34.797pt bold
   against 34.5576pt), `Received` (32.922pt against 29.8715pt) and `Returned`.
 - Nothing is left unguarded by the looser threshold. Verified by rendering (see "Verified by
@@ -466,6 +500,36 @@ choice and it is the difference between a readable register and a mangled one:
 Do not try to reclaim width by reducing `CellPadding` or overriding MigraDoc's default cell
 padding - either changes the visual density of every column in the register, which is a separate,
 out-of-scope decision.
+
+### The narrowest column is tight for 8pt text, and that is a weights problem
+
+Choosing the break width over the text box means a value between the two renders into its own
+right-hand gutter. On headings the tightest case is `Number`, whose advance box stops about 2.8pt short of the rule -
+comfortable. **On realistic body data it gets much tighter than that, and
+the earlier claim that such text "collides with nothing" understated it.**
+
+The tightest realistic value measured is the calibre `9x19mm` at 31.465pt in the 38.4886pt `Calibre`
+column (8pt regular, embedded Roboto). Its text origin sits 6.9016pt inside the column, so its
+advance box ends 38.366pt in, leaving **0.122pt to the column edge** - and since the 0.5pt rule is
+centred on that edge, the advance box actually reaches 0.128pt past the rule's near side. The last
+*ink* stops earlier than the advance box does, by the trailing side bearing of `m`, which leaves
+roughly **0.74pt of white** between the final stroke and the rule. That is about the value's own
+inter-letter spacing, and at raster resolution it reads as the word touching the line.
+
+`9x19mm` is not alone, only the worst: the make `Mossberg` at 35.719pt in the 43.1747pt `Make`
+column (weight 0.9) leaves 0.554pt, and the firearm type `Handgun` at 32.293pt in the firearms
+register's 41.7263pt `Type` column leaves 2.532pt. The pattern is the 0.8 and 0.9 weight columns,
+not one specific value.
+
+It is legible and it does not overlap the neighbouring cell's text, so it is not a correctness
+defect and it is not what this work was scoped to fix. But state the cause plainly rather than
+leaving it to be rediscovered: **the `Calibre` column carries weight 0.8 of 16.6 across 16 columns,
+which is simply narrow for 8pt text.** That is a column-weights decision in
+`RegisterDocumentFactory.SafeCustodyColumnWeights`, not a break-threshold decision, and nothing in
+`RegisterCellText` can fix it - lowering the break width to the 25.1855pt text box would only wrap
+`9x19mm` into `9x1` / `9mm`, which is worse. If the tightness matters, raise the `Calibre` weight
+(and correspondingly lower a wide one such as `Address` at 1.8) or drop the body font below 8pt.
+Both are out of scope here and both change the whole register's appearance.
 
 ### `LongRunThreshold` has been removed
 

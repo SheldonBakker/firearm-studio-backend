@@ -42,28 +42,52 @@ internal sealed class RegisterTextMeasurer
         var lines = 1;
         var current = string.Empty;
 
-        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var chunk in Chunks(text))
         {
             if (current.Length == 0)
             {
-                current = word;
+                current = chunk;
                 continue;
             }
 
-            var candidate = $"{current} {word}";
+            var candidate = current + chunk;
 
-            if (Width(candidate, fontSize, bold) <= availableWidth)
+            if (Width(candidate.TrimEnd(), fontSize, bold) <= availableWidth)
             {
                 current = candidate;
                 continue;
             }
 
             lines++;
-            current = word;
+            current = chunk;
         }
 
         return lines;
     }
+
+    private static IEnumerable<string> Chunks(string text)
+    {
+        var start = 0;
+
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (!IsBreakOpportunity(text[i]))
+            {
+                continue;
+            }
+
+            yield return text[start..(i + 1)];
+            start = i + 1;
+        }
+
+        if (start < text.Length)
+        {
+            yield return text[start..];
+        }
+    }
+
+    private static bool IsBreakOpportunity(char value) =>
+        value is ' ' or '-' or '\u200B' or '\u00AD';
 
     private XFont Font(double fontSize, bool bold)
     {

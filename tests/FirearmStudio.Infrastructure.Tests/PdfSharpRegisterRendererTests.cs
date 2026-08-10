@@ -11,6 +11,8 @@ namespace FirearmStudio.Infrastructure.Tests;
 
 public class PdfSharpRegisterRendererTests
 {
+    private const int CompanyNameMaximumLength = 200;
+
     private readonly PdfSharpRegisterRenderer _renderer = new();
 
     private static RegisterDocument SampleDocument(
@@ -210,13 +212,41 @@ public class PdfSharpRegisterRendererTests
         Assert.Equal(2, Inspect(bytes).PageCount);
     }
 
-    [Fact]
-    public void A_company_name_that_wraps_keeps_the_generated_by_line_clear_of_the_table()
+    public static TheoryData<string, string, int> WrappingCompanyNames()
     {
-        var wrappingName = string.Join(" ", Enumerable.Repeat("Bergview", 20));
+        var separators = new (string Separator, string Label)[]
+        {
+            (" ", "space"),
+            ("-", "hyphen"),
+            ("/", "slash"),
+            ("\u00AD", "soft hyphen"),
+            ("\u200B", "zero width space"),
+            ("-/", "hyphen and slash"),
+        };
+
+        var data = new TheoryData<string, string, int>();
+
+        foreach (var (separator, label) in separators)
+        {
+            foreach (var length in new[] { 113, 116, 120, 152, 180, CompanyNameMaximumLength })
+            {
+                data.Add(separator, label, length);
+            }
+        }
+
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(WrappingCompanyNames))]
+    public void A_company_name_that_wraps_keeps_the_generated_by_line_clear_of_the_table(
+        string separator, string label, int length)
+    {
+        var basis = string.Concat(Enumerable.Repeat($"Bergview{separator}", 60));
+        var companyName = basis[..length];
 
         var bytes = _renderer.Render(
-            SampleDocument([["2026-02-01", "CZ", "SN123", ""]]) with { CompanyName = wrappingName });
+            SampleDocument([["2026-02-01", "CZ", "SN123", ""]]) with { CompanyName = companyName });
 
         var text = ExtractContentStreamText(bytes);
         Assert.Contains("(Generated) Tj", text, StringComparison.Ordinal);
@@ -225,8 +255,9 @@ public class PdfSharpRegisterRendererTests
 
         Assert.True(
             generatedBaseline > tableTop,
-            $"The generated-by line sits at y={generatedBaseline:F2}, at or below the table top y={tableTop:F2}, "
-            + "so the table's heading-row shading paints over it.");
+            $"A {length}-character {label}-joined company name puts the generated-by line at "
+            + $"y={generatedBaseline:F2}, at or below the table top y={tableTop:F2}, so the table's "
+            + "heading-row shading paints over it.");
     }
 
     [Fact]
