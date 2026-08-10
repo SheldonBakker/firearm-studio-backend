@@ -1,0 +1,7 @@
+Roboto (Regular, Bold) - Copyright 2015 Google Inc.
+Licensed under the Apache License, Version 2.0.
+http://www.apache.org/licenses/LICENSE-2.0
+
+Source: https://github.com/googlefonts/roboto-2 (src/hinted)
+Embedded in this assembly so PDF rendering works on a container image
+with no system fonts installed.

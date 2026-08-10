@@ -15,8 +15,13 @@ COPY . .
 RUN dotnet publish src/FirearmStudio.WebApi/FirearmStudio.WebApi.csproj \
     -c Release -o /app/publish --no-restore /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra AS final
+# The plain chiseled base ships no ICU and sets DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true itself,
+# so `new CultureInfo("en-ZA")` would throw at runtime; it also ships no timezone database, which is
+# why zoneinfo is copied below (SouthAfricaTimeZone resolves Africa/Johannesburg at runtime).
+# See src/FirearmStudio.Infrastructure/Services/PDF-RENDERING.md item 13.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS final
 WORKDIR /app
+COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=build /app/publish .
 
 EXPOSE 5146

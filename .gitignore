@@ -507,3 +507,6 @@ AGENTS.md
 
 # Gun shop scraper (standalone tool)
 tools
+
+# Subagent-driven-development scratch (ledger, briefs, review packages)
+.superpowers/

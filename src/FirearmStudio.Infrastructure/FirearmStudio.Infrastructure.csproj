@@ -12,7 +12,16 @@
     <PackageReference Include="Npgsql" />
     <PackageReference Include="EFCore.NamingConventions" />
     <PackageReference Include="DotNetEnv" />
-    <PackageReference Include="QuestPDF" />
+    <PackageReference Include="PDFsharp-MigraDoc" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FirearmStudio.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fonts\Roboto-Regular.ttf" />
+    <EmbeddedResource Include="Fonts\Roboto-Bold.ttf" />
   </ItemGroup>
 
   <ItemGroup>

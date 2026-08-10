@@ -6,7 +6,7 @@ public sealed class TenantContext(ICurrentUserService currentUserService) : ITen
 {
     private int _bypassDepth;
     private Guid? _companyOverride;
-    
+
     public Guid? CompanyId => _companyOverride ?? currentUserService.User.CompanyId;
 
     public bool BypassFilter => _bypassDepth > 0;

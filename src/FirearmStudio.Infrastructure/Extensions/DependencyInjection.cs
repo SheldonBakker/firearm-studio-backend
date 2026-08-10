@@ -21,7 +21,7 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         AddCredentialProtection(services, configuration);
-        services.AddSingleton<IRegisterPdfRenderer, QuestPdfRegisterRenderer>();
+        services.AddSingleton<IRegisterPdfRenderer, PdfSharpRegisterRenderer>();
 
         services.AddScoped<TenantContext>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
