@@ -10,7 +10,7 @@ public class PdfSharpRegisterRendererPerformanceTests(ITestOutputHelper output)
 {
     private const int MaxPdfExportRows = 2000;
 
-    private const int BudgetSeconds = 17;
+    private const int BudgetSeconds = 10;
 
     private static readonly IReadOnlyList<string> Columns =
     [

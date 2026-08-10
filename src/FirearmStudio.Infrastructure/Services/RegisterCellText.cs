@@ -4,7 +4,7 @@ namespace FirearmStudio.Infrastructure.Services;
 
 internal static class RegisterCellText
 {
-    private const int LongRunThreshold = 6;
+    private const int LongRunThreshold = 5;
     private const int BreakInterval = 3;
     private const char BreakOpportunity = '\u200B';
 

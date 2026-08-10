@@ -112,7 +112,8 @@ public class PdfSharpRegisterRendererTests
         Assert.Equal(2, Inspect(bytes).PageCount);
 
         var text = ExtractContentStreamText(bytes);
-        Assert.Contains("(Column) Tj", text, StringComparison.Ordinal);
+        Assert.Contains("(Col) Tj", text, StringComparison.Ordinal);
+        Assert.Contains("(umn) Tj", text, StringComparison.Ordinal);
         Assert.Contains("(15) Tj", text, StringComparison.Ordinal);
     }
 

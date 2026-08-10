@@ -68,7 +68,21 @@ public class RegisterCellTextTests
     [Fact]
     public void InsertBreakOpportunities_leaves_a_run_at_the_threshold_untouched()
     {
-        Assert.Equal("SN1234", RegisterCellText.InsertBreakOpportunities("SN1234"));
+        Assert.Equal("SN123", RegisterCellText.InsertBreakOpportunities("SN123"));
+    }
+
+    [Theory]
+    [InlineData("000000")]
+    [InlineData("888888")]
+    [InlineData("Damagd")]
+    [InlineData("MMMMMM")]
+    [InlineData("SN1234")]
+    public void InsertBreakOpportunities_breaks_a_six_character_run(string value)
+    {
+        var result = RegisterCellText.InsertBreakOpportunities(value);
+
+        Assert.Contains(Zwsp, result, StringComparison.Ordinal);
+        Assert.NotEqual(value, result);
     }
 
     [Fact]
@@ -89,7 +103,7 @@ public class RegisterCellTextTests
     [Fact]
     public void InsertBreakOpportunities_leaves_several_short_space_separated_words_untouched()
     {
-        Assert.Equal("CZ Shadow 2", RegisterCellText.InsertBreakOpportunities("CZ Shadow 2"));
+        Assert.Equal("CZ Blade 2", RegisterCellText.InsertBreakOpportunities("CZ Blade 2"));
     }
 
     [Fact]
@@ -97,7 +111,7 @@ public class RegisterCellTextTests
     {
         var result = RegisterCellText.InsertBreakOpportunities("CZ 8501015800086");
 
-        Assert.StartsWith("CZ ", result);
+        Assert.StartsWith("CZ ", result, StringComparison.Ordinal);
         Assert.DoesNotContain("C" + Zwsp + "Z", result, StringComparison.Ordinal);
 
         var expectedIdNumber = string.Join(Zwsp, "8501015800086".Chunk(3).Select(chunk => new string(chunk)));

@@ -209,10 +209,11 @@ QuestPDF broke long tokens at the character level and kept them inside their cel
 no equivalent "break anywhere" setting - a long unbroken run of characters (a licence number, an
 ID number, a single long word) is laid out as one unbreakable unit and simply overprints whatever
 column comes next once it runs past the cell's right edge. This is not cosmetic: on a 16-column
-safe custody register at 8pt, the licence number `WC/2020/00000` ran into the next column's date,
-`Handgun` bled into Serial Number, and `Muizenberg` bled into Signature. There is no exception and
-no warning - the content stream is valid, the PDF opens fine, and the defect is only visible on
-inspection.
+safe custody register at 8pt, the licence number `WC/2020/00000` ran into the next column
+(`Owner Name`, which immediately follows `Licence Number` in this register's real column order),
+`Handgun` in the `Type` column bled into its neighbour `Calibre`, and address text bled from
+`Address` into `Purpose`. There is no exception and no warning - the content stream is valid, the
+PDF opens fine, and the defect is only visible on inspection.
 
 MigraDoc does, however, honour `U+200B` (ZERO WIDTH SPACE) as a line-break opportunity, the same
 way it already treats an ordinary space or a hyphen. `RegisterCellText.InsertBreakOpportunities`
@@ -223,44 +224,72 @@ threshold are returned untouched. Break opportunities are spaced through the run
 to natural points such as slashes, because the real defects included values with no natural break
 point at all (a bare 13-digit ID number, `Handgun` as a single word).
 
-### Why the threshold is 6
+### Why the threshold is 5
 
 `LongRunThreshold` is derived from the narrowest real column in the safe custody register, not
-guessed. That register's column weights sum to 16.6, and its narrowest column has weight 0.8, over
-a `ContentWidth` of 793.89pt (A4 landscape, 24pt margins each side):
+guessed - but an earlier version of this derivation was itself arithmetically wrong, computed the
+usable width about 25% too generously, and shipped a threshold of 6 that still let some
+exactly-6-character runs (`000000`, `888888`, a run like `MMMMMM`) overflow. The corrected
+derivation accounts for two things the first version missed:
 
-```
-column width = 793.89 * (0.8 / 16.6) = 38.26pt
-available for text = 38.26 - (2 * CellPadding) = 38.26 - 6 = 32.26pt
-```
+1. **The 1pt-per-column floor.** `RegisterTableLayout.ColumnWidths` (item 7 above) reserves 1pt
+   for every column before distributing the remaining width by weight - it is not a pure
+   weight-proportional split of the full content width. With 16 columns, weights summing to 16.6,
+   the narrowest column at weight 0.8, and `ContentWidth` 793.8898pt (A4 landscape, 24pt margins
+   each side):
 
-At that point, the question is how many 8pt embedded-Roboto characters fit in 32.26pt. This was
-measured, not estimated from a rule of thumb, by loading the same embedded `Roboto-Regular.ttf`
-through PDFsharp's `XGraphics.MeasureString` at 8pt and measuring representative content:
+   ```
+   floor budget   = 16 * 1pt = 16pt
+   distributable  = 793.8898 - 16 = 777.8898pt
+   column width   = 1 + (777.8898 * 0.8 / 16.6) = 38.4887pt
+   ```
 
-- Digits (`0123456789`): 4.492pt/char average, so 32.26 / 4.492 is about 7.18 characters.
-- A realistic mix of licence numbers, ID numbers, place names and common words
-  (`WC/2020/00000 8501015800086 Muizenberg Handgun`): 4.301pt/char average, about 7.50 characters.
-- The literal cited overflow example, `Handgun` (7 characters), measures 32.293pt on its own -
-  already past the 32.26pt available width before any other column padding or rounding is
-  considered.
+   Not `793.89 * (0.8 / 16.6) = 38.26pt` as an earlier version of this document computed - that
+   formula silently drops the floor reservation and understates every column's real width contest,
+   including the narrowest one.
 
-A naive reading of "just below" the ~7.2-7.5 characters that fit would suggest a threshold of 7.
-That would be wrong: it would leave `Handgun`, a real cited defect and exactly 7 characters,
-untouched, because 7 is not greater than 7. Picking the threshold one step below what a
-whole-word average suggests, 6, is what's needed to actually cover the cited real-world overflow:
-any run of 7 or more characters gets break opportunities, and `Handgun` (7 characters, all
-letters, no natural break point) is exactly the shape of value the fix exists for. Short values -
-`Glock`, `SN1234`, `Muizenberg` split as two words by earlier column data, ordinary model names -
-stay untouched because their runs are 6 characters or fewer.
+2. **MigraDoc's own default cell padding.** `AddCellText`'s caller sets a 3pt `LeftIndent`/
+   `RightIndent` on each `Column`, but MigraDoc applies its *own* default cell padding of 0.12cm
+   on top of that, and this renderer never overrides it. 0.12cm is 3.4016pt. Confirmed directly
+   from a rendered content stream: the `Type` column's shading rectangle starts at x=197.199 while
+   its text's `Td` x-position is 203.6005, an offset of 6.4015pt - the 3pt indent this code sets
+   plus MigraDoc's own 3.4016pt padding, applied identically on both sides. So the real usable text
+   width subtracts *two* padding amounts per side, 3pt + 3.4016pt = 6.4016pt each, not the single
+   3pt `CellPadding` the earlier derivation used:
+
+   ```
+   usable text width = 38.4887 - 2 * (3 + 3.4016) = 38.4887 - 12.8031 = 25.6855pt
+   ```
+
+Do not try to reclaim this width by reducing `CellPadding` or overriding MigraDoc's default cell
+padding - either would change the visual density of the whole register's columns, which is a
+separate, out-of-scope decision from fixing this threshold.
+
+At 25.6855pt, the question is again how many 8pt embedded-Roboto characters fit, measured (not
+estimated) with PDFsharp's `XGraphics.MeasureString` against the same embedded `Roboto-Regular.ttf`:
+
+- Digits (`0123456789`): 4.4922pt/char average, so 25.6855 / 4.4922 is about 5.72 characters.
+- The exactly-6-character overflow cases a geometric review found still crossing the text box under
+  the old threshold of 6: `000000` and `888888` each measure 26.953pt, `Damagd` measures 29.961pt,
+  and `MMMMMM` (deliberately the widest realistic letter, repeated) measures 41.906pt - all past
+  25.6855pt. That review rendered a register containing 6-character runs and recorded 36 runs past
+  the text box and 12 crossing into the neighbouring column, `MMMMMM` visibly overprinting
+  `Calibre` from `Type`.
+
+`LongRunThreshold = 5`: runs of 6 or more characters get break opportunities; runs of 5 or fewer
+stay untouched. Unlike the threshold-6 derivation's off-by-one reasoning about `Handgun`, there is
+no ambiguity here - 5.72 rounds down to 5 cleanly, and 5 is the largest threshold that does not
+leave any of the confirmed 6-character overflow cases untouched. Short values - `Glock`, `SN123`,
+`Muizenberg` split as two words by earlier column data, ordinary model names - stay untouched
+because their runs are 5 characters or fewer.
 
 ### Why the interval is 3, not every character
 
 The first version of this fix inserted `U+200B` between every character of a run above the
 threshold. That is much stronger than the defect requires. MigraDoc breaks a line at the *last*
 break opportunity that still fits, not at every opportunity, so a break opportunity every
-`BreakInterval` characters is sufficient to prevent overflow: a cell that fits 7 characters simply
-breaks after the 6th (the nearest opportunity at or before the edge), with no overhang, whether the
+`BreakInterval` characters is sufficient to prevent overflow: a cell that fits `N` characters
+simply breaks at the nearest opportunity at or before the edge, with no overhang, whether the
 opportunities are 1 or 3 characters apart. What every-character insertion bought beyond that was
 tighter packing at a real cost: three times as many inserted characters means three times as many
 distinct text-showing operations for MigraDoc's layout engine to measure and position, and that
@@ -276,6 +305,19 @@ which made both the page count and the render time worse than interval 3, not be
 `BreakInterval` above 3 without re-measuring on realistic data the same way - "coarser" does not
 reliably mean "cheaper" once a chunk stops fitting as cleanly against a narrow column's edge.
 
+**Interval 3 stays safe at the corrected 25.6855pt usable width, but the margin is not large and
+not structural.** The widest realistic 3-character chunks measured in embedded Roboto 8pt are
+`@@@` at 21.551pt, `WWW` at 21.293pt and `MMM` at 20.953pt - all comfortably under 25.6855pt, with
+roughly 4.1pt to spare on the worst case. That margin exists only because `LongRunThreshold` and
+`BreakInterval` were both derived against *this* register's actual narrowest column (weight 0.8 of
+16.6 total, 16 columns). `RegisterTableLayout` guarantees only a 1pt-per-column floor (item 7) - it
+makes no promise about how narrow the narrowest weighted column can get. A future register with
+more columns, a smaller minimum weight, or a near-zero weight column could produce a narrower real
+column than 38.4887pt, shrink the 25.6855pt usable width further, and reintroduce overflow at
+interval 3 even with `LongRunThreshold` unchanged. Re-run this same measurement (rendered
+geometry against `XGraphics.MeasureString`, not estimation) before assuming interval 3 is still
+safe for a materially different column layout.
+
 ### Confined to table cells only
 
 `InsertBreakOpportunities` is only called from `PdfSharpRegisterRenderer.AddCellText`, which is
@@ -290,21 +332,44 @@ characters collapsed to single spaces) and then given break opportunities, and `
 whitespace (`char.IsWhiteSpace`) nor a control character (`char.IsControl`), so `Sanitise` passes it
 through unchanged and the two functions never fight over the same characters.
 
-### Accepted cost: invisible characters in the text layer
+### Accepted cost: the text layer is chunked, not annotated with zero-width spaces
 
-Once a cell value crosses the threshold, every character in that run is separated by a real
-`U+200B` in the PDF's text layer, not just visually - it is a genuine Unicode character between
-every glyph. Selecting and copying a long serial number, licence number or ID number out of the
-PDF carries those zero-width spaces along with it. Pasted into a plain text field this is
-invisible; pasted into something that treats `U+200B` as a token boundary (some search boxes, some
-spreadsheet cells doing exact-match lookups) it can silently break an exact-string match against
-the same value typed by hand. This is an accepted cost, not an oversight: the alternative is the
-overflow defect itself, which is a correctness problem on a register that is printed, signed and
-inspected. If a future consumer needs the copy-paste text layer to be byte-identical to the typed
-value, that requires either measuring column width per-document (this renderer does not do that -
-column widths are only known after layout, whereas cell text is composed before layout) or
-switching to a text layout approach with real subword break-anywhere support, not a change to this
-threshold.
+An earlier version of this document claimed that a genuine `U+200B` sits between glyphs in the
+rendered PDF's text layer, and that copying text out carries those characters along. **That claim
+is not true, and has been corrected.** A geometric review scanned the per-page decompressed content
+streams and the whole file via `qpdf --qdf`, checking for `U+200B` encoded as UTF-8 (`e2 80 8b`),
+UTF-16BE (`20 0b`) and the literal ASCII string `200B`, and found zero occurrences anywhere in a
+rendered PDF. MigraDoc consumes `U+200B` purely as a line-breaking instruction during layout - it
+decides where to end each line and never writes the character itself into the output. Confirmed
+also in this document's own round 2 fix verification: a geometric check that parsed a rendered
+page's content stream found the `Type` column's `000000` example emitted as two separate `Tj`
+operators, `(000) Tj` and `(000) Tj`, not one `(000` + `U+200B` + `000) Tj` run - there is no
+zero-width space character anywhere in the string PDFsharp writes.
+
+The actual accepted cost is different: **each chunk becomes its own `Tj` text-showing operator**,
+and the document carries no `/ToUnicode` CMap. For a value like `Handgun` (broken into `Han`,
+`dgu` and `n` at `BreakInterval = 3`), the content stream contains `(Han) Tj` followed by
+`(dgu) Tj` and `(n) Tj` as three independent operators positioned next to each other, not one
+continuous string.
+A text extractor or a copy-paste operation that reconstructs page text by concatenating `Tj`
+operator contents, rather than reasoning about their adjacent positions, may reproduce this as
+`Han dgu n` or similar - inserting visible whitespace at chunk boundaries that was never in the
+source data, rather than an invisible character. This is still an accepted cost, not an oversight:
+the alternative is the overflow defect itself, a correctness problem on a register that is
+printed, signed and inspected. If a future consumer needs extracted or copied text to be
+byte-identical to the typed value, that requires either measuring column width per-document (this
+renderer does not do that - column widths are only known after layout, whereas cell text is
+composed before layout), embedding a `/ToUnicode` CMap that maps chunk boundaries back to the
+original unbroken string, or switching to a text layout approach with real subword
+break-anywhere support - not a change to this threshold.
+
+**This has not been verified against a real PDF viewer's copy-paste behaviour.** Neither
+`pdftotext` nor `mutool` was available in the environment used to derive the above - the claim
+about `Han dgun`-style reconstruction is inferred from the content stream structure (separate `Tj`
+operators, no `/ToUnicode` CMap), not observed by actually selecting text in a viewer and reading
+the clipboard. Before relying on this section for anything user-facing, someone should open a
+rendered register in a real PDF viewer, select and copy a licence number and an ID number that
+crossed the threshold, and confirm what actually reaches the clipboard.
 
 ### Measured consequences
 
@@ -335,32 +400,36 @@ The performance test's fixture has been rewritten to use this realistic shape (s
 `PdfSharpRegisterRendererPerformanceTests.RealisticRow`) so it exercises the actual cost profile of
 a real export, including the code path this fix adds.
 
-Against that realistic fixture, render time for the 5000-row maximum export at each `BreakInterval`
-tried:
+**Historical calibration evidence - `BreakInterval` was chosen against a 5000-row export and a
+20s budget that no longer exist.** The PDF export row cap has since been lowered to 2000 rows (see
+item 12) and `BudgetSeconds` has since been retuned twice, most recently to 10 (see item 12) - the
+table below records the measurement that justified picking interval 3 over 1 or 4, at the row count
+and budget in force when that measurement was taken. It is legitimate calibration data and is kept
+for that reason, but none of the absolute numbers describe the renderer's current row cap or
+budget; see item 12 for those.
 
-| Insertion            | Render time (realistic 5000 rows) | Output size  |
-|-----------------------|-----------------------------------|--------------|
-| No fix (baseline)     | ~8.9s                              | 5,000,798 B  |
-| Every character        | 20.1s - 22.8s (over budget on some runs) | 7,223,919 B |
-| Every 3 characters (chosen) | ~11.0s - 11.8s (Release build); ~11.1s - 19.9s (Debug build, `dotnet test` default) | 6,705,121 B |
-| Every 4 characters (rejected) | ~15.0s - 15.7s, worse than every 3 on every measure | 8,369,328 B |
+Render time for a 5000-row export at each `BreakInterval` tried, at `LongRunThreshold = 6` (the
+threshold in force at the time; it has since been corrected to 5, see "Why the threshold is 5"
+above - the threshold correction changes which runs get broken, not the relative cost ordering
+between intervals, so this comparison remains valid for choosing `BreakInterval`):
 
-Every-3 is a large, real improvement over every-character: roughly half the render time and about
-1.5MB less output on a Release build. It comfortably clears the 20s budget in a Release build. In
-a Debug build - which is what `dotnet test` runs by default, with no build configuration flag - the
-same fixture varied from about 11s to just under 20s across repeated runs on this machine, with as
-little as a few hundred milliseconds of headroom on the slowest observed run. The rewritten
-performance test has not failed in repeated local runs, but the margin under the unchanged 20s
-budget is thin and volatile in Debug configuration, and a slower or more loaded CI machine could
-tip it over. This is reported here rather than papered over: the budget and the test were
-deliberately left unchanged per instruction, so this is the honest number against them, not a
-comfortable one.
+| Insertion            | Render time (realistic 5000 rows) | Output size  | Build configuration |
+|-----------------------|-----------------------------------|--------------|----------------------|
+| No fix (baseline)     | ~8.9s                              | 5,000,798 B  | Release (standalone harness) |
+| Every character        | 20.1s - 22.8s | 7,223,919 B | Release (standalone harness) |
+| Every 3 characters (chosen) | ~11.0s - 11.8s | 6,705,121 B | Release (standalone harness) |
+| Every 3 characters (chosen) | ~11.1s - 19.9s | 6,705,121 B | Debug (`dotnet test`, no build flag) |
+| Every 4 characters (rejected) | ~15.0s - 15.7s | 8,369,328 B | Release (standalone harness) |
 
-Every-4 was tried and rejected: it was slower than every-3 on every measurement (5000-row render
-time, output size, and page count on a 30-row check), not faster. Coarser break spacing gave
-MigraDoc's line formatter fewer usable break points inside the narrowest columns, which produced
-more wrapped lines overall rather than fewer - see "Why the interval is 3, not every character"
-above.
+Every-3 was a large, real improvement over every-character at the 5000-row size: roughly half the
+render time and about 1.5MB less output in a Release build. Every-4 was tried and rejected: it was
+slower than every-3 on every measurement taken (5000-row render time, output size, and page count
+on a 30-row check), not faster. Coarser break spacing gave MigraDoc's line formatter fewer usable
+break points inside the narrowest columns, which produced more wrapped lines overall rather than
+fewer - see "Why the interval is 3, not every character" above. Neither of those relative
+conclusions depends on the row cap or budget that were in force at measurement time, which is why
+this table is retained even though the 5000-row size and any budget comparison against it are
+superseded.
 
 ## 12. The PDF export cap is 2000 rows, not 20000 - CSV carries the larger extracts
 
@@ -371,34 +440,43 @@ has no comparable per-row rendering cost.
 The two caps differ by 10x because rendering happens synchronously inside the HTTP request, on the
 render lock described in item 6, and MigraDoc is substantially slower than the QuestPDF renderer it
 replaced. Render time was measured against realistic 16-column safe custody register data (the same
-fixture shape as `PdfSharpRegisterRendererPerformanceTests.RealisticRow`) across the full row range:
+fixture shape as `PdfSharpRegisterRendererPerformanceTests.RealisticRow`), at `LongRunThreshold = 5`
+and `BreakInterval = 3`, across the full row range. Every timing below states its build
+configuration explicitly - Release and Debug differ by roughly 2-4x on this renderer, so a number
+without a stated configuration is not comparable to anything else in this document:
 
-| Rows | Render time |
-|------|-------------|
-| 50   | 40 ms |
-| 200  | 156 ms |
-| 500  | 415 ms |
-| 1000 | 756 ms |
-| 2000 | 1.1 s |
-| 5000 | 4.1 s on moderate data; 18 s - 19.9 s on content-heavy data (see item 11's "Measured consequences") |
+| Rows | Render time | Build configuration |
+|------|-------------|----------------------|
+| 50   | ~60 ms      | Release (standalone harness) |
+| 200  | ~250-300 ms | Release (standalone harness) |
+| 500  | ~665-685 ms | Release (standalone harness) |
+| 1000 | ~850 ms-1.1 s | Release (standalone harness) |
+| 2000 | ~1.7-1.8 s  | Release (standalone harness) |
+| 2000 | ~2.9-3.3 s  | Debug (`dotnet test`, no build flag) |
+| 5000 | ~9.9-12.1 s | Release (standalone harness) |
 
-The curve is roughly linear up to about 2000 rows and then worsens as more cells cross
-`LongRunThreshold` and pick up `U+200B` break opportunities (item 11) - the 5000-row figure is not a
-straight-line extrapolation of the smaller sizes, it is measurably worse per row. QuestPDF rendered
-the same 5000-row load in about 1 second; MigraDoc does not stay inside a comfortable request budget
-at that size, particularly on content-heavy data.
+The curve is roughly linear up to about 2000 rows and then worsens somewhat at 5000 as more cells
+cross `LongRunThreshold` and pick up `U+200B` break opportunities (item 11) - the 5000-row figure is
+not a pure straight-line extrapolation of the smaller sizes. QuestPDF rendered a 5000-row load in
+about 1 second; MigraDoc does not stay inside a comfortable request budget at that size on a Debug
+build, and even in Release it is an order of magnitude slower than QuestPDF was.
 
-Capping the PDF export at 2000 rows keeps the worst case around a second, comfortably inside a
-request, instead of the multi-second-to-20-second range 5000 rows produced. A user who needs more
-than 2000 rows exports CSV instead - CSV has no MigraDoc cost and stays at the original 20000-row
-cap. The validation error `ExportStorageRegisterQueryHandler` returns when a PDF request exceeds the
-cap already tells the user to narrow the date range or export CSV for wider ranges.
+Capping the PDF export at 2000 rows keeps the worst case in the low single-digit seconds even in
+Debug configuration, comfortably inside a request, instead of the multi-second-to-tens-of-seconds
+range 5000 rows produced depending on build configuration and content. A user who needs more than
+2000 rows exports CSV instead - CSV has no MigraDoc cost and stays at the original 20000-row cap.
+The validation error `ExportStorageRegisterQueryHandler` returns when a PDF request exceeds the cap
+already tells the user to narrow the date range or export CSV for wider ranges.
 
-Re-measured on this branch at the new 2000-row cap, against the same realistic fixture used by
-`PdfSharpRegisterRendererPerformanceTests`, three consecutive Debug-build runs (2026-08-10,
-`dotnet test`, which builds Debug by default and has been observed slower and more variable than
-Release throughout this document): 2902 ms, 2930 ms, 3315 ms. The test's `BudgetSeconds` was set to
-17, roughly five times the slowest of those three runs (3.315s x 5 = 16.575s, rounded up to 17),
-giving real margin instead of the near-zero margin the old 5000-row test had at its 20s budget. If a
-future measurement on this fixture regularly lands outside roughly the 3-4s range, re-derive the
+`BudgetSeconds` is 10, re-derived twice on this branch as the row cap and the threshold changed.
+Three consecutive Debug-build runs against the current 2000-row cap and the corrected
+`LongRunThreshold = 5` (2026-08-10, `dotnet test`, which builds Debug by default and has been
+observed slower and more variable than Release throughout this document): 2896 ms, 2945 ms,
+2868 ms. At a prior 17s budget, set against an earlier three-run measurement of 2902-3315ms, the
+guard had roughly 5x headroom over the slowest observed run - comfortable, but wide enough that a
+2x, 3x or even 4x regression (the same order of magnitude this MigraDoc migration itself produced
+over QuestPDF) would not have tripped it. `BudgetSeconds = 10` keeps about 3x headroom over the
+slowest Debug run observed here (2945ms x 3 is under 9s; 10 rounds up from that with a small
+margin) while restoring real sensitivity to a 2x-4x regression. If a future measurement on this
+fixture regularly lands outside roughly the 2.8-3.5s range in Debug configuration, re-derive the
 budget the same way rather than assume this margin still holds.
