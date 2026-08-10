@@ -186,22 +186,53 @@ through unconverted, and do not "fix" this by reading the host's local time zone
 host's time zone is irrelevant to what the document should say, only the conversion from SAST
 matters.
 
-## 10. The register now produces about 17% more pages than the old QuestPDF renderer - deliberately
+## 10. Page count is content-dependent - there is no single number, only a figure per dataset
 
-A 5000-row export produces about 209 pages here against roughly 179 under the previous QuestPDF
-renderer. This was measured, reviewed and accepted as a deliberate tradeoff, not an oversight to
-be "optimised away" on sight:
+An earlier version of this document claimed the register produces "about 17% more pages than the
+old QuestPDF renderer", based on a 5000-row export producing "about 209 pages" against "roughly
+179" for QuestPDF. Both halves of that claim are stale and have been removed. First, the PDF
+export cap is now 2000 rows (item 12), so a 5000-row PDF export cannot happen at all - the
+scenario the old figures described no longer exists. Second, the 209-page figure predates the
+break-opportunity work in item 11 entirely: it was measured before `RegisterCellText` wrapped any
+cell content, so it does not reflect what the shipped renderer actually produces at
+`LongRunThreshold = 5` and `BreakInterval = 3`.
 
-- About 21 of the extra pages come from row height: this renderer's rows are 17.05pt tall against
-  QuestPDF's 15.6pt.
-- About 9 of the extra pages come from the worst-case header/footer reservation described in
-  item 3.
+Re-measured at the shipped settings (Release, standalone harness), against 2000 rows - the current
+maximum a PDF export can request:
 
-If you need to close this gap, understand that doing so means retuning the same vertical metrics
-that fix defect 3 (row height, header reservation, or both) - do not reduce
-`HeaderReservedHeightPoints`/`FooterReservedHeightPoints` or the row spacing without re-deriving
-them by the same measurement process described in item 3, or the header/footer overprint defect
-will return.
+- The pessimistic fixture (long values packed into most of the 16 columns - a long owner name, a
+  wrapping address, a purpose sentence, a free-text remark paragraph; the same shape as
+  `PdfSharpRegisterRendererPerformanceTests.RealisticRow`): **667 pages**, 2,729,605 bytes.
+- A moderate, more typical fixture (one wrapping street address, ordinary short names like "John
+  Smith", a licence number and an ID number per row as any real register would have, short values
+  everywhere else - `Type` still `Handgun`, `Condition` "Good" rather than "Serviceable", no
+  free-text remark): **also 667 pages**, 2,520,267 bytes.
+
+The second figure is the more informative one. Trimming most of the "long" columns down to
+realistic short values did not reduce the page count at all versus the pessimistic fixture - only
+the byte count dropped, by about 8%. A handful of ordinary, unavoidable fields already need two or
+more lines at the shipped threshold: `Type` (`Handgun`, 7 characters), `Licence Number` (a
+`WC/2020/00000`-style 13-character value), `ID Number` (a 13-digit value) and any wrapping
+`Address`. MigraDoc sets each row's height to its tallest cell, so those four fields alone set a
+row-height floor that stacking more long text into the other 12 columns barely raises further. For
+contrast, a fixture with genuinely trivial values in every column (4-character strings like `r0c0`,
+none of them crossing `LongRunThreshold`, the shape the performance test's fixture used before it
+was rewritten) renders the same 2000 rows to only 141 pages - so the real driver is which specific
+fields wrap, not how many rows there are or how "heavy" a dataset looks at a glance.
+
+This document no longer states a QuestPDF page-count comparison. QuestPDF was removed from the
+codebase during this migration, so it cannot be re-rendered to check, and the old "roughly 179
+pages" figure was measured at 5000 rows, a size this renderer's PDF export can no longer even
+request (item 12) - it is not comparable to either figure above at any row count that still
+applies. Item 12 keeps a QuestPDF *render time* comparison (about 1 second for 5000 rows) because
+that is an independent historical fact about QuestPDF's own speed, not tied to the row cap that
+has since changed on this side; no equivalent page-count fact is retained here because none can be
+verified at current settings.
+
+If you need to reason about a future dataset's page count, measure it directly against the shipped
+`LongRunThreshold`/`BreakInterval` rather than assume either figure above - the moderate and
+pessimistic fixtures landing on the identical page count already shows that eyeballing "how heavy"
+a dataset looks is not a reliable predictor.
 
 ## 11. Long unbroken cell values overflow their column unless given a U+200B break opportunity
 
@@ -248,40 +279,70 @@ derivation accounts for two things the first version missed:
    formula silently drops the floor reservation and understates every column's real width contest,
    including the narrowest one.
 
-2. **MigraDoc's own default cell padding.** `AddCellText`'s caller sets a 3pt `LeftIndent`/
-   `RightIndent` on each `Column`, but MigraDoc applies its *own* default cell padding of 0.12cm
-   on top of that, and this renderer never overrides it. 0.12cm is 3.4016pt. Confirmed directly
-   from a rendered content stream: the `Type` column's shading rectangle starts at x=197.199 while
-   its text's `Td` x-position is 203.6005, an offset of 6.4015pt - the 3pt indent this code sets
-   plus MigraDoc's own 3.4016pt padding, applied identically on both sides. So the real usable text
-   width subtracts *two* padding amounts per side, 3pt + 3.4016pt = 6.4016pt each, not the single
-   3pt `CellPadding` the earlier derivation used:
+2. **MigraDoc's own default cell padding, plus the cell border.** `AddCellText`'s caller sets a 3pt
+   `LeftIndent`/`RightIndent` on each `Column`, but MigraDoc applies its *own* default cell padding
+   of 0.12cm on top of that, and this renderer never overrides it. 0.12cm is 3.4016pt. On top of
+   *that*, the table's 0.5pt `BorderWidth` also consumes usable space - a second, independent
+   review's empirical wrap bisection in the `Type` column (rendering successive strings and finding
+   the exact character where wrapping starts, rather than trusting the padding arithmetic alone)
+   bracketed the true usable width between 24.9062pt (fits on one line) and 25.2148pt (wraps) -
+   narrower than padding alone predicts. The 0.5pt border is what accounts for the gap: a
+   padding-only prediction of the text origin (column left 197.199 + 3pt indent + 3.4016pt MigraDoc
+   padding = 203.1006) undershoots the actually-rendered `Td` x-position of 203.6005 by almost
+   exactly 0.5pt, matching `BorderWidth`. So the real usable text width subtracts padding on both
+   sides *and* the border:
 
    ```
-   usable text width = 38.4887 - 2 * (3 + 3.4016) = 38.4887 - 12.8031 = 25.6855pt
+   usable text width = 38.4887 - 2 * (3 + 3.4016) - 0.5 = 38.4887 - 12.8031 - 0.5 = 25.1856pt
    ```
+
+   25.1856pt sits inside the empirically-bisected [24.9062, 25.2148] bracket, which is the stronger
+   confirmation - the bisection measures the real wrap point directly by rendering, rather than by
+   reasoning about padding constants that could themselves be incomplete.
 
 Do not try to reclaim this width by reducing `CellPadding` or overriding MigraDoc's default cell
 padding - either would change the visual density of the whole register's columns, which is a
 separate, out-of-scope decision from fixing this threshold.
 
-At 25.6855pt, the question is again how many 8pt embedded-Roboto characters fit, measured (not
+At 25.1856pt, the question is again how many 8pt embedded-Roboto characters fit, measured (not
 estimated) with PDFsharp's `XGraphics.MeasureString` against the same embedded `Roboto-Regular.ttf`:
 
-- Digits (`0123456789`): 4.4922pt/char average, so 25.6855 / 4.4922 is about 5.72 characters.
+- Digits (`0123456789`): 4.4922pt/char average, so 25.1856 / 4.4922 is about 5.61 characters. This
+  does not change the threshold versus the padding-only estimate of 5.72 - both round down to 5.
 - The exactly-6-character overflow cases a geometric review found still crossing the text box under
   the old threshold of 6: `000000` and `888888` each measure 26.953pt, `Damagd` measures 29.961pt,
   and `MMMMMM` (deliberately the widest realistic letter, repeated) measures 41.906pt - all past
-  25.6855pt. That review rendered a register containing 6-character runs and recorded 36 runs past
+  25.1856pt. That review rendered a register containing 6-character runs and recorded 36 runs past
   the text box and 12 crossing into the neighbouring column, `MMMMMM` visibly overprinting
   `Calibre` from `Type`.
 
 `LongRunThreshold = 5`: runs of 6 or more characters get break opportunities; runs of 5 or fewer
 stay untouched. Unlike the threshold-6 derivation's off-by-one reasoning about `Handgun`, there is
-no ambiguity here - 5.72 rounds down to 5 cleanly, and 5 is the largest threshold that does not
+no ambiguity here - 5.61 rounds down to 5 cleanly, and 5 is the largest threshold that does not
 leave any of the confirmed 6-character overflow cases untouched. Short values - `Glock`, `SN123`,
 `Muizenberg` split as two words by earlier column data, ordinary model names - stay untouched
 because their runs are 5 characters or fewer.
+
+**What threshold 5 does not guarantee.** Runs of 4 or 5 characters receive no break opportunity at
+all, and a wide enough 5-character run can still exceed the 25.1856pt text box and cross the column
+border - this is a content-dependent guarantee, not a geometric one. Measured against a
+31.5871pt border-crossing limit (`column width 38.4887 - left-side padding-and-border 6.9016`,
+the point at which text would actually reach the neighbouring column's territory, a larger figure
+than the 25.1856pt text-box limit because the cell's own right-side padding and the neighbour's
+left-side padding both provide slack before a real collision): `MMMMM` measures 34.92pt, `WWWWW`
+measures 35.49pt and `@@@@@` measures 35.92pt, all past 31.5871pt - so an unusually wide
+5-character run of repeated capital letters can genuinely cross into `Calibre`. Realistic
+5-character values measured well inside the border: `SMITH` 24.38pt, `WORLD` 27.07pt, `AMMOS`
+29.43pt.
+
+Threshold 4 would remove this possibility entirely - `@@@@`, the widest realistic 4-character run
+measured, is 28.73pt, under the 31.5871pt crossing limit even for degenerate content. It was
+deliberately rejected: threshold 4 would also break every ordinary 5-character value, and `Rifle`
+is one of the most common values the narrow `Type` column actually holds in this domain - it fits
+comfortably today, untouched, at threshold 5. Breaking `Rifle` into `Rifl` and `e` to defend
+against a pathological input like `MMMMM` is a bad trade for a register that is read and signed by
+people, not just measured by tooling. A future maintainer who wants to close this last gap should
+understand that the tradeoff was seen and rejected on readability grounds, not missed.
 
 ### Why the interval is 3, not every character
 
@@ -305,18 +366,20 @@ which made both the page count and the render time worse than interval 3, not be
 `BreakInterval` above 3 without re-measuring on realistic data the same way - "coarser" does not
 reliably mean "cheaper" once a chunk stops fitting as cleanly against a narrow column's edge.
 
-**Interval 3 stays safe at the corrected 25.6855pt usable width, but the margin is not large and
+**Interval 3 stays safe at the corrected 25.1856pt usable width, but the margin is not large and
 not structural.** The widest realistic 3-character chunks measured in embedded Roboto 8pt are
-`@@@` at 21.551pt, `WWW` at 21.293pt and `MMM` at 20.953pt - all comfortably under 25.6855pt, with
-roughly 4.1pt to spare on the worst case. That margin exists only because `LongRunThreshold` and
-`BreakInterval` were both derived against *this* register's actual narrowest column (weight 0.8 of
-16.6 total, 16 columns). `RegisterTableLayout` guarantees only a 1pt-per-column floor (item 7) - it
-makes no promise about how narrow the narrowest weighted column can get. A future register with
-more columns, a smaller minimum weight, or a near-zero weight column could produce a narrower real
-column than 38.4887pt, shrink the 25.6855pt usable width further, and reintroduce overflow at
-interval 3 even with `LongRunThreshold` unchanged. Re-run this same measurement (rendered
-geometry against `XGraphics.MeasureString`, not estimation) before assuming interval 3 is still
-safe for a materially different column layout.
+`@@@` at 21.551pt, `WWW` at 21.293pt and `MMM` at 20.953pt - all comfortably under 25.1856pt, with
+roughly 3.4 to 3.7pt to spare (measured against the empirically-bisected 24.9062pt conservative
+bound, the safer figure to margin against since it is a directly observed wrap point rather than a
+derived one). That margin exists only because `LongRunThreshold` and `BreakInterval` were both
+derived against *this* register's actual narrowest column (weight 0.8 of 16.6 total, 16 columns).
+`RegisterTableLayout` guarantees only a 1pt-per-column floor (item 7) - it makes no promise about
+how narrow the narrowest weighted column can get. A future register with more columns, a smaller
+minimum weight, or a near-zero weight column could produce a narrower real column than 38.4887pt,
+shrink the 25.1856pt usable width further, and reintroduce overflow at interval 3 even with
+`LongRunThreshold` unchanged. Re-run this same measurement (rendered geometry against
+`XGraphics.MeasureString`, not estimation) before assuming interval 3 is still safe for a
+materially different column layout.
 
 ### Confined to table cells only
 
@@ -373,20 +436,30 @@ crossed the threshold, and confirm what actually reaches the clipboard.
 
 ### Measured consequences
 
-Rendering the same 16-column safe custody register data (30 rows, realistic long values - licence
-numbers, 13-digit ID numbers, a long address, a long remark) with and without this fix, at
-`BreakInterval = 3`:
+Rendering the same 16-column safe custody register data (30 rows, the pessimistic fixture shape -
+licence numbers, 13-digit ID numbers, a long address, a long remark in most of the 16 columns; the
+same shape as `PdfSharpRegisterRendererPerformanceTests.RealisticRow`) with and without this fix,
+re-measured against the shipped `LongRunThreshold = 5`, `BreakInterval = 3` (Release, standalone
+harness):
 
-- Page count: 8 pages with no fix, 10 pages with the fix - the same 10 pages as the original
-  every-character version. Wrapping instead of overflowing makes cells taller when their long
-  values wrap onto multiple lines, so rows grow and the document gets longer - this is the same
-  tradeoff already accepted in item 10 above, now compounded by this fix. Spacing the break
-  opportunities out to every 3 characters did not reduce the page count versus every character;
-  it reduced render time and output size instead (below), because the number of *wrapped lines*
-  a cell needs is governed by how much text has to fit, not by how many break opportunities are
-  available once there are enough to reach the last one that fits.
-- Output size (30-row document): 71,527 bytes with no fix, 83,767 bytes at every-character,
-  80,654 bytes at every-3 characters.
+- Page count: 8 pages with no fix, 10 pages at the shipped settings. Wrapping instead of
+  overflowing makes cells taller when their long values wrap onto multiple lines, so rows grow and
+  the document gets longer - this is the same tradeoff already accepted in item 10 above, now
+  compounded by this fix.
+- Output size for this 30-row document, no fix: 71,527 bytes. This does not depend on
+  `LongRunThreshold` at all - no fix means no `InsertBreakOpportunities` call, so no threshold
+  applies - and remains accurate regardless of which threshold has ever shipped.
+- Output size for this 30-row document **at the shipped settings**
+  (`LongRunThreshold = 5`, `BreakInterval = 3`): **81,023 bytes**, re-measured directly against
+  the shipped build. An earlier version of this document recorded 80,654 bytes for "every 3
+  characters" - that number was measured at the old, superseded `LongRunThreshold = 6` and was
+  stale; 81,023 bytes is the correct figure for what actually ships today.
+- A third figure sometimes cited alongside these two, 83,767 bytes for "every character"
+  (`BreakInterval = 1`), was also measured at the old threshold 6 and describes an interval that
+  was rejected in an earlier round (see "Why the interval is 3, not every character" above). It is
+  historical illustration of why every-character insertion was abandoned, not a claim about
+  current output, and has not been re-measured at the shipped threshold because the shipped code
+  no longer has an every-character code path to measure without temporarily reintroducing it.
 
 **The originally committed performance test's fixture understated the true cost of this renderer
 by roughly a factor of two and a half, independent of this fix.** Its rows use values like `r0c0`
