@@ -179,7 +179,8 @@ public sealed class PdfSharpRegisterRenderer : IRegisterPdfRenderer
 
     private static void AddCellText(Cell cell, string? value)
     {
-        var paragraph = cell.AddParagraph(RegisterCellText.Sanitise(value));
+        var text = RegisterCellText.InsertBreakOpportunities(RegisterCellText.Sanitise(value));
+        var paragraph = cell.AddParagraph(text);
         paragraph.Format.SpaceBefore = Unit.FromPoint(CellPadding);
         paragraph.Format.SpaceAfter = Unit.FromPoint(CellPadding);
     }

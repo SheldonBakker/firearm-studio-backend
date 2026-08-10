@@ -130,19 +130,29 @@ public class PdfSharpRegisterRendererTests
         var bytes = _renderer.Render(SampleDocument(
         [
             ["only-one"],
-            ["a", "b", "c", "d", "e", "f"],
+            ["b", "f", "h", "j", "k", "m"],
         ]));
 
         Assert.Equal("%PDF", Encoding.ASCII.GetString(bytes, 0, 4));
 
         var text = ExtractContentStreamText(bytes);
 
-        Assert.Contains("(only-)", text);
-        Assert.Contains("(one) Tj", text);
-        Assert.Contains("(d) Tj", text);
+        var onlyOneCharacterTokens = new[]
+        {
+            "(o) Tj", "(n) Tj", "(l) Tj", "(y) Tj", "(-) Tj", "(o) Tj", "(n) Tj", "(e) Tj",
+        };
+        var searchFrom = 0;
+        foreach (var token in onlyOneCharacterTokens)
+        {
+            var index = text.IndexOf(token, searchFrom, StringComparison.Ordinal);
+            Assert.True(index >= 0, $"Expected to find '{token}' at or after position {searchFrom}.");
+            searchFrom = index + token.Length;
+        }
 
-        Assert.DoesNotContain("(e) Tj", text);
-        Assert.DoesNotContain("(f) Tj", text);
+        Assert.Contains("(j) Tj", text);
+
+        Assert.DoesNotContain("(k) Tj", text);
+        Assert.DoesNotContain("(m) Tj", text);
     }
 
     [Fact]
