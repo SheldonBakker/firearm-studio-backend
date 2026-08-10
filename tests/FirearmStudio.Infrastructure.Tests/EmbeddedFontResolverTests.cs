@@ -13,7 +13,7 @@ public class EmbeddedFontResolverTests
         var info = _resolver.ResolveTypeface(EmbeddedFontResolver.FamilyName, bold: false, italic: false);
 
         Assert.NotNull(info);
-        Assert.Equal("Roboto#regular", info!.FaceName);
+        Assert.Equal("Roboto#regular", info.FaceName);
         Assert.False(info.MustSimulateBold);
         Assert.False(info.MustSimulateItalic);
     }
@@ -24,7 +24,7 @@ public class EmbeddedFontResolverTests
         var info = _resolver.ResolveTypeface(EmbeddedFontResolver.FamilyName, bold: true, italic: false);
 
         Assert.NotNull(info);
-        Assert.Equal("Roboto#bold", info!.FaceName);
+        Assert.Equal("Roboto#bold", info.FaceName);
         Assert.False(info.MustSimulateBold);
     }
 
@@ -34,7 +34,7 @@ public class EmbeddedFontResolverTests
         var info = _resolver.ResolveTypeface(EmbeddedFontResolver.FamilyName, bold: false, italic: true);
 
         Assert.NotNull(info);
-        Assert.Equal("Roboto#regular", info!.FaceName);
+        Assert.Equal("Roboto#regular", info.FaceName);
         Assert.True(info.MustSimulateItalic);
     }
 
@@ -47,7 +47,7 @@ public class EmbeddedFontResolverTests
         var info = _resolver.ResolveTypeface(family, bold: false, italic: false);
 
         Assert.NotNull(info);
-        Assert.Equal("Roboto#regular", info!.FaceName);
+        Assert.Equal("Roboto#regular", info.FaceName);
     }
 
     [Theory]
@@ -58,7 +58,7 @@ public class EmbeddedFontResolverTests
         var bytes = _resolver.GetFont(faceName);
 
         Assert.NotNull(bytes);
-        Assert.True(bytes!.Length > 100_000, $"Expected a real TTF, got {bytes.Length} bytes.");
+        Assert.True(bytes.Length > 100_000, $"Expected a real TTF, got {bytes.Length} bytes.");
         Assert.Equal(new byte[] { 0x00, 0x01, 0x00, 0x00 }, bytes.Take(4).ToArray());
     }
 
@@ -70,7 +70,7 @@ public class EmbeddedFontResolverTests
 
         Assert.NotNull(regular);
         Assert.NotNull(bold);
-        Assert.NotEqual(regular!.Length, bold!.Length);
+        Assert.NotEqual(regular.Length, bold.Length);
     }
 
     [Fact]
@@ -79,6 +79,6 @@ public class EmbeddedFontResolverTests
         var bytes = _resolver.GetFont("something-else");
 
         Assert.NotNull(bytes);
-        Assert.True(bytes!.Length > 100_000);
+        Assert.True(bytes.Length > 100_000);
     }
 }
