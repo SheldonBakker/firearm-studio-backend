@@ -28,7 +28,7 @@ public class StorageRegisterRowTests
             {
                 CustomerType = CustomerType.Individual,
                 FullName = "Jane Dlamini",
-                IdNumberCiphertext = "CIPHERTEXT",
+                IdNumber = "8501015800081",
                 AddressLine1 = "1 Main Rd",
                 AddressLine2 = null,
                 City = "Cape Town",
@@ -90,12 +90,23 @@ public class StorageRegisterRowTests
     }
 
     [Fact]
-    public void QueryProjection_never_carries_a_plain_id_number()
+    public void QueryProjection_maps_the_owner_id_number()
     {
         var row = Project(SampleRecord());
 
-        Assert.Equal("CIPHERTEXT", row.OwnerIdNumberCiphertext);
+        Assert.Equal("8501015800081", row.OwnerIdNumber);
+    }
+
+    [Fact]
+    public void QueryProjection_leaves_the_owner_id_number_null_when_the_customer_has_none()
+    {
+        var record = SampleRecord();
+        record.Firearm!.Customer!.IdNumber = null;
+
+        var row = Project(record);
+
         Assert.Null(row.OwnerIdNumber);
+        Assert.Equal(string.Empty, row.OwnerIdOrRegNumber);
     }
 
     [Fact]
@@ -120,9 +131,9 @@ public class StorageRegisterRowTests
     }
 
     [Fact]
-    public void OwnerIdOrRegNumber_uses_decrypted_id_for_individuals()
+    public void OwnerIdOrRegNumber_uses_the_id_number_for_individuals()
     {
-        var row = Project(SampleRecord()) with { OwnerIdNumber = "8501015800081" };
+        var row = Project(SampleRecord());
         Assert.Equal("8501015800081", row.OwnerIdOrRegNumber);
     }
 

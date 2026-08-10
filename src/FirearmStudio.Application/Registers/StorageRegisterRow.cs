@@ -4,11 +4,6 @@ using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Registers;
 
-/// <summary>
-/// Flat row for register exports, one per storage record. Constructed inside an EF expression
-/// tree, so no required members. The ID number travels as ciphertext; the export handler decrypts
-/// it into <see cref="OwnerIdNumber"/> via a with-expression before rows reach a builder.
-/// </summary>
 public sealed record StorageRegisterRow
 {
     public string? InternalReference { get; init; }
@@ -22,7 +17,6 @@ public sealed record StorageRegisterRow
     public CustomerType OwnerType { get; init; }
     public string? OwnerFullName { get; init; }
     public string? OwnerCompanyName { get; init; }
-    public string? OwnerIdNumberCiphertext { get; init; }
     public string? OwnerRegistrationNumber { get; init; }
     public string? OwnerIdNumber { get; init; }
 
@@ -65,7 +59,7 @@ public sealed record StorageRegisterRow
         OwnerType = r.Firearm.Customer!.CustomerType,
         OwnerFullName = r.Firearm.Customer.FullName,
         OwnerCompanyName = r.Firearm.Customer.CompanyName,
-        OwnerIdNumberCiphertext = r.Firearm.Customer.IdNumberCiphertext,
+        OwnerIdNumber = r.Firearm.Customer.IdNumber,
         OwnerRegistrationNumber = r.Firearm.Customer.RegistrationNumber,
         AddressLine1 = r.Firearm.Customer.AddressLine1,
         AddressLine2 = r.Firearm.Customer.AddressLine2,

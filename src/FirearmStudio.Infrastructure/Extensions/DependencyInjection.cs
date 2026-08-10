@@ -124,9 +124,7 @@ public static class DependencyInjection
 
         services.AddSingleton(settings);
 
-        // Constructed eagerly so a missing or malformed key fails the app at startup
-        // instead of surfacing as runtime 500s on the first endpoint that decrypts.
-        services.AddSingleton<ICredentialProtector>(new AesGcmCredentialProtector(settings));
+        services.AddSingleton<ICredentialProtector, AesGcmCredentialProtector>();
     }
 
     private static void AddSageAccounting(IServiceCollection services)

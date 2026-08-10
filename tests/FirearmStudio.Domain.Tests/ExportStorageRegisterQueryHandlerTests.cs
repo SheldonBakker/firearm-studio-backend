@@ -10,9 +10,7 @@ public class ExportStorageRegisterQueryHandlerTests
     [Fact]
     public async Task Handle_rejects_from_after_to_before_touching_any_dependency()
     {
-        // The range guard runs first, so null dependencies prove no DB or
-        // decryption work happens on the rejected path.
-        var handler = new ExportStorageRegisterQueryHandler(null!, null!, null!, null!, null!);
+        var handler = new ExportStorageRegisterQueryHandler(null!, null!, null!, null!);
         var query = new ExportStorageRegisterQuery(
             RegisterKind.Firearms,
             new DateOnly(2026, 6, 30),

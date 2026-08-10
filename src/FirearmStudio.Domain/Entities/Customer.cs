@@ -11,7 +11,7 @@ public sealed class Customer : BaseEntity, ITenantEntity
 
     public string? FullName { get; set; }
 
-    public string? IdNumberCiphertext { get; set; }
+    public string? IdNumber { get; set; }
 
     public string? CompanyName { get; set; }
     public string? RegistrationNumber { get; set; }

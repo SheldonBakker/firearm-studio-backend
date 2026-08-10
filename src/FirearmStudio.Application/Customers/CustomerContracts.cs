@@ -38,7 +38,7 @@ public sealed record CustomerDetailResponse(
     IReadOnlyList<CustomerStorageRecordDto> StorageRecords)
 {
     [JsonIgnore]
-    public string? IdNumberCiphertext { get; init; }
+    public string? IdNumber { get; init; }
 
     public string? IdNumberMasked { get; init; }
 
@@ -61,7 +61,7 @@ public sealed record CustomerDetailResponse(
             .Select(s => new CustomerStorageRecordDto(s.Id, s.FirearmId, s.MonthlyRate, s.StorageStatus, s.StoredFrom, s.StoredUntil))
             .ToList())
     {
-        IdNumberCiphertext = c.IdNumberCiphertext,
+        IdNumber = c.IdNumber,
     };
 }
 

@@ -6,9 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Customers.GetCustomer;
 
-public sealed class GetCustomerQueryHandler(
-    IApplicationDbContext db,
-    ICredentialProtector credentialProtector)
+public sealed class GetCustomerQueryHandler(IApplicationDbContext db)
     : IQueryHandler<GetCustomerQuery, ErrorOr<CustomerDetailResponse>>
 {
     public async Task<ErrorOr<CustomerDetailResponse>> Handle(GetCustomerQuery query, CancellationToken cancellationToken)
@@ -24,12 +22,9 @@ public sealed class GetCustomerQueryHandler(
             return Error.NotFound(ErrorCodes.NotFound, "Customer not found.");
         }
 
-        return customer.IdNumberCiphertext is null
+        return customer.IdNumber is null
             ? customer
-            : customer with
-            {
-                IdNumberMasked = IdNumberMask.Mask(credentialProtector.Unprotect(customer.IdNumberCiphertext)),
-            };
+            : customer with { IdNumberMasked = IdNumberMask.Mask(customer.IdNumber) };
     }
 
     public static class ErrorCodes

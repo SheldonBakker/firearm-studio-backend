@@ -25,13 +25,11 @@ public sealed class TenantAndAuditInterceptor(
         typeof(BookingAttendee),
     ];
 
-    // Properties that must never be written to AuditLog.OldValue/NewValue: capability credentials
-    // and sensitive identifiers that would otherwise be logged in plaintext.
-    private static readonly Dictionary<Type, HashSet<string>> AuditExcludedProperties = new()
+    internal static readonly Dictionary<Type, HashSet<string>> AuditExcludedProperties = new()
     {
         [typeof(Booking)] = [nameof(Booking.CalendarToken)],
         [typeof(BookingAttendee)] = [nameof(BookingAttendee.IdNumber)],
-        [typeof(Customer)] = [nameof(Customer.IdNumberCiphertext)],
+        [typeof(Customer)] = [nameof(Customer.IdNumber)],
     };
 
     public override InterceptionResult<int> SavingChanges(
@@ -78,8 +76,6 @@ public sealed class TenantAndAuditInterceptor(
         return await base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
-    // Applies timestamps and tenant stamps; returns auditable entries without building logs yet.
-    // Audit log construction is skipped here so we can short-circuit when CompanyId is null.
     private (DateTime Now, List<EntityEntry<BaseEntity>>? AuditEntries) ApplyStampsAndCollect(DbContext context)
     {
         var now = DateTime.UtcNow;
@@ -136,7 +132,6 @@ public sealed class TenantAndAuditInterceptor(
     private bool _appUserResolved;
     private Guid? _appUserId;
 
-    // Sync path: blocking query is acceptable on the synchronous SaveChanges path.
     private Guid? ResolveAppUserId(DbContext context, Guid authUserId)
     {
         if (_appUserResolved)
@@ -144,7 +139,6 @@ public sealed class TenantAndAuditInterceptor(
             return _appUserId;
         }
 
-        // The AppUser tenant query filter scopes this to the current company.
         _appUserId = context.Set<AppUser>()
             .Where(u => u.AuthUserId == authUserId)
             .Select(u => (Guid?)u.Id)
@@ -156,7 +150,6 @@ public sealed class TenantAndAuditInterceptor(
     private bool _asyncAppUserResolved;
     private Guid? _asyncAppUserId;
 
-    // Async path: uses FirstOrDefaultAsync to avoid blocking I/O on the thread pool.
     private async ValueTask<Guid?> ResolveAppUserIdAsync(DbContext context, Guid authUserId, CancellationToken cancellationToken)
     {
         if (_asyncAppUserResolved)
@@ -174,7 +167,6 @@ public sealed class TenantAndAuditInterceptor(
 
     private static AuditLog BuildAuditLog(EntityEntry<BaseEntity> entry)
     {
-        // Materialize once to avoid double enumeration when both old and new values are needed.
         var excluded = AuditExcludedProperties.GetValueOrDefault(entry.Entity.GetType());
         var props = entry.Properties
             .Where(p => !p.Metadata.IsPrimaryKey())
@@ -249,7 +241,6 @@ public sealed class TenantAndAuditInterceptor(
             return;
         }
 
-        // An explicit BeginBypass() scope authorises deliberate tenant moves (reassignment / onboarding).
         if (tenant.BypassFilter)
         {
             return;
