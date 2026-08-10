@@ -59,8 +59,9 @@ jobs:
               exit 1
             fi
             printf '%s' "$STACK_ENV" > .env.new
-            chmod 600 .env.new
+            chmod 640 .env.new
             mv .env.new .env
+            chgrp docker .env
             docker compose pull
             docker compose up -d
         env:
