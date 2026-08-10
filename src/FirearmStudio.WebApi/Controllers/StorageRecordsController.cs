@@ -1,12 +1,12 @@
 using Asp.Versioning;
-using FirearmStudio.Application.StorageRecords;
-using FirearmStudio.Application.StorageRecords.GetStorageRecords;
 using FirearmStudio.Application.Model;
-using FirearmStudio.Domain.Enums;
+using FirearmStudio.Application.StorageRecords;
 using FirearmStudio.Application.StorageRecords.GetCustomerStorageRecords;
+using FirearmStudio.Application.StorageRecords.GetStorageRecords;
 using FirearmStudio.Application.StorageRecords.StartStorage;
 using FirearmStudio.Application.StorageRecords.UpdateStorageRecord;
 using FirearmStudio.Domain.Authentication;
+using FirearmStudio.Domain.Enums;
 using FirearmStudio.WebApi.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
