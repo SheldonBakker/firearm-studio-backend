@@ -1,0 +1,66 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: sheldonbakker/${{ vars.IMAGE_NAME }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Setup Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci-cd
+          ping: ${{ secrets.VM_HOST }}
+
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          envs: STACK_ENV
+          script: |
+            set -euo pipefail
+            cd /opt/docker/${{ vars.VM_DOCKER_FOLDER }}
+            if [ -z "${STACK_ENV:-}" ]; then
+              echo "STACK_ENV is empty; refusing to overwrite .env" >&2
+              exit 1
+            fi
+            printf '%s' "$STACK_ENV" > .env.new
+            chmod 600 .env.new
+            mv .env.new .env
+            docker compose pull
+            docker compose up -d
+        env:
+          STACK_ENV: ${{ secrets.STACK_ENV }}
