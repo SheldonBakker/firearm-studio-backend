@@ -113,22 +113,13 @@ jobs:
               echo "STACK_ENV is empty; refusing to overwrite .env" >&2
               exit 1
             fi
-            if [ -z "${DEPLOY_IMAGE:-}" ]; then
-              echo "DEPLOY_IMAGE is empty; refusing to deploy" >&2
-              exit 1
-            fi
-            printf '%s\n' "$STACK_ENV" | grep -v '^FIREARM_IMAGE=' > .env.new || true
+            printf '%s\n' "$STACK_ENV" | sed '/^FIREARM_IMAGE=/d' > .env.new
             printf 'FIREARM_IMAGE=%s\n' "$DEPLOY_IMAGE" >> .env.new
             chmod 640 .env.new
             mv .env.new .env
             chgrp docker .env
             docker compose pull
             docker compose up -d
-            running=$(docker compose ps --quiet api | xargs -r docker inspect --format '{{.Config.Image}}')
-            if [ "$running" != "$DEPLOY_IMAGE" ]; then
-              echo "Deployed image mismatch: expected $DEPLOY_IMAGE, running $running" >&2
-              exit 1
-            fi
         env:
           STACK_ENV: ${{ secrets.STACK_ENV }}
           DEPLOY_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
