@@ -15,19 +15,22 @@ COPY . .
 RUN dotnet publish src/FirearmStudio.WebApi/FirearmStudio.WebApi.csproj \
     -c Release -o /app/publish --no-restore /p:UseAppHost=false
 
-# The plain chiseled base ships no ICU and sets DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true itself,
-# so `new CultureInfo("en-ZA")` would throw at runtime; it also ships no timezone database, which is
-# why zoneinfo is copied below (SouthAfricaTimeZone resolves Africa/Johannesburg at runtime).
-# See src/FirearmStudio.Infrastructure/Services/PDF-RENDERING.md item 13.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS final
 WORKDIR /app
-COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/publish .
 
 EXPOSE 5146
 ENV ASPNETCORE_HTTP_PORTS=5146 \
     ASPNETCORE_ENVIRONMENT=Production \
     DOTNET_gcServer=0
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD curl --fail --silent --show-error "http://127.0.0.1:${ASPNETCORE_HTTP_PORTS:-5146}/health" || exit 1
 
 USER $APP_UID
 ENTRYPOINT ["dotnet", "FirearmStudio.WebApi.dll"]
