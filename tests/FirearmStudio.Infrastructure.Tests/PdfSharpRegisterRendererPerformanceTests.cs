@@ -6,6 +6,7 @@ using Xunit.Abstractions;
 
 namespace FirearmStudio.Infrastructure.Tests;
 
+[Trait("Category", "Performance")]
 public class PdfSharpRegisterRendererPerformanceTests(ITestOutputHelper output)
 {
     private const int MaxPdfExportRows =

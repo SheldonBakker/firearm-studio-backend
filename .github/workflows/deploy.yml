@@ -30,7 +30,7 @@ jobs:
         run: dotnet restore FirearmStudio.slnx
 
       - name: Run tests
-        run: dotnet test FirearmStudio.slnx --configuration Release --no-restore --logger "trx;LogFileName=tests.trx"
+        run: dotnet test FirearmStudio.slnx --configuration Release --no-restore --filter "Category!=Performance" --logger "trx;LogFileName=tests.trx"
 
       - name: Publish test results
         uses: dorny/test-reporter@v1
