@@ -4,7 +4,6 @@ namespace FirearmStudio.Infrastructure.Services;
 
 internal static class RegisterCellText
 {
-    private const int LongRunThreshold = 5;
     private const int BreakInterval = 3;
     private const char BreakOpportunity = '\u200B';
 
@@ -38,7 +37,7 @@ internal static class RegisterCellText
         return builder.ToString();
     }
 
-    public static string InsertBreakOpportunities(string? value)
+    public static string InsertBreakOpportunities(string? value, double usableWidth, Func<string, double> measure)
     {
         if (string.IsNullOrEmpty(value))
         {
@@ -57,7 +56,7 @@ internal static class RegisterCellText
                 continue;
             }
 
-            AppendRun(builder, value, runStart, i - runStart);
+            AppendRun(builder, value, runStart, i - runStart, usableWidth, measure);
 
             if (i < value.Length)
             {
@@ -70,25 +69,74 @@ internal static class RegisterCellText
         return builder.ToString();
     }
 
-    private static void AppendRun(StringBuilder builder, string value, int start, int length)
+    private static void AppendRun(
+        StringBuilder builder,
+        string value,
+        int start,
+        int length,
+        double usableWidth,
+        Func<string, double> measure)
     {
-        if (length <= LongRunThreshold)
+        if (length == 0)
         {
-            builder.Append(value, start, length);
             return;
         }
 
-        for (var i = 0; i < length; i++)
-        {
-            builder.Append(value[start + i]);
+        var run = value.Substring(start, length);
 
-            var isLastCharacterInRun = i == length - 1;
+        if (measure(run) <= usableWidth)
+        {
+            builder.Append(run);
+            return;
+        }
+
+        var segmentStart = 0;
+
+        for (var i = 0; i < run.Length; i++)
+        {
+            var isLastCharacterInRun = i == run.Length - 1;
+
+            if (!IsSegmentBoundary(run[i]) && !isLastCharacterInRun)
+            {
+                continue;
+            }
+
+            AppendSegment(builder, run[segmentStart..(i + 1)], usableWidth, measure);
+
+            if (!isLastCharacterInRun)
+            {
+                builder.Append(BreakOpportunity);
+            }
+
+            segmentStart = i + 1;
+        }
+    }
+
+    private static void AppendSegment(
+        StringBuilder builder,
+        string segment,
+        double usableWidth,
+        Func<string, double> measure)
+    {
+        if (measure(segment) <= usableWidth)
+        {
+            builder.Append(segment);
+            return;
+        }
+
+        for (var i = 0; i < segment.Length; i++)
+        {
+            builder.Append(segment[i]);
+
+            var isLastCharacterInSegment = i == segment.Length - 1;
             var atBreakInterval = (i + 1) % BreakInterval == 0;
 
-            if (atBreakInterval && !isLastCharacterInRun)
+            if (atBreakInterval && !isLastCharacterInSegment)
             {
                 builder.Append(BreakOpportunity);
             }
         }
     }
+
+    private static bool IsSegmentBoundary(char value) => value is '-' or '/';
 }

@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using FirearmStudio.Application.Registers;
 using FirearmStudio.Infrastructure.Services;
 using PdfSharp.Pdf.Advanced;
@@ -112,9 +114,9 @@ public class PdfSharpRegisterRendererTests
         Assert.Equal(2, Inspect(bytes).PageCount);
 
         var text = ExtractContentStreamText(bytes);
-        Assert.Contains("(Col) Tj", text, StringComparison.Ordinal);
-        Assert.Contains("(umn) Tj", text, StringComparison.Ordinal);
+        Assert.Contains("(Column) Tj", text, StringComparison.Ordinal);
         Assert.Contains("(15) Tj", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("(Col) Tj", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -138,17 +140,9 @@ public class PdfSharpRegisterRendererTests
 
         var text = ExtractContentStreamText(bytes);
 
-        var onlyOneCharacterTokens = new[]
-        {
-            "(onl) Tj", "(y-) Tj", "(o) Tj", "(ne) Tj",
-        };
-        var searchFrom = 0;
-        foreach (var token in onlyOneCharacterTokens)
-        {
-            var index = text.IndexOf(token, searchFrom, StringComparison.Ordinal);
-            Assert.True(index >= 0, $"Expected to find '{token}' at or after position {searchFrom}.");
-            searchFrom = index + token.Length;
-        }
+        Assert.Contains("(only-) Tj", text, StringComparison.Ordinal);
+        Assert.Contains("(one) Tj", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("(onl) Tj", text, StringComparison.Ordinal);
 
         Assert.Contains("(j) Tj", text, StringComparison.Ordinal);
 
@@ -214,6 +208,136 @@ public class PdfSharpRegisterRendererTests
         var bytes = _renderer.Render(SampleDocument(rows));
 
         Assert.Equal(2, Inspect(bytes).PageCount);
+    }
+
+    [Fact]
+    public void A_company_name_that_wraps_keeps_the_generated_by_line_clear_of_the_table()
+    {
+        var wrappingName = string.Join(" ", Enumerable.Repeat("Bergview", 20));
+
+        var bytes = _renderer.Render(
+            SampleDocument([["2026-02-01", "CZ", "SN123", ""]]) with { CompanyName = wrappingName });
+
+        var text = ExtractContentStreamText(bytes);
+        Assert.Contains("(Generated) Tj", text, StringComparison.Ordinal);
+
+        var (generatedBaseline, tableTop) = HeaderGeometry(text);
+
+        Assert.True(
+            generatedBaseline > tableTop,
+            $"The generated-by line sits at y={generatedBaseline:F2}, at or below the table top y={tableTop:F2}, "
+            + "so the table's heading-row shading paints over it.");
+    }
+
+    [Fact]
+    public void A_minimal_header_keeps_the_generated_by_line_clear_of_the_table()
+    {
+        var bytes = _renderer.Render(SampleDocument([["2026-02-01", "CZ", "SN123", ""]]) with
+        {
+            CompanyRegistrationNumber = null,
+            CompanyAddress = string.Empty,
+        });
+
+        var (generatedBaseline, tableTop) = HeaderGeometry(ExtractContentStreamText(bytes));
+
+        Assert.True(generatedBaseline > tableTop);
+    }
+
+    [Fact]
+    public void Column_headings_that_fit_their_column_are_not_broken_up()
+    {
+        IReadOnlyList<string> columns =
+            [.. SafeCustodyRegisterCsvBuilder.Headers, "Signature"];
+
+        float[] weights =
+            [0.9f, 0.9f, 0.9f, 0.9f, 0.8f, 1.1f, 1.3f, 1.2f, 1.8f, 1.2f, 0.9f, 0.8f, 0.8f, 1.2f, 0.9f, 1.0f];
+
+        string[] row =
+        [
+            "2026-01-01", "2026-02-01", "CZ", "Shadow 2", "7.62x51", "SN0001",
+            "Christiaan van der Merwe", "8501015800086", "12 Range Road, Muizenberg",
+            "WC/2020/00000", "2020-01-01", "SAFE00", "RACK1", "Strongroom A", "Released", string.Empty,
+        ];
+
+        List<string[]> rows = [row];
+
+        var text = ExtractContentStreamText(_renderer.Render(SampleDocument(rows, columns, weights)));
+
+        foreach (var word in new[]
+        {
+            "Calibre", "Signature", "Licence", "Holder", "Safe", "Number", "Rack", "Storage",
+            "Location", "Received", "Returned", "Released", "SAFE00",
+        })
+        {
+            Assert.Contains($"({word}) Tj", text, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("(2026-) Tj", text, StringComparison.Ordinal);
+        Assert.Contains("(01-) Tj", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("(202) Tj", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("(Cal) Tj", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("(Num) Tj", text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("MMMMM")]
+    [InlineData("WWWWW")]
+    [InlineData("@@@@@")]
+    [InlineData("Handgun")]
+    public void A_run_too_wide_for_the_narrowest_column_is_still_broken(string value)
+    {
+        IReadOnlyList<string> columns =
+            [.. SafeCustodyRegisterCsvBuilder.Headers, "Signature"];
+
+        float[] weights =
+            [0.9f, 0.9f, 0.9f, 0.9f, 0.8f, 1.1f, 1.3f, 1.2f, 1.8f, 1.2f, 0.9f, 0.8f, 0.8f, 1.2f, 0.9f, 1.0f];
+
+        const int NarrowestColumn = 4;
+
+        var row = Enumerable.Repeat(string.Empty, columns.Count).ToArray();
+        row[NarrowestColumn] = value;
+
+        var text = ExtractContentStreamText(_renderer.Render(SampleDocument([row], columns, weights)));
+
+        Assert.DoesNotContain($"({value}) Tj", text, StringComparison.Ordinal);
+        Assert.Contains($"({value[..3]}) Tj", text, StringComparison.Ordinal);
+    }
+
+    private static (double GeneratedBaseline, double TableTop) HeaderGeometry(string contentStream)
+    {
+        var matches = Regex.Matches(
+            contentStream,
+            @"\(([^()]*)\)\s*Tj|(-?[\d.]+)\s+(-?[\d.]+)\s+Td|(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+re|\bBT\b");
+
+        var y = 0d;
+        var generatedBaseline = double.NaN;
+        var tableTop = double.NaN;
+
+        foreach (Match match in matches)
+        {
+            if (match.Value == "BT")
+            {
+                y = 0;
+            }
+            else if (match.Groups[2].Success)
+            {
+                y += double.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture);
+            }
+            else if (match.Groups[4].Success && double.IsNaN(tableTop))
+            {
+                tableTop = double.Parse(match.Groups[5].Value, CultureInfo.InvariantCulture)
+                    + double.Parse(match.Groups[7].Value, CultureInfo.InvariantCulture);
+            }
+            else if (match.Groups[1].Value == "Generated" && double.IsNaN(generatedBaseline))
+            {
+                generatedBaseline = y;
+            }
+        }
+
+        Assert.False(double.IsNaN(generatedBaseline), "No 'Generated' text was rendered.");
+        Assert.False(double.IsNaN(tableTop), "No table shading rectangle was rendered.");
+
+        return (generatedBaseline, tableTop);
     }
 
     [Fact]

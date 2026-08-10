@@ -13,22 +13,30 @@ public sealed class PdfSharpRegisterRenderer : IRegisterPdfRenderer
 {
     private const string FontFamily = EmbeddedFontResolver.FamilyName;
     private const double BodyFontSize = 8;
+    private const double TitleFontSize = 12;
+    private const double CompanyFontSize = 14;
     private const double MarginPoints = 24;
     private const double PageWidthMm = 297;
     private const double PageHeightMm = 210;
     private const double BorderWidth = 0.5;
     private const double CellPadding = 3;
+    private const double MigraDocCellPaddingPoints = 3.4016;
+    private const double CellChromePoints = BorderWidth + CellPadding + MigraDocCellPaddingPoints;
 
     private const double HeaderDistancePoints = MarginPoints;
     private const double FooterDistancePoints = MarginPoints;
-    private const double HeaderReservedHeightPoints = 91;
+    private const double HeaderMinimumReservedHeightPoints = 91;
+    private const double HeaderSafetyPadPoints = 1;
+    private const double TitleSpaceBeforePoints = 6;
+    private const double HeaderSpaceAfterPoints = 8;
     private const double FooterReservedHeightPoints = 19;
-    private const double TopMarginPoints = HeaderDistancePoints + HeaderReservedHeightPoints;
     private const double BottomMarginPoints = FooterDistancePoints + FooterReservedHeightPoints;
 
     private static readonly Color HeaderFill = new(238, 238, 238);
 
     private static readonly Lock RenderGate = new();
+
+    private static RegisterTextMeasurer? Measurer;
 
     static PdfSharpRegisterRenderer()
     {
@@ -39,7 +47,10 @@ public sealed class PdfSharpRegisterRenderer : IRegisterPdfRenderer
     {
         lock (RenderGate)
         {
-            var pdf = new PdfDocumentRenderer { Document = Compose(document) };
+            Measurer ??= new RegisterTextMeasurer();
+            Measurer.ResetMeasurementCache();
+
+            var pdf = new PdfDocumentRenderer { Document = Compose(document, Measurer) };
             pdf.RenderDocument();
 
             var generatedAtUtc = TimeZoneInfo.ConvertTimeToUtc(document.GeneratedAt, SouthAfricaTimeZone.Instance);
@@ -52,7 +63,7 @@ public sealed class PdfSharpRegisterRenderer : IRegisterPdfRenderer
         }
     }
 
-    private static Document Compose(RegisterDocument source)
+    private static Document Compose(RegisterDocument source, RegisterTextMeasurer measurer)
     {
         var document = new Document();
         document.Info.Title = source.Title;
@@ -72,46 +83,90 @@ public sealed class PdfSharpRegisterRenderer : IRegisterPdfRenderer
 
         section.PageSetup.HeaderDistance = Unit.FromPoint(HeaderDistancePoints);
         section.PageSetup.FooterDistance = Unit.FromPoint(FooterDistancePoints);
-        section.PageSetup.TopMargin = Unit.FromPoint(TopMarginPoints);
         section.PageSetup.BottomMargin = Unit.FromPoint(BottomMarginPoints);
 
-        ComposeHeader(section, source);
+        var headerParagraphs = HeaderParagraphs(source);
+
+        section.PageSetup.TopMargin = Unit.FromPoint(
+            HeaderDistancePoints
+            + HeaderReservedHeight(headerParagraphs, measurer, ContentWidth(section).Point));
+
+        ComposeHeader(section, headerParagraphs);
         ComposeFooter(section, source);
-        ComposeContent(section, source);
+        ComposeContent(section, source, measurer);
 
         return document;
     }
 
-    private static void ComposeHeader(Section section, RegisterDocument source)
+    private static List<HeaderParagraph> HeaderParagraphs(RegisterDocument source)
     {
-        var header = section.Headers.Primary;
-
-        var company = header.AddParagraph(RegisterCellText.Sanitise(source.CompanyName));
-        company.Format.Font.Size = 14;
-        company.Format.Font.Bold = true;
+        var paragraphs = new List<HeaderParagraph>(6)
+        {
+            new(RegisterCellText.Sanitise(source.CompanyName), CompanyFontSize, true, 0, 0),
+        };
 
         if (!string.IsNullOrWhiteSpace(source.CompanyRegistrationNumber))
         {
-            header.AddParagraph(
-                RegisterCellText.Sanitise($"Registration No: {source.CompanyRegistrationNumber}"));
+            paragraphs.Add(new(
+                RegisterCellText.Sanitise($"Registration No: {source.CompanyRegistrationNumber}"),
+                BodyFontSize, false, 0, 0));
         }
 
         if (!string.IsNullOrWhiteSpace(source.CompanyAddress))
         {
-            header.AddParagraph(RegisterCellText.Sanitise(source.CompanyAddress));
+            paragraphs.Add(new(RegisterCellText.Sanitise(source.CompanyAddress), BodyFontSize, false, 0, 0));
         }
 
-        var title = header.AddParagraph(RegisterCellText.Sanitise(source.Title));
-        title.Format.Font.Size = 12;
-        title.Format.Font.Bold = true;
-        title.Format.SpaceBefore = Unit.FromPoint(6);
+        paragraphs.Add(new(
+            RegisterCellText.Sanitise(source.Title), TitleFontSize, true, TitleSpaceBeforePoints, 0));
 
-        header.AddParagraph(RegisterCellText.Sanitise(
-            $"Period: {source.PeriodFrom:yyyy-MM-dd} to {source.PeriodTo:yyyy-MM-dd}"));
+        paragraphs.Add(new(
+            RegisterCellText.Sanitise($"Period: {source.PeriodFrom:yyyy-MM-dd} to {source.PeriodTo:yyyy-MM-dd}"),
+            BodyFontSize, false, 0, 0));
 
-        var generated = header.AddParagraph(RegisterCellText.Sanitise(
-            $"Generated {source.GeneratedAt:yyyy-MM-dd HH:mm} (SAST) by {source.GeneratedBy}"));
-        generated.Format.SpaceAfter = Unit.FromPoint(8);
+        paragraphs.Add(new(
+            RegisterCellText.Sanitise(
+                $"Generated {source.GeneratedAt:yyyy-MM-dd HH:mm} (SAST) by {source.GeneratedBy}"),
+            BodyFontSize, false, 0, HeaderSpaceAfterPoints));
+
+        return paragraphs;
+    }
+
+    private static double HeaderReservedHeight(
+        IReadOnlyList<HeaderParagraph> paragraphs, RegisterTextMeasurer measurer, double contentWidth)
+    {
+        var height = 0d;
+
+        foreach (var paragraph in paragraphs)
+        {
+            height += paragraph.SpaceBefore + paragraph.SpaceAfter;
+            height += measurer.LineCount(paragraph.Text, paragraph.FontSize, paragraph.Bold, contentWidth)
+                * measurer.LineHeight(paragraph.FontSize, paragraph.Bold);
+        }
+
+        return Math.Max(HeaderMinimumReservedHeightPoints, height + HeaderSafetyPadPoints);
+    }
+
+    private static void ComposeHeader(Section section, IReadOnlyList<HeaderParagraph> paragraphs)
+    {
+        var header = section.Headers.Primary;
+
+        foreach (var item in paragraphs)
+        {
+            var paragraph = header.AddParagraph(item.Text);
+            paragraph.Format.Font.Size = item.FontSize;
+            paragraph.Format.Font.Bold = item.Bold;
+
+            if (item.SpaceBefore > 0)
+            {
+                paragraph.Format.SpaceBefore = Unit.FromPoint(item.SpaceBefore);
+            }
+
+            if (item.SpaceAfter > 0)
+            {
+                paragraph.Format.SpaceAfter = Unit.FromPoint(item.SpaceAfter);
+            }
+        }
     }
 
     private static void ComposeFooter(Section section, RegisterDocument source)
@@ -128,7 +183,7 @@ public sealed class PdfSharpRegisterRenderer : IRegisterPdfRenderer
         paragraph.AddNumPagesField();
     }
 
-    private static void ComposeContent(Section section, RegisterDocument source)
+    private static void ComposeContent(Section section, RegisterDocument source, RegisterTextMeasurer measurer)
     {
         if (source.Rows.Count == 0 || source.Columns.Count == 0)
         {
@@ -147,12 +202,19 @@ public sealed class PdfSharpRegisterRenderer : IRegisterPdfRenderer
         var widths = RegisterTableLayout.ColumnWidths(
             source.Columns.Count, source.ColumnWeights, ContentWidth(section).Point);
 
-        foreach (var width in widths)
+        var breakWidths = new double[widths.Length];
+
+        for (var i = 0; i < widths.Length; i++)
         {
-            var column = table.AddColumn(Unit.FromPoint(width));
+            breakWidths[i] = widths[i] - CellChromePoints;
+
+            var column = table.AddColumn(Unit.FromPoint(widths[i]));
             column.Format.LeftIndent = Unit.FromPoint(CellPadding);
             column.Format.RightIndent = Unit.FromPoint(CellPadding);
         }
+
+        var measureHeading = (string segment) => measurer.Width(segment, BodyFontSize, true);
+        var measureBody = (string segment) => measurer.Width(segment, BodyFontSize, false);
 
         var headerRow = table.AddRow();
         headerRow.HeadingFormat = true;
@@ -162,7 +224,7 @@ public sealed class PdfSharpRegisterRenderer : IRegisterPdfRenderer
 
         for (var i = 0; i < source.Columns.Count; i++)
         {
-            AddCellText(headerRow.Cells[i], source.Columns[i]);
+            AddCellText(headerRow.Cells[i], source.Columns[i], breakWidths[i], measureHeading);
         }
 
         foreach (var row in source.Rows)
@@ -172,14 +234,17 @@ public sealed class PdfSharpRegisterRenderer : IRegisterPdfRenderer
 
             for (var i = 0; i < source.Columns.Count; i++)
             {
-                AddCellText(tableRow.Cells[i], i < row.Length ? row[i] : string.Empty);
+                AddCellText(
+                    tableRow.Cells[i], i < row.Length ? row[i] : string.Empty, breakWidths[i], measureBody);
             }
         }
     }
 
-    private static void AddCellText(Cell cell, string? value)
+    private static void AddCellText(Cell cell, string? value, double breakWidth, Func<string, double> measure)
     {
-        var text = RegisterCellText.InsertBreakOpportunities(RegisterCellText.Sanitise(value));
+        var text = RegisterCellText.InsertBreakOpportunities(
+            RegisterCellText.Sanitise(value), breakWidth, measure);
+
         var paragraph = cell.AddParagraph(text);
         paragraph.Format.SpaceBefore = Unit.FromPoint(CellPadding);
         paragraph.Format.SpaceAfter = Unit.FromPoint(CellPadding);
@@ -189,4 +254,7 @@ public sealed class PdfSharpRegisterRenderer : IRegisterPdfRenderer
         section.PageSetup.PageWidth
         - section.PageSetup.LeftMargin
         - section.PageSetup.RightMargin;
+
+    private readonly record struct HeaderParagraph(
+        string Text, double FontSize, bool Bold, double SpaceBefore, double SpaceAfter);
 }

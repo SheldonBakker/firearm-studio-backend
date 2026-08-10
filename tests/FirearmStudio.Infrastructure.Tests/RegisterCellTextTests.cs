@@ -7,6 +7,11 @@ public class RegisterCellTextTests
 {
     private const string Zwsp = "\u200B";
 
+    private static readonly Func<string, double> OnePointPerCharacter = segment => segment.Length;
+
+    private static string Break(string? value, double usableWidth) =>
+        RegisterCellText.InsertBreakOpportunities(value, usableWidth, OnePointPerCharacter);
+
     [Fact]
     public void Null_becomes_an_empty_string()
     {
@@ -54,62 +59,75 @@ public class RegisterCellTextTests
     }
 
     [Fact]
+    public void Sanitise_passes_a_break_opportunity_through_unchanged()
+    {
+        var alreadyBroken = "Han" + Zwsp + "dgu" + Zwsp + "n";
+
+        Assert.Equal(alreadyBroken, RegisterCellText.Sanitise(alreadyBroken));
+    }
+
+    [Fact]
     public void InsertBreakOpportunities_leaves_a_null_value_as_empty()
     {
-        Assert.Equal(string.Empty, RegisterCellText.InsertBreakOpportunities(null));
+        Assert.Equal(string.Empty, Break(null, 1));
     }
 
     [Fact]
     public void InsertBreakOpportunities_leaves_an_empty_value_as_empty()
     {
-        Assert.Equal(string.Empty, RegisterCellText.InsertBreakOpportunities(string.Empty));
+        Assert.Equal(string.Empty, Break(string.Empty, 1));
     }
 
     [Fact]
-    public void InsertBreakOpportunities_leaves_a_run_at_the_threshold_untouched()
+    public void InsertBreakOpportunities_leaves_a_segment_that_fits_untouched()
     {
-        Assert.Equal("SN123", RegisterCellText.InsertBreakOpportunities("SN123"));
-    }
-
-    [Theory]
-    [InlineData("000000")]
-    [InlineData("888888")]
-    [InlineData("Damagd")]
-    [InlineData("MMMMMM")]
-    [InlineData("SN1234")]
-    public void InsertBreakOpportunities_breaks_a_six_character_run(string value)
-    {
-        var result = RegisterCellText.InsertBreakOpportunities(value);
-
-        Assert.Contains(Zwsp, result, StringComparison.Ordinal);
-        Assert.NotEqual(value, result);
+        Assert.Equal("Handgun", Break("Handgun", 7));
     }
 
     [Fact]
-    public void InsertBreakOpportunities_leaves_a_short_run_untouched()
+    public void InsertBreakOpportunities_breaks_a_segment_one_point_too_wide()
     {
-        Assert.Equal("Glock", RegisterCellText.InsertBreakOpportunities("Glock"));
+        Assert.Equal("Han" + Zwsp + "dgu" + Zwsp + "n", Break("Handgun", 6.9));
     }
 
     [Fact]
-    public void InsertBreakOpportunities_adds_zero_width_spaces_every_three_characters_of_a_run_above_the_threshold()
+    public void InsertBreakOpportunities_leaves_a_whole_run_that_fits_untouched()
     {
-        var result = RegisterCellText.InsertBreakOpportunities("WC/2020/00000");
+        Assert.Equal("2026-01-01", Break("2026-01-01", 10));
+    }
 
-        var expected = string.Join(Zwsp, "WC/2020/00000".Chunk(3).Select(chunk => new string(chunk)));
-        Assert.Equal(expected, result);
+    [Fact]
+    public void InsertBreakOpportunities_breaks_a_date_at_its_hyphens_and_nowhere_else()
+    {
+        Assert.Equal("2026-" + Zwsp + "01-" + Zwsp + "01", Break("2026-01-01", 5));
+    }
+
+    [Fact]
+    public void InsertBreakOpportunities_breaks_a_licence_number_at_its_slashes_and_nowhere_else()
+    {
+        Assert.Equal("WC/" + Zwsp + "2020/" + Zwsp + "00000", Break("WC/2020/00000", 5));
+    }
+
+    [Fact]
+    public void InsertBreakOpportunities_chunks_only_the_slash_segments_that_do_not_fit()
+    {
+        var result = Break("WC/2020/00000", 4);
+
+        Assert.Equal(
+            "WC/" + Zwsp + "202" + Zwsp + "0/" + Zwsp + "000" + Zwsp + "00",
+            result);
     }
 
     [Fact]
     public void InsertBreakOpportunities_leaves_several_short_space_separated_words_untouched()
     {
-        Assert.Equal("CZ Blade 2", RegisterCellText.InsertBreakOpportunities("CZ Blade 2"));
+        Assert.Equal("CZ Blade 2", Break("CZ Blade 2", 5));
     }
 
     [Fact]
-    public void InsertBreakOpportunities_only_breaks_the_run_that_exceeds_the_threshold()
+    public void InsertBreakOpportunities_only_breaks_the_run_that_exceeds_the_width()
     {
-        var result = RegisterCellText.InsertBreakOpportunities("CZ 8501015800086");
+        var result = Break("CZ 8501015800086", 5);
 
         Assert.StartsWith("CZ ", result, StringComparison.Ordinal);
         Assert.DoesNotContain("C" + Zwsp + "Z", result, StringComparison.Ordinal);
@@ -128,7 +146,7 @@ public class RegisterCellTextTests
     [InlineData("")]
     public void InsertBreakOpportunities_preserves_the_original_characters_in_order(string value)
     {
-        var result = RegisterCellText.InsertBreakOpportunities(value);
+        var result = Break(value, 3);
         var withoutBreaks = result.Replace(Zwsp, string.Empty);
 
         Assert.Equal(value, withoutBreaks);
