@@ -8,9 +8,9 @@ namespace FirearmStudio.Infrastructure.Tests;
 
 public class PdfSharpRegisterRendererPerformanceTests(ITestOutputHelper output)
 {
-    private const int MaxPdfExportRows = 5000;
+    private const int MaxPdfExportRows = 2000;
 
-    private const int BudgetSeconds = 20;
+    private const int BudgetSeconds = 17;
 
     private static readonly IReadOnlyList<string> Columns =
     [

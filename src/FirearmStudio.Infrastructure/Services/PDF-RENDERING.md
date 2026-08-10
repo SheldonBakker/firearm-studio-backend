@@ -133,11 +133,11 @@ and looks plausible without careful inspection. A passing functional test suite 
 that concurrent rendering is safe, because ordinary assertions (`"%PDF"` prefix, non-empty bytes,
 row/column counts) do not look inside the content stream closely enough to catch it.
 
-Serialising every export process-wide is an accepted cost: the largest register (5000 rows)
-renders in a few seconds, and register PDF exports are infrequent admin operations, not a hot
-request path. Do not remove or narrow this lock without re-running a high-concurrency corruption
-test of the kind described above, comparing byte length and content-stream hashes across many
-parallel renders of the same document - the failure mode does not throw, so ordinary test
+Serialising every export process-wide is an accepted cost: the largest register (2000 rows, see
+section 12) renders in a few seconds, and register PDF exports are infrequent admin operations, not
+a hot request path. Do not remove or narrow this lock without re-running a high-concurrency
+corruption test of the kind described above, comparing byte length and content-stream hashes across
+many parallel renders of the same document - the failure mode does not throw, so ordinary test
 assertions will not catch a regression here.
 
 ## 7. Column widths are absolute; MigraDoc never scales a table to fit
@@ -361,3 +361,44 @@ time, output size, and page count on a 30-row check), not faster. Coarser break 
 MigraDoc's line formatter fewer usable break points inside the narrowest columns, which produced
 more wrapped lines overall rather than fewer - see "Why the interval is 3, not every character"
 above.
+
+## 12. The PDF export cap is 2000 rows, not 20000 - CSV carries the larger extracts
+
+`ExportStorageRegisterQueryHandler.MaxPdfExportRows` is 2000. `MaxExportRows`, the CSV cap, is
+20000 and is unaffected by anything in this document - CSV export does not go through MigraDoc and
+has no comparable per-row rendering cost.
+
+The two caps differ by 10x because rendering happens synchronously inside the HTTP request, on the
+render lock described in item 6, and MigraDoc is substantially slower than the QuestPDF renderer it
+replaced. Render time was measured against realistic 16-column safe custody register data (the same
+fixture shape as `PdfSharpRegisterRendererPerformanceTests.RealisticRow`) across the full row range:
+
+| Rows | Render time |
+|------|-------------|
+| 50   | 40 ms |
+| 200  | 156 ms |
+| 500  | 415 ms |
+| 1000 | 756 ms |
+| 2000 | 1.1 s |
+| 5000 | 4.1 s on moderate data; 18 s - 19.9 s on content-heavy data (see item 11's "Measured consequences") |
+
+The curve is roughly linear up to about 2000 rows and then worsens as more cells cross
+`LongRunThreshold` and pick up `U+200B` break opportunities (item 11) - the 5000-row figure is not a
+straight-line extrapolation of the smaller sizes, it is measurably worse per row. QuestPDF rendered
+the same 5000-row load in about 1 second; MigraDoc does not stay inside a comfortable request budget
+at that size, particularly on content-heavy data.
+
+Capping the PDF export at 2000 rows keeps the worst case around a second, comfortably inside a
+request, instead of the multi-second-to-20-second range 5000 rows produced. A user who needs more
+than 2000 rows exports CSV instead - CSV has no MigraDoc cost and stays at the original 20000-row
+cap. The validation error `ExportStorageRegisterQueryHandler` returns when a PDF request exceeds the
+cap already tells the user to narrow the date range or export CSV for wider ranges.
+
+Re-measured on this branch at the new 2000-row cap, against the same realistic fixture used by
+`PdfSharpRegisterRendererPerformanceTests`, three consecutive Debug-build runs (2026-08-10,
+`dotnet test`, which builds Debug by default and has been observed slower and more variable than
+Release throughout this document): 2902 ms, 2930 ms, 3315 ms. The test's `BudgetSeconds` was set to
+17, roughly five times the slowest of those three runs (3.315s x 5 = 16.575s, rounded up to 17),
+giving real margin instead of the near-zero margin the old 5000-row test had at its 20s budget. If a
+future measurement on this fixture regularly lands outside roughly the 3-4s range, re-derive the
+budget the same way rather than assume this margin still holds.

@@ -16,7 +16,7 @@ public sealed class ExportStorageRegisterQueryHandler(
     : IQueryHandler<ExportStorageRegisterQuery, ErrorOr<RegisterExportResult>>
 {
     private const int MaxExportRows = 20000;
-    private const int MaxPdfExportRows = 5000;
+    private const int MaxPdfExportRows = 2000;
 
     public async Task<ErrorOr<RegisterExportResult>> Handle(
         ExportStorageRegisterQuery query, CancellationToken cancellationToken)
