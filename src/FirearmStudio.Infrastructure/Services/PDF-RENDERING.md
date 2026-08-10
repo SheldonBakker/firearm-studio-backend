@@ -197,42 +197,75 @@ break-opportunity work in item 11 entirely: it was measured before `RegisterCell
 cell content, so it does not reflect what the shipped renderer actually produces at
 `LongRunThreshold = 5` and `BreakInterval = 3`.
 
-Re-measured at the shipped settings (Release, standalone harness), against 2000 rows - the current
-maximum a PDF export can request:
+Page count depends entirely on which dataset produced it, so there is no single figure - two
+datasets are given below, both re-measured at the shipped settings (`LongRunThreshold = 5`,
+`BreakInterval = 3`, Release configuration, standalone harness), and it matters which one you are
+looking at.
 
-- The pessimistic fixture (long values packed into most of the 16 columns - a long owner name, a
-  wrapping address, a purpose sentence, a free-text remark paragraph; the same shape as
-  `PdfSharpRegisterRendererPerformanceTests.RealisticRow`): **667 pages**, 2,729,605 bytes.
-- A moderate, more typical fixture (one wrapping street address, ordinary short names like "John
-  Smith", a licence number and an ID number per row as any real register would have, short values
-  everywhere else - `Type` still `Handgun`, `Condition` "Good" rather than "Serviceable", no
-  free-text remark): **also 667 pages**, 2,520,267 bytes.
+**The realistic case.** A dataset that mirrors an actual South African safe custody register:
+dates for stored-from/stored-to, makes such as `CZ` and `Glock`, models, calibres, `Handgun` and
+`Rifle` in the `Type` column, serial numbers such as `SN0000-XY00`, full owner names, 11-digit ID
+numbers, **one** wrapping street address, licence numbers such as `WC/2020/00000`, a reason,
+released-to, an occasional two-word remark, and a blank signature column - long values in roughly
+four of the sixteen columns, not all of them:
 
-The second figure is the more informative one. Trimming most of the "long" columns down to
-realistic short values did not reduce the page count at all versus the pessimistic fixture - only
-the byte count dropped, by about 8%. A handful of ordinary, unavoidable fields already need two or
-more lines at the shipped threshold: `Type` (`Handgun`, 7 characters), `Licence Number` (a
-`WC/2020/00000`-style 13-character value), `ID Number` (a 13-digit value) and any wrapping
-`Address`. MigraDoc sets each row's height to its tallest cell, so those four fields alone set a
-row-height floor that stacking more long text into the other 12 columns barely raises further. For
-contrast, a fixture with genuinely trivial values in every column (4-character strings like `r0c0`,
-none of them crossing `LongRunThreshold`, the shape the performance test's fixture used before it
-was rewritten) renders the same 2000 rows to only 141 pages - so the real driver is which specific
-fields wrap, not how many rows there are or how "heavy" a dataset looks at a glance.
+| Rows | Pages | Rows/page | Output size |
+|------|-------|-----------|--------------|
+| 60   | 6     | 10.0      | 82 KB |
+| 200  | 20    | 10.0      | 180 KB |
+| 2000 | 200   | 10.0      | 1442 KB |
+
+Rows/page is the figure that actually transfers between dataset sizes - it stays flat at 10.0 here
+across a 33x range in row count, because it is set by the tallest wrapping cell in each row (the
+street address, which already wrapped to three lines under ordinary word-wrap alone, before any
+`U+200B` break opportunity existed) rather than by row count.
+
+**A genuinely reassuring finding, easy to miss and worth stating plainly: on this realistic
+dataset, adding break opportunities did not increase the page count at all.** Rows/page measured
+10.0 both before this fix and after it. The reason is that the inserted breaks fit inside the row
+height the wrapping address column was already forcing - a typical address's individual words are
+short enough that ordinary word-wrap (which MigraDoc supported before this work) already broke the
+line in the same places, so the character-level break opportunities this fix adds had nothing
+extra to do for that column. A reader who has only seen the worst-case figure below could otherwise
+conclude this fix made every printed register three times longer - that is false for realistic
+data, and this line exists so nobody draws that conclusion from the wrong fixture.
+
+**The worst case.** `PdfSharpRegisterRendererPerformanceTests.RealisticRow`, the fixture this
+document has otherwise called "realistic" up to this point, is not representative of production
+data - it deliberately stacks a long value into essentially every one of the 16 columns (a long
+owner name, a wrapping address, a purpose sentence, a free-text remark paragraph, and more), which
+no real safe custody row looks like. It exists on purpose, as a pessimistic guard: the performance
+test in item 12 uses it deliberately so that the render-time budget is tested against a genuinely
+worst-case row shape, not an average one, and this document has used the same shape elsewhere
+(items 11 and 12) so that its render-time and byte-count figures describe a guaranteed upper bound
+rather than a typical case. At 2000 rows it renders to 667 pages, 2,729,605 bytes - 3.0 rows/page,
+about a third of the realistic case's density. An earlier version of this document mislabelled a
+second attempt at a lighter fixture as "moderate" and reported it also landing at 667 pages,
+concluding that trimming column content didn't matter; that fixture was itself still pessimistic
+(too many columns still carried long, frequently-wrapping values, including an address heavier
+than a typical one) and the "moderate versus pessimistic tie" conclusion drawn from it has been
+removed as a result - it was an artefact of comparing two worst-case fixtures against each other,
+not a real finding about typical data.
+
+For contrast, a fixture with genuinely trivial values in every column (4-character strings like
+`r0c0`, none of them crossing `LongRunThreshold`, the shape the performance test's fixture used
+before it was rewritten) renders the same 2000 rows to only 141 pages, about 14.2 rows/page -
+confirming again that the driver is which specific fields wrap and by how much, not row count.
 
 This document no longer states a QuestPDF page-count comparison. QuestPDF was removed from the
 codebase during this migration, so it cannot be re-rendered to check, and the old "roughly 179
 pages" figure was measured at 5000 rows, a size this renderer's PDF export can no longer even
-request (item 12) - it is not comparable to either figure above at any row count that still
-applies. Item 12 keeps a QuestPDF *render time* comparison (about 1 second for 5000 rows) because
-that is an independent historical fact about QuestPDF's own speed, not tied to the row cap that
-has since changed on this side; no equivalent page-count fact is retained here because none can be
-verified at current settings.
+request (item 12) - it is not comparable to any figure above at any row count that still applies.
+Item 12 keeps a QuestPDF *render time* comparison (about 1 second for 5000 rows) because that is an
+independent historical fact about QuestPDF's own speed, not tied to the row cap that has since
+changed on this side; no equivalent page-count fact is retained here because none can be verified
+at current settings.
 
 If you need to reason about a future dataset's page count, measure it directly against the shipped
-`LongRunThreshold`/`BreakInterval` rather than assume either figure above - the moderate and
-pessimistic fixtures landing on the identical page count already shows that eyeballing "how heavy"
-a dataset looks is not a reliable predictor.
+`LongRunThreshold`/`BreakInterval`, with a fixture that actually matches how many columns carry
+long values in production, rather than assume either figure above - the realistic and worst-case
+fixtures differing by more than 3x on rows/page shows that how many columns are long matters far
+more than how long any single value is.
 
 ## 11. Long unbroken cell values overflow their column unless given a U+200B break opportunity
 
@@ -450,10 +483,14 @@ harness):
   `LongRunThreshold` at all - no fix means no `InsertBreakOpportunities` call, so no threshold
   applies - and remains accurate regardless of which threshold has ever shipped.
 - Output size for this 30-row document **at the shipped settings**
-  (`LongRunThreshold = 5`, `BreakInterval = 3`): **81,023 bytes**, re-measured directly against
-  the shipped build. An earlier version of this document recorded 80,654 bytes for "every 3
-  characters" - that number was measured at the old, superseded `LongRunThreshold = 6` and was
-  stale; 81,023 bytes is the correct figure for what actually ships today.
+  (`LongRunThreshold = 5`, `BreakInterval = 3`, Release configuration, this document's own
+  standalone harness): **81,023 bytes**, re-measured directly against the shipped build. An
+  earlier version of this document recorded 80,654 bytes for "every 3 characters" - that number
+  was measured at the old, superseded `LongRunThreshold = 6` and was stale; 81,023 bytes is the
+  correct figure for what actually ships today. A separate review's own harness measured 80,755
+  bytes for the same corrected scenario - a 0.33% difference from a different harness, not a
+  regression; if a future re-measurement lands anywhere close to 81,023 bytes with this harness
+  and these settings, treat it as confirmation, not drift.
 - A third figure sometimes cited alongside these two, 83,767 bytes for "every character"
   (`BreakInterval = 1`), was also measured at the old threshold 6 and describes an interval that
   was rejected in an earlier round (see "Why the interval is 3, not every character" above). It is
