@@ -15,8 +15,8 @@ public sealed class ExportStorageRegisterQueryHandler(
     IRegisterPdfRenderer pdfRenderer)
     : IQueryHandler<ExportStorageRegisterQuery, ErrorOr<RegisterExportResult>>
 {
-    private const int MaxExportRows = 20000;
-    private const int MaxPdfExportRows = 2000;
+    internal const int MaxExportRows = 20000;
+    internal const int MaxPdfExportRows = 2000;
 
     public async Task<ErrorOr<RegisterExportResult>> Handle(
         ExportStorageRegisterQuery query, CancellationToken cancellationToken)
@@ -37,13 +37,9 @@ public sealed class ExportStorageRegisterQueryHandler(
 
         var totalCount = await queryable.CountAsync(cancellationToken);
 
-        var maxRows = query.Format == RegisterExportFormat.Csv ? MaxExportRows : MaxPdfExportRows;
-
-        if (totalCount > maxRows)
+        if (RowCapError(query.Format, totalCount) is { } rowCapError)
         {
-            return Error.Validation(
-                ErrorCodes.TooManyRows,
-                $"The {(query.Format == RegisterExportFormat.Csv ? "CSV" : "PDF")} register export is limited to {maxRows} rows. Narrow the date range{(query.Format == RegisterExportFormat.Csv ? string.Empty : " or export CSV for wider ranges")} and try again.");
+            return rowCapError;
         }
 
         var rows = await queryable
@@ -82,6 +78,21 @@ public sealed class ExportStorageRegisterQueryHandler(
             content,
             query.Format == RegisterExportFormat.Csv ? "text/csv; charset=utf-8" : "application/pdf",
             FileName(query));
+    }
+
+    internal static Error? RowCapError(RegisterExportFormat format, int totalCount)
+    {
+        var isCsv = format == RegisterExportFormat.Csv;
+        var maxRows = isCsv ? MaxExportRows : MaxPdfExportRows;
+
+        if (totalCount <= maxRows)
+        {
+            return null;
+        }
+
+        return Error.Validation(
+            ErrorCodes.TooManyRows,
+            $"The {(isCsv ? "CSV" : "PDF")} register export is limited to {maxRows} rows. Narrow the date range{(isCsv ? string.Empty : " or export CSV for wider ranges")} and try again.");
     }
 
     private static byte[] BuildCsv(RegisterKind kind, IReadOnlyList<StorageRegisterRow> rows) =>

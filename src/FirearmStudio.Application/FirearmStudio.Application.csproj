@@ -16,6 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="FirearmStudio.Domain.Tests" />
+    <InternalsVisibleTo Include="FirearmStudio.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FirearmStudio.Domain\FirearmStudio.Domain.csproj" />
   </ItemGroup>
 

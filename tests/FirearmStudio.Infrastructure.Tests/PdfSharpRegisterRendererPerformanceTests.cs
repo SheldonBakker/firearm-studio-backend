@@ -8,7 +8,8 @@ namespace FirearmStudio.Infrastructure.Tests;
 
 public class PdfSharpRegisterRendererPerformanceTests(ITestOutputHelper output)
 {
-    private const int MaxPdfExportRows = 2000;
+    private const int MaxPdfExportRows =
+        FirearmStudio.Application.Registers.ExportStorageRegister.ExportStorageRegisterQueryHandler.MaxPdfExportRows;
 
     private const int BudgetSeconds = 10;
 
