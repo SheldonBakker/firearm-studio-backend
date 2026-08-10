@@ -217,10 +217,11 @@ inspection.
 MigraDoc does, however, honour `U+200B` (ZERO WIDTH SPACE) as a line-break opportunity, the same
 way it already treats an ordinary space or a hyphen. `RegisterCellText.InsertBreakOpportunities`
 walks each maximal run of non-whitespace characters in a cell value and, if the run is longer than
-`LongRunThreshold`, inserts a `U+200B` between every character in that run. Runs at or below the
-threshold are returned untouched. This is applied character-by-character rather than at natural
-points such as slashes, because the real defects included values with no natural break point at
-all (a bare 13-digit ID number, `Handgun` as a single word).
+`LongRunThreshold`, inserts a `U+200B` every `BreakInterval` characters in that run (not after
+every character - see "Why the interval is 3, not every character" below). Runs at or below the
+threshold are returned untouched. Break opportunities are spaced through the run rather than tied
+to natural points such as slashes, because the real defects included values with no natural break
+point at all (a bare 13-digit ID number, `Handgun` as a single word).
 
 ### Why the threshold is 6
 
@@ -252,6 +253,28 @@ any run of 7 or more characters gets break opportunities, and `Handgun` (7 chara
 letters, no natural break point) is exactly the shape of value the fix exists for. Short values -
 `Glock`, `SN1234`, `Muizenberg` split as two words by earlier column data, ordinary model names -
 stay untouched because their runs are 6 characters or fewer.
+
+### Why the interval is 3, not every character
+
+The first version of this fix inserted `U+200B` between every character of a run above the
+threshold. That is much stronger than the defect requires. MigraDoc breaks a line at the *last*
+break opportunity that still fits, not at every opportunity, so a break opportunity every
+`BreakInterval` characters is sufficient to prevent overflow: a cell that fits 7 characters simply
+breaks after the 6th (the nearest opportunity at or before the edge), with no overhang, whether the
+opportunities are 1 or 3 characters apart. What every-character insertion bought beyond that was
+tighter packing at a real cost: three times as many inserted characters means three times as many
+distinct text-showing operations for MigraDoc's layout engine to measure and position, and that
+turned out to dominate render time at scale (see "Measured consequences" below).
+
+`BreakInterval = 3` was chosen by measurement, the same way `LongRunThreshold` was: rendering the
+realistic 5000-row dataset at intervals of 1, 3 and 4 showed 3 gives a large, real improvement over
+every-character insertion while staying comfortably under the performance budget. Interval 4 was
+tried and rejected - it did not continue the improvement. Coarser breaks give MigraDoc's line
+formatter fewer places to end a line inside a narrow column, and in this data that pushed some
+lines mid-chunk past where a finer break would have fit, producing *more* wrapped lines, not fewer,
+which made both the page count and the render time worse than interval 3, not better. Do not raise
+`BreakInterval` above 3 without re-measuring on realistic data the same way - "coarser" does not
+reliably mean "cheaper" once a chunk stops fitting as cleanly against a narrow column's edge.
 
 ### Confined to table cells only
 
@@ -286,25 +309,55 @@ threshold.
 ### Measured consequences
 
 Rendering the same 16-column safe custody register data (30 rows, realistic long values - licence
-numbers, 13-digit ID numbers, a long address, a long remark) with and without this fix:
+numbers, 13-digit ID numbers, a long address, a long remark) with and without this fix, at
+`BreakInterval = 3`:
 
-- Page count: 8 pages before, 10 pages after. Wrapping instead of overflowing makes cells taller
-  when their long values wrap onto multiple lines, so rows grow and the document gets longer -
-  this is the same tradeoff already accepted in item 10 above, now compounded by this fix.
-- Output size: 71,527 bytes before, 83,767 bytes after, for the same 30-row document.
+- Page count: 8 pages with no fix, 10 pages with the fix - the same 10 pages as the original
+  every-character version. Wrapping instead of overflowing makes cells taller when their long
+  values wrap onto multiple lines, so rows grow and the document gets longer - this is the same
+  tradeoff already accepted in item 10 above, now compounded by this fix. Spacing the break
+  opportunities out to every 3 characters did not reduce the page count versus every character;
+  it reduced render time and output size instead (below), because the number of *wrapped lines*
+  a cell needs is governed by how much text has to fit, not by how many break opportunities are
+  available once there are enough to reach the last one that fits.
+- Output size (30-row document): 71,527 bytes with no fix, 83,767 bytes at every-character,
+  80,654 bytes at every-3 characters.
 
-For the 5000-row maximum export using the existing performance test's fixture (short values like
-`r0c0`, none of which cross `LongRunThreshold`), render time is essentially unaffected: about
-3.6s before this fix, about 4.8s after, both comfortably inside the 20s budget - the extra cost is
-just the `Sanitise` + `InsertBreakOpportunities` pass over ~80,000 short cell values that don't
-end up changed.
+**The originally committed performance test's fixture understated the true cost of this renderer
+by roughly a factor of two and a half, independent of this fix.** Its rows use values like `r0c0`
+(4 characters, every column, never crossing `LongRunThreshold`), which is not what a real safe
+custody register looks like - real rows carry a full owner name, a wrapping street address and a
+free-text remark in several columns. Measured *before any `U+200B` fix existed*, the trivial
+fixture rendered 5000 rows in about 3.6s; the same 5000 rows with realistic column content (the
+same shape as the 30-row comparison above, scaled up) took about 8.9s - about 2.5x longer, purely
+from MigraDoc laying out more and longer text, before this fix ever inserted a single `U+200B`.
+The performance test's fixture has been rewritten to use this realistic shape (see
+`PdfSharpRegisterRendererPerformanceTests.RealisticRow`) so it exercises the actual cost profile of
+a real export, including the code path this fix adds.
 
-That fixture is not representative of a real safe custody register, though, where several columns
-(owner name, address, remarks) routinely hold long free-text values that do cross the threshold.
-Rendering 5000 rows of realistic long-value data (the same shape used for the page-count
-comparison above, scaled up) took about 8.9s before this fix and **20.1-22.8s after, at or over
-the 20 second request budget**, across repeated runs. The existing committed performance test does
-not catch this because its fixture never crosses `LongRunThreshold`. This is a real, measured risk
-for exports where many columns hold long free-text values, not a hypothetical - anyone changing
-`LongRunThreshold`, the performance test's fixture, or the request timeout budget should re-run
-this measurement with realistic long-value data, not just the existing short-value fixture.
+Against that realistic fixture, render time for the 5000-row maximum export at each `BreakInterval`
+tried:
+
+| Insertion            | Render time (realistic 5000 rows) | Output size  |
+|-----------------------|-----------------------------------|--------------|
+| No fix (baseline)     | ~8.9s                              | 5,000,798 B  |
+| Every character        | 20.1s - 22.8s (over budget on some runs) | 7,223,919 B |
+| Every 3 characters (chosen) | ~11.0s - 11.8s (Release build); ~11.1s - 19.9s (Debug build, `dotnet test` default) | 6,705,121 B |
+| Every 4 characters (rejected) | ~15.0s - 15.7s, worse than every 3 on every measure | 8,369,328 B |
+
+Every-3 is a large, real improvement over every-character: roughly half the render time and about
+1.5MB less output on a Release build. It comfortably clears the 20s budget in a Release build. In
+a Debug build - which is what `dotnet test` runs by default, with no build configuration flag - the
+same fixture varied from about 11s to just under 20s across repeated runs on this machine, with as
+little as a few hundred milliseconds of headroom on the slowest observed run. The rewritten
+performance test has not failed in repeated local runs, but the margin under the unchanged 20s
+budget is thin and volatile in Debug configuration, and a slower or more loaded CI machine could
+tip it over. This is reported here rather than papered over: the budget and the test were
+deliberately left unchanged per instruction, so this is the honest number against them, not a
+comfortable one.
+
+Every-4 was tried and rejected: it was slower than every-3 on every measurement (5000-row render
+time, output size, and page count on a 30-row check), not faster. Coarser break spacing gave
+MigraDoc's line formatter fewer usable break points inside the narrowest columns, which produced
+more wrapped lines overall rather than fewer - see "Why the interval is 3, not every character"
+above.

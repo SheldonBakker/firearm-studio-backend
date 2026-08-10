@@ -78,11 +78,11 @@ public class RegisterCellTextTests
     }
 
     [Fact]
-    public void InsertBreakOpportunities_adds_zero_width_spaces_between_characters_of_a_run_above_the_threshold()
+    public void InsertBreakOpportunities_adds_zero_width_spaces_every_three_characters_of_a_run_above_the_threshold()
     {
         var result = RegisterCellText.InsertBreakOpportunities("WC/2020/00000");
 
-        var expected = string.Join(Zwsp, "WC/2020/00000".ToCharArray());
+        var expected = string.Join(Zwsp, "WC/2020/00000".Chunk(3).Select(chunk => new string(chunk)));
         Assert.Equal(expected, result);
     }
 
@@ -99,7 +99,9 @@ public class RegisterCellTextTests
 
         Assert.StartsWith("CZ ", result);
         Assert.DoesNotContain("C" + Zwsp + "Z", result, StringComparison.Ordinal);
-        Assert.Contains(string.Join(Zwsp, "8501015800086".ToCharArray()), result, StringComparison.Ordinal);
+
+        var expectedIdNumber = string.Join(Zwsp, "8501015800086".Chunk(3).Select(chunk => new string(chunk)));
+        Assert.Contains(expectedIdNumber, result, StringComparison.Ordinal);
     }
 
     [Theory]

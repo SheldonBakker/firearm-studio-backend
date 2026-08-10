@@ -5,6 +5,7 @@ namespace FirearmStudio.Infrastructure.Services;
 internal static class RegisterCellText
 {
     private const int LongRunThreshold = 6;
+    private const int BreakInterval = 3;
     private const char BreakOpportunity = '\u200B';
 
     public static string Sanitise(string? value)
@@ -79,12 +80,15 @@ internal static class RegisterCellText
 
         for (var i = 0; i < length; i++)
         {
-            if (i > 0)
+            builder.Append(value[start + i]);
+
+            var isLastCharacterInRun = i == length - 1;
+            var atBreakInterval = (i + 1) % BreakInterval == 0;
+
+            if (atBreakInterval && !isLastCharacterInRun)
             {
                 builder.Append(BreakOpportunity);
             }
-
-            builder.Append(value[start + i]);
         }
     }
 }

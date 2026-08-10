@@ -112,8 +112,8 @@ public class PdfSharpRegisterRendererTests
         Assert.Equal(2, Inspect(bytes).PageCount);
 
         var text = ExtractContentStreamText(bytes);
-        Assert.Contains("(Column) Tj", text);
-        Assert.Contains("(15) Tj", text);
+        Assert.Contains("(Column) Tj", text, StringComparison.Ordinal);
+        Assert.Contains("(15) Tj", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public class PdfSharpRegisterRendererTests
 
         var onlyOneCharacterTokens = new[]
         {
-            "(o) Tj", "(n) Tj", "(l) Tj", "(y) Tj", "(-) Tj", "(o) Tj", "(n) Tj", "(e) Tj",
+            "(onl) Tj", "(y-) Tj", "(o) Tj", "(ne) Tj",
         };
         var searchFrom = 0;
         foreach (var token in onlyOneCharacterTokens)
@@ -149,10 +149,10 @@ public class PdfSharpRegisterRendererTests
             searchFrom = index + token.Length;
         }
 
-        Assert.Contains("(j) Tj", text);
+        Assert.Contains("(j) Tj", text, StringComparison.Ordinal);
 
-        Assert.DoesNotContain("(k) Tj", text);
-        Assert.DoesNotContain("(m) Tj", text);
+        Assert.DoesNotContain("(k) Tj", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("(m) Tj", text, StringComparison.Ordinal);
     }
 
     [Fact]
