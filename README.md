@@ -118,15 +118,15 @@ dotnet run --project src/FirearmStudio.WebApi
 Swagger UI (Development): `http://localhost:5146/swagger`. Paste a Supabase access token via the
 **Authorize** button, and send the `X-Api-Key` header, to call protected endpoints.
 
-## Deployment (Docker / Portainer)
+## Deployment (Docker Compose)
 
 The repo is container-ready: a multi-stage `Dockerfile` (build on `sdk:10.0`, run on the distroless,
-non-root `aspnet:10.0-noble-chiseled`) plus a `docker-compose.yml` for a Portainer stack.
+non-root `aspnet:10.0-noble-chiseled`) plus a `docker-compose.yml` for the stack.
 
 - The container serves **plain HTTP on port 5146** — TLS is terminated by your reverse proxy.
 - Configuration comes from **environment variables** (no `.env` is baked into the image). Set the
-  config keys above as **stack environment variables in Portainer** (Stacks → your stack →
-  Environment variables), using the `Section__Key` convention.
+  config keys above as environment variables in the stack's `.env` file, using the `Section__Key`
+  convention.
 - Liveness endpoint: `GET /health` (anonymous, no API key). Point your reverse proxy's health check
   there — the chiseled runtime has no shell, so a container-level `HEALTHCHECK` is intentionally omitted.
 - Database migrations are not run automatically by the API (including inside the container); apply
@@ -135,11 +135,11 @@ non-root `aspnet:10.0-noble-chiseled`) plus a `docker-compose.yml` for a Portain
   cannot see enum types created after it started until it restarts. Ensure the connection used to
   apply migrations has DDL privileges.
 
-The image is **built by GitHub Actions** (`.github/workflows/docker-publish.yml`) on every push to
-`main` and pushed to **GHCR** as `ghcr.io/sheldonbakker/firearm-studio-api:latest`. `docker-compose.yml`
-references that image. In Portainer → **Stacks → Add stack**, add the env vars and deploy; update with
-**Pull and redeploy**. The package starts **private** — either make it public or add a `ghcr.io`
-Registry in Portainer (your username + a PAT with `read:packages`) so it can pull.
+The image is **built by GitHub Actions** (`.github/workflows/deploy.yml`) on every push to
+`main` and pushed to **GHCR** as `ghcr.io/sheldonbakker/firearm-studio-api:latest`, then deployed to the
+host over SSH by the same workflow. `docker-compose.yml` references that image. The package starts
+**private** — either make it public or configure a `ghcr.io` registry login on the host (your username
+plus a PAT with `read:packages`) so it can pull.
 
 To build/run locally instead:
 
