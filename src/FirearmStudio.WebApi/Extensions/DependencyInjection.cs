@@ -48,7 +48,7 @@ public static class DependencyInjection
                 Scheme = "bearer",
                 BearerFormat = "JWT",
                 In = ParameterLocation.Header,
-                Description = "Paste a Supabase access token (without the 'Bearer ' prefix).",
+                Description = "Paste an access token from POST /api/v1/auth/login (without the 'Bearer ' prefix).",
             });
 
             const string apiKeyScheme = "ApiKey";

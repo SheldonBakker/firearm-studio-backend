@@ -19,7 +19,7 @@ public sealed class RegisterSageConnectionCommandHandler(
     {
         if (!currentUserService.User.IsAuthenticated)
         {
-            return Error.Unauthorized(ErrorCodes.Unauthorized, "A valid Supabase session is required.");
+            return Error.Unauthorized(ErrorCodes.Unauthorized, "A valid session is required.");
         }
 
         if (currentUserService.User.CompanyId is not { } companyId)

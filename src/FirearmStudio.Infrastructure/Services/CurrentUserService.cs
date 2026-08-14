@@ -20,7 +20,7 @@ public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor)
             return CurrentUser.Anonymous;
         }
 
-        var subject = principal.FindFirstValue(SupabaseClaimTypes.Subject)
+        var subject = principal.FindFirstValue(AppClaimTypes.Subject)
                       ?? principal.FindFirstValue(ClaimTypes.NameIdentifier);
 
         if (!Guid.TryParse(subject, out var userId))
@@ -35,14 +35,14 @@ public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor)
             .ToArray();
 
         Guid? companyId = Guid.TryParse(
-            principal.FindFirstValue(SupabaseClaimTypes.CompanyId), out var parsedCompany)
+            principal.FindFirstValue(AppClaimTypes.CompanyId), out var parsedCompany)
             ? parsedCompany
             : null;
 
         return new CurrentUser
         {
             Id = userId,
-            Email = principal.FindFirstValue(SupabaseClaimTypes.Email)
+            Email = principal.FindFirstValue(AppClaimTypes.Email)
                     ?? principal.FindFirstValue(ClaimTypes.Email),
             CompanyId = companyId,
             Roles = roles,

@@ -6,7 +6,9 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: "5146"
       ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
-      SupabaseJwtSettings__Authority: ${SupabaseJwtSettings__Authority}
+      JwtSettings__Issuer: ${JwtSettings__Issuer}
+      JwtSettings__Audience: ${JwtSettings__Audience}
+      JwtSettings__SigningKey: ${JwtSettings__SigningKey}
       ApiKeySettings__Key: ${ApiKeySettings__Key}
       KlaviyoSettings__ApiKey: ${KlaviyoSettings__ApiKey}
       CredentialProtectionSettings__Key: ${CredentialProtectionSettings__Key}

@@ -29,12 +29,12 @@ public sealed class DesignTimeDbContextFactory
         }
 
         var dataSource =
-            SupabaseDataSourceFactory.Build(connectionString);
+            NpgsqlDataSourceFactory.Build(connectionString);
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(
                 dataSource,
-                SupabaseDataSourceFactory.MapEnums)
+                NpgsqlDataSourceFactory.MapEnums)
             .UseSnakeCaseNamingConvention()
             .Options;
 

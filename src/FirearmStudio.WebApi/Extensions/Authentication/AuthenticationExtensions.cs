@@ -1,7 +1,7 @@
 using System.Security.Claims;
+using System.Text;
 using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Authentication;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -14,41 +14,45 @@ public static class AuthenticationExtensions
         IConfiguration configuration)
     {
         var settings = configuration
-            .GetSection(SupabaseJwtSettings.SectionName)
-            .Get<SupabaseJwtSettings>()
+            .GetSection(JwtSettings.SectionName)
+            .Get<JwtSettings>()
             ?? throw new InvalidOperationException(
-                $"Missing required configuration section '{SupabaseJwtSettings.SectionName}'.");
+                $"Missing required configuration section '{JwtSettings.SectionName}'.");
+
+        if (string.IsNullOrWhiteSpace(settings.SigningKey))
+        {
+            throw new InvalidOperationException(
+                $"'{JwtSettings.SectionName}:SigningKey' is required. Generate one with " +
+                "'openssl rand -base64 64'.");
+        }
 
         services.AddSingleton(settings);
+
+        var signingKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(settings.SigningKey));
 
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                options.Authority = settings.Authority;
-                if (!string.IsNullOrWhiteSpace(settings.MetadataAddress))
-                {
-                    options.MetadataAddress = settings.MetadataAddress;
-                }
-
-                options.RequireHttpsMetadata = true;
-
                 options.MapInboundClaims = false;
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = settings.EffectiveIssuer,
+                    ValidIssuer = settings.Issuer,
 
                     ValidateAudience = true,
                     ValidAudience = settings.Audience,
 
                     ValidateLifetime = true,
+
                     ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = signingKey,
 
                     ValidAlgorithms = settings.ValidAlgorithms,
 
-                    NameClaimType = SupabaseClaimTypes.Subject,
+                    NameClaimType = AppClaimTypes.Subject,
                     RoleClaimType = ClaimTypes.Role,
 
                     ClockSkew = TimeSpan.FromSeconds(30),
@@ -60,17 +64,15 @@ public static class AuthenticationExtensions
                     {
                         var logger = context.HttpContext.RequestServices
                             .GetRequiredService<ILoggerFactory>()
-                            .CreateLogger("SupabaseJwtBearer");
+                            .CreateLogger("JwtBearer");
                         logger.LogWarning(
                             context.Exception,
-                            "Supabase token validation failed: {Message}",
+                            "Token validation failed: {Message}",
                             context.Exception.Message);
                         return Task.CompletedTask;
                     },
                 };
             });
-
-        services.AddSingleton<IClaimsTransformation, SupabaseRolesClaimsTransformer>();
 
         services.AddAuthorization();
 

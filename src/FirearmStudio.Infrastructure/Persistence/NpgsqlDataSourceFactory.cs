@@ -1,0 +1,44 @@
+using FirearmStudio.Domain.Enums;
+using Npgsql;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
+
+namespace FirearmStudio.Infrastructure.Persistence;
+
+public static class NpgsqlDataSourceFactory
+{
+    public static NpgsqlDataSource Build(string connectionString)
+    {
+        var builder = new NpgsqlDataSourceBuilder(connectionString);
+
+        builder.MapEnum<CustomerType>("customer_type");
+        builder.MapEnum<FirearmStatus>("firearm_status");
+        builder.MapEnum<LicenceStatus>("licence_status");
+        builder.MapEnum<StorageStatus>("storage_status");
+        builder.MapEnum<InvoiceStatus>("invoice_status");
+        builder.MapEnum<PaymentMethod>("payment_method");
+        builder.MapEnum<LicenceReminderTier>("licence_reminder_tier");
+        builder.MapEnum<DepositMode>("deposit_mode");
+        builder.MapEnum<FirearmOrigin>("firearm_origin");
+        builder.MapEnum<OtpPurpose>("otp_purpose");
+
+        return builder.Build();
+    }
+
+    public static void MapEnums(NpgsqlDbContextOptionsBuilder options)
+    {
+        options.MapEnum<CustomerType>("customer_type");
+        options.MapEnum<FirearmStatus>("firearm_status");
+        options.MapEnum<LicenceStatus>("licence_status");
+        options.MapEnum<StorageStatus>("storage_status");
+        options.MapEnum<InvoiceStatus>("invoice_status");
+        options.MapEnum<PaymentMethod>("payment_method");
+        options.MapEnum<LicenceReminderTier>("licence_reminder_tier");
+        options.MapEnum<DepositMode>("deposit_mode");
+        options.MapEnum<FirearmOrigin>("firearm_origin");
+    }
+
+    public static void MapAuthEnums(NpgsqlDbContextOptionsBuilder options)
+    {
+        options.MapEnum<OtpPurpose>("otp_purpose", "public");
+    }
+}
