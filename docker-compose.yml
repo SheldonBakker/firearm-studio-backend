@@ -1,23 +1,17 @@
 services:
   api:
-    # The deploy workflow writes FIREARM_IMAGE into .env as a SHA-tagged image, so a
-    # rollback is a matter of changing that one line. Falls back to latest for local use.
     image: ${FIREARM_IMAGE:-ghcr.io/sheldonbakker/firearm-studio-api:latest}
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: "5146"
+
       ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
       JwtSettings__Issuer: ${JwtSettings__Issuer}
-      JwtSettings__Audience: ${JwtSettings__Audience}
       JwtSettings__SigningKey: ${JwtSettings__SigningKey}
-      JwtSettings__AccessTokenMinutes: ${JwtSettings__AccessTokenMinutes:-15}
-      JwtSettings__RefreshTokenDays: ${JwtSettings__RefreshTokenDays:-14}
       ApiKeySettings__Key: ${ApiKeySettings__Key}
       KlaviyoSettings__ApiKey: ${KlaviyoSettings__ApiKey}
-      KlaviyoSettings__ContactListId: ${KlaviyoSettings__ContactListId}
       CredentialProtectionSettings__Key: ${CredentialProtectionSettings__Key}
       NotificationSettings__PublicBaseUrl: ${NotificationSettings__PublicBaseUrl}
-      # ForwardedHeaders__KnownNetworks__0: ${ForwardedHeaders__KnownNetworks__0}
     ports:
       - "5146:5146"
