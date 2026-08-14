@@ -3,6 +3,8 @@ name: Build and Deploy
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -18,6 +20,24 @@ jobs:
       contents: read
       checks: write
 
+    # The integration suite needs a real PostgreSQL. It creates and drops its own
+    # throwaway databases, so it needs a superuser connection, which the service
+    # container's default postgres role provides.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +50,8 @@ jobs:
         run: dotnet restore FirearmStudio.slnx
 
       - name: Run tests
+        env:
+          TestDatabase__AdminConnection: "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres;SSL Mode=Disable"
         run: dotnet test FirearmStudio.slnx --configuration Release --no-restore --filter "Category!=Performance" --logger "trx;LogFileName=tests.trx"
 
       - name: Publish test results
@@ -67,6 +89,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     needs: [test, analyze]
+    if: github.event_name != 'pull_request'
     environment: production
     permissions:
       contents: read

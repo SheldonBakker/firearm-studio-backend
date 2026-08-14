@@ -29,7 +29,16 @@ public sealed class TestDatabaseFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        DotNetEnv.Env.NoClobber().TraversePath().Load();
+        try
+        {
+            DotNetEnv.Env.NoClobber().TraversePath().Load();
+        }
+        catch (FileNotFoundException)
+        {
+        }
+        catch (DirectoryNotFoundException)
+        {
+        }
 
         _adminConnectionString =
             Environment.GetEnvironmentVariable(AdminConnectionKey)
