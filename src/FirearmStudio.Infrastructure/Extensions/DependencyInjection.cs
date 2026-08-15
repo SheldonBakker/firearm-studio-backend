@@ -92,6 +92,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailSender, KlaviyoEmailSender>();
 
         AddKlaviyo(services, configuration);
+        AddWhatsApp(services, configuration);
         AddNotificationSettings(services, configuration);
         AddSageAccounting(services);
 
@@ -129,6 +130,54 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
             client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Klaviyo-API-Key {settings.ApiKey}");
             client.DefaultRequestHeaders.TryAddWithoutValidation("revision", settings.ApiRevision);
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        });
+    }
+
+    private static void AddWhatsApp(IServiceCollection services, IConfiguration configuration)
+    {
+        var settings = configuration.GetSection(WahaSettings.SectionName).Get<WahaSettings>()
+            ?? new WahaSettings();
+
+        services.AddSingleton(settings);
+
+        var complete = settings.Enabled
+            && !string.IsNullOrWhiteSpace(settings.BaseUrl)
+            && !string.IsNullOrWhiteSpace(settings.SessionId)
+            && !string.IsNullOrWhiteSpace(settings.ApiKey)
+            && Uri.TryCreate(settings.BaseUrl, UriKind.Absolute, out _);
+
+        if (settings.Enabled && !complete)
+        {
+            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+                ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+                ?? string.Empty;
+
+            if (!string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"'{WahaSettings.SectionName}' is enabled but incomplete. Set " +
+                    "WahaSettings__BaseUrl, WahaSettings__SessionId and WahaSettings__ApiKey " +
+                    "(e.g. in .env or user-secrets).");
+            }
+
+            Console.Error.WriteLine(
+                $"[WARNING] {WahaSettings.SectionName} is enabled but incomplete. " +
+                "WhatsApp OTP delivery will be disabled.");
+        }
+
+        if (!complete)
+        {
+            // Dev/CI and any misconfigured-but-non-prod case: no-op adapter.
+            services.AddSingleton<IWhatsAppSender, NullWhatsAppSender>();
+            return;
+        }
+
+        services.AddHttpClient<IWhatsAppSender, WahaWhatsAppSender>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
+            client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
+            client.DefaultRequestHeaders.TryAddWithoutValidation("X-API-Key", settings.ApiKey);
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         });
     }
