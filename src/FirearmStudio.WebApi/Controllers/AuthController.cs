@@ -6,6 +6,7 @@ using FirearmStudio.Application.Auth.PasswordReset;
 using FirearmStudio.Application.Auth.Register;
 using FirearmStudio.Application.Auth.ResendCode;
 using FirearmStudio.Application.Auth.Tokens;
+using FirearmStudio.Application.Auth.TwoFactor;
 using FirearmStudio.Application.Auth.VerifyEmail;
 using FirearmStudio.WebApi.Common;
 using MediatR;
@@ -18,9 +19,9 @@ namespace FirearmStudio.WebApi.Controllers;
 [ApiController]
 [ApiVersion(1)]
 [Route("api/v{version:apiVersion}/auth")]
-[AllowAnonymous]
 public sealed class AuthController(IMediator mediator) : ControllerBase
 {
+    [AllowAnonymous]
     [HttpPost("register")]
     [EnableRateLimiting("public-write")]
     public async Task<ActionResult> Register(RegisterRequest request, CancellationToken ct)
@@ -32,6 +33,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
             : Accepted(new { message = "If that address can be registered, a verification code is on its way." });
     }
 
+    [AllowAnonymous]
     [HttpPost("verify-email")]
     [EnableRateLimiting("public-write")]
     public async Task<ActionResult> VerifyEmail(VerifyEmailRequest request, CancellationToken ct)
@@ -41,6 +43,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         return result.IsError ? result.ToActionResult() : Ok(result.Value);
     }
 
+    [AllowAnonymous]
     [HttpPost("resend-code")]
     [EnableRateLimiting("public-write")]
     public async Task<ActionResult> ResendCode(ResendCodeRequest request, CancellationToken ct)
@@ -52,6 +55,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
             : Accepted(new { message = "If that address can receive a code, one is on its way." });
     }
 
+    [AllowAnonymous]
     [HttpPost("login")]
     [EnableRateLimiting("public-write")]
     public async Task<ActionResult> Login(LoginRequest request, CancellationToken ct)
@@ -68,6 +72,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
             : Ok(outcome.Tokens);
     }
 
+    [AllowAnonymous]
     [HttpPost("refresh")]
     [EnableRateLimiting("public")]
     public async Task<ActionResult> Refresh(RefreshRequest request, CancellationToken ct)
@@ -77,6 +82,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         return result.IsError ? result.ToActionResult() : Ok(result.Value);
     }
 
+    [AllowAnonymous]
     [HttpPost("logout")]
     [EnableRateLimiting("public")]
     public async Task<ActionResult> Logout(LogoutRequest request, CancellationToken ct)
@@ -86,6 +92,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         return result.IsError ? result.ToActionResult() : NoContent();
     }
 
+    [AllowAnonymous]
     [HttpPost("forgot-password")]
     [EnableRateLimiting("public-write")]
     public async Task<ActionResult> ForgotPassword(ForgotPasswordRequest request, CancellationToken ct)
@@ -95,6 +102,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         return result.IsError ? result.ToActionResult() : NoContent();
     }
 
+    [AllowAnonymous]
     [HttpPost("accept-invite")]
     [EnableRateLimiting("public-write")]
     public async Task<ActionResult> AcceptInvite(AcceptInviteRequest request, CancellationToken ct)
@@ -104,12 +112,40 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         return result.IsError ? result.ToActionResult() : Ok(result.Value);
     }
 
+    [AllowAnonymous]
     [HttpPost("reset-password")]
     [EnableRateLimiting("public-write")]
     public async Task<ActionResult> ResetPassword(ResetPasswordRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new ResetPasswordCommand(request), ct);
 
+        return result.IsError ? result.ToActionResult() : NoContent();
+    }
+
+    [AllowAnonymous]
+    [HttpPost("login/verify")]
+    [EnableRateLimiting("public-write")]
+    public async Task<ActionResult> LoginVerify(LoginVerifyRequest request, CancellationToken ct)
+    {
+        var result = await mediator.Send(new LoginVerifyCommand(request), ct);
+        return result.IsError ? result.ToActionResult() : Ok(result.Value);
+    }
+
+    [Authorize]
+    [HttpPost("two-factor/enable")]
+    [EnableRateLimiting("public")]
+    public async Task<ActionResult> EnableTwoFactor(CancellationToken ct)
+    {
+        var result = await mediator.Send(new SetTwoFactorCommand(true), ct);
+        return result.IsError ? result.ToActionResult() : NoContent();
+    }
+
+    [Authorize]
+    [HttpPost("two-factor/disable")]
+    [EnableRateLimiting("public")]
+    public async Task<ActionResult> DisableTwoFactor(CancellationToken ct)
+    {
+        var result = await mediator.Send(new SetTwoFactorCommand(false), ct);
         return result.IsError ? result.ToActionResult() : NoContent();
     }
 }

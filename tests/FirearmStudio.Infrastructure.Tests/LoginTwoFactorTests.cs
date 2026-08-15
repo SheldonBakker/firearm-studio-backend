@@ -2,6 +2,8 @@ using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Auth;
 using FirearmStudio.Application.Auth.Login;
+using FirearmStudio.Application.Auth.TwoFactor;
+using FirearmStudio.Domain.Authentication;
 using FirearmStudio.Domain.Enums;
 using Xunit;
 
@@ -19,7 +21,13 @@ public sealed class LoginTwoFactorTests
         public Task<PasswordCheckResult> CheckPasswordAsync(Guid userId, string password, CancellationToken ct) => Task.FromResult(PasswordResult);
         public Task ConfirmEmailAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
         public Task<IReadOnlyList<string>> SetPasswordAsync(Guid userId, string newPassword, CancellationToken ct) => throw new NotSupportedException();
-        public Task SetTwoFactorEnabledAsync(Guid userId, bool enabled, CancellationToken ct) => Task.CompletedTask;
+        public (Guid UserId, bool Enabled)? TwoFactorCall { get; private set; }
+
+        public Task SetTwoFactorEnabledAsync(Guid userId, bool enabled, CancellationToken ct)
+        {
+            TwoFactorCall = (userId, enabled);
+            return Task.CompletedTask;
+        }
         public Task SetPhoneNumberAsync(Guid userId, string? phoneE164, bool confirmed, CancellationToken ct) => Task.CompletedTask;
         public Task SetPendingPhoneNumberAsync(Guid userId, string phoneE164, CancellationToken ct) => Task.CompletedTask;
         public Task<string?> ConfirmPhoneChangeAsync(Guid userId, CancellationToken ct) => Task.FromResult<string?>(null);
@@ -61,6 +69,11 @@ public sealed class LoginTwoFactorTests
             VerifyCalled = true;
             return Task.FromResult(VerifyResult);
         }
+    }
+
+    internal sealed class FakeCurrentUser(Guid userId) : ICurrentUserService
+    {
+        public CurrentUser User { get; } = new() { Id = userId, IsAuthenticated = true };
     }
 
     internal sealed class RecordingDispatcher : IOtpDispatcher
@@ -163,5 +176,97 @@ public sealed class LoginTwoFactorTests
 
         Assert.True(result.IsError);
         Assert.Equal(AuthErrorCodes.LockedOut, result.FirstError.Code);
+    }
+
+    private static LoginVerifyCommandHandler BuildVerify(FakeTokens tokens, FakeOtp otp) => new(tokens, otp);
+
+    [Fact]
+    public async Task Verify_with_invalid_pre_auth_is_unauthorized()
+    {
+        var tokens = new FakeTokens { PreAuth = null };
+        var otp = new FakeOtp();
+
+        var result = await BuildVerify(tokens, otp).Handle(
+            new LoginVerifyCommand(new LoginVerifyRequest("bad", "123456")), default);
+
+        Assert.True(result.IsError);
+        Assert.Equal(AuthErrorCodes.PreAuthInvalid, result.FirstError.Code);
+        Assert.False(otp.VerifyCalled);
+    }
+
+    [Fact]
+    public async Task Verify_with_wrong_code_is_a_validation_error()
+    {
+        var tokens = new FakeTokens { PreAuth = new PreAuthPrincipal(Guid.NewGuid(), "user@example.com") };
+        var otp = new FakeOtp { VerifyResult = OtpVerifyResult.Invalid };
+
+        var result = await BuildVerify(tokens, otp).Handle(
+            new LoginVerifyCommand(new LoginVerifyRequest("ok", "000000")), default);
+
+        Assert.True(result.IsError);
+        Assert.Equal(AuthErrorCodes.CodeInvalid, result.FirstError.Code);
+    }
+
+    [Fact]
+    public async Task Verify_with_correct_code_returns_tokens()
+    {
+        var userId = Guid.NewGuid();
+        var tokens = new FakeTokens { PreAuth = new PreAuthPrincipal(userId, "user@example.com") };
+        var otp = new FakeOtp { VerifyResult = OtpVerifyResult.Valid };
+
+        var result = await BuildVerify(tokens, otp).Handle(
+            new LoginVerifyCommand(new LoginVerifyRequest("ok", "123456")), default);
+
+        Assert.False(result.IsError);
+        Assert.Equal("access", result.Value.AccessToken);
+        Assert.Equal((userId, "user@example.com"), tokens.IssuedFor);
+    }
+
+    [Fact]
+    public async Task Verify_cannot_replay_a_previously_consumed_code()
+    {
+        var userId = Guid.NewGuid();
+        var tokens = new FakeTokens { PreAuth = new PreAuthPrincipal(userId, "user@example.com") };
+        var otp = new FakeOtp { VerifyResult = OtpVerifyResult.Valid };
+
+        var first = await BuildVerify(tokens, otp).Handle(
+            new LoginVerifyCommand(new LoginVerifyRequest("ok", "123456")), default);
+
+        Assert.False(first.IsError);
+
+        // Mirrors OtpService.VerifyAsync: a consumed code is gone on replay, not merely wrong.
+        otp.VerifyResult = OtpVerifyResult.NotFound;
+
+        var second = await BuildVerify(tokens, otp).Handle(
+            new LoginVerifyCommand(new LoginVerifyRequest("ok", "123456")), default);
+
+        Assert.True(second.IsError);
+        Assert.Equal(AuthErrorCodes.CodeInvalid, second.FirstError.Code);
+    }
+
+    [Fact]
+    public async Task Enable_two_factor_flips_the_flag_on()
+    {
+        var accounts = new FakeAccounts();
+        var userId = Guid.NewGuid();
+        var handler = new SetTwoFactorCommandHandler(new FakeCurrentUser(userId), accounts);
+
+        var result = await handler.Handle(new SetTwoFactorCommand(true), default);
+
+        Assert.False(result.IsError);
+        Assert.Equal((userId, true), accounts.TwoFactorCall);
+    }
+
+    [Fact]
+    public async Task Disable_two_factor_flips_the_flag_off()
+    {
+        var accounts = new FakeAccounts();
+        var userId = Guid.NewGuid();
+        var handler = new SetTwoFactorCommandHandler(new FakeCurrentUser(userId), accounts);
+
+        var result = await handler.Handle(new SetTwoFactorCommand(false), default);
+
+        Assert.False(result.IsError);
+        Assert.Equal((userId, false), accounts.TwoFactorCall);
     }
 }
