@@ -57,8 +57,15 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     public async Task<ActionResult> Login(LoginRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new LoginCommand(request), ct);
+        if (result.IsError)
+        {
+            return result.ToActionResult();
+        }
 
-        return result.IsError ? result.ToActionResult() : Ok(result.Value);
+        var outcome = result.Value;
+        return outcome.Challenge is not null
+            ? Ok(outcome.Challenge)
+            : Ok(outcome.Tokens);
     }
 
     [HttpPost("refresh")]

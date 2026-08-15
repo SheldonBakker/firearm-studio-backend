@@ -92,7 +92,7 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
         return new Harness(
             new RegisterCommandHandler(accounts, otp, dispatcher),
             new VerifyEmailCommandHandler(accounts, otp, tokens, app, tenant),
-            new LoginCommandHandler(accounts, tokens),
+            new LoginCommandHandler(accounts, tokens, otp, dispatcher),
             new RefreshCommandHandler(tokens),
             new LogoutCommandHandler(tokens),
             new ForgotPasswordCommandHandler(accounts, otp, dispatcher),
@@ -146,9 +146,9 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
         Assert.False(loggedIn.IsError);
 
         var refreshed = await h.Refresh.Handle(
-            new RefreshCommand(new RefreshRequest(loggedIn.Value.RefreshToken)), default);
+            new RefreshCommand(new RefreshRequest(loggedIn.Value.Tokens!.RefreshToken)), default);
         Assert.False(refreshed.IsError);
-        Assert.NotEqual(loggedIn.Value.RefreshToken, refreshed.Value.RefreshToken);
+        Assert.NotEqual(loggedIn.Value.Tokens!.RefreshToken, refreshed.Value.RefreshToken);
 
         var loggedOut = await h.Logout.Handle(
             new LogoutCommand(new LogoutRequest(refreshed.Value.RefreshToken)), default);
