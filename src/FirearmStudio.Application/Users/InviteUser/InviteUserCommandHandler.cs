@@ -113,6 +113,14 @@ public sealed class InviteUserCommandHandler(
     {
         var account = await accounts.FindByEmailAsync(address, ct);
 
+        // An Invite code is credential-equivalent: accept-invite sets a password and issues
+        // tokens without a second factor. A request-supplied phone may therefore only be used
+        // when this invite creates the account. When the account already exists the code goes
+        // to the mailbox alone, so no caller can route an existing user's invite code to a
+        // number of their choosing. Captured before the create branch so it cannot be inferred
+        // from anything the rest of this method mutates.
+        var accountPreExisted = account is not null;
+
         if (account is null)
         {
             // A random password the invitee never learns. Identity requires one at
@@ -135,7 +143,7 @@ public sealed class InviteUserCommandHandler(
         if (issued.Status == OtpIssueStatus.Issued)
         {
             await dispatcher.SendAsync(
-                new OtpRecipient(address, null, phone),
+                new OtpRecipient(address, null, accountPreExisted ? null : phone),
                 OtpPurpose.Invite,
                 issued.Code!,
                 InviteCodeLifetimeMinutes,
