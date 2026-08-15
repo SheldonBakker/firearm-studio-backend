@@ -4,9 +4,13 @@ using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Users;
 
-public sealed record InviteUserRequest(string Email, string? FullName, AppRole Role);
+public sealed record InviteUserRequest(string Email, string? FullName, AppRole Role, string? PhoneNumber = null);
 
 public sealed record UpdateUserRoleRequest(AppRole Role);
+
+public sealed record UpdatePhoneRequest(string PhoneNumber);
+
+public sealed record VerifyPhoneRequest(string Code);
 
 public sealed record AppUserResponse(
     Guid Id,
