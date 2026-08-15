@@ -90,6 +90,7 @@ public static class DependencyInjection
 
         // Capability-named seam. Klaviyo is one adapter behind it, not the interface.
         services.AddScoped<IEmailSender, KlaviyoEmailSender>();
+        services.AddScoped<IOtpDispatcher, OtpDispatcher>();
 
         AddKlaviyo(services, configuration);
         AddWhatsApp(services, configuration);
