@@ -111,8 +111,8 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddPolicy("sage-register", context =>
         RateLimitPartition.GetFixedWindowLimiter(
-            context.User.FindFirst(SupabaseClaimTypes.CompanyId)?.Value
-            ?? context.User.FindFirst(SupabaseClaimTypes.Subject)?.Value
+            context.User.FindFirst(AppClaimTypes.CompanyId)?.Value
+            ?? context.User.FindFirst(AppClaimTypes.Subject)?.Value
             ?? context.Connection.RemoteIpAddress?.ToString()
             ?? "unknown",
             _ => new FixedWindowRateLimiterOptions

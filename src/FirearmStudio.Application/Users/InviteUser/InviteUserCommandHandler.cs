@@ -9,7 +9,10 @@ namespace FirearmStudio.Application.Users.InviteUser;
 
 public sealed class InviteUserCommandHandler(
     IApplicationDbContext db,
-    ITenantContext tenant)
+    ITenantContext tenant,
+    IUserAccountService accounts,
+    IOtpService otp,
+    IEmailSender emailSender)
     : ICommandHandler<InviteUserCommand, ErrorOr<AppUserResponse>>
 {
     public async Task<ErrorOr<AppUserResponse>> Handle(
@@ -58,6 +61,14 @@ public sealed class InviteUserCommandHandler(
                 // auth_user_id, linked_at, full_name left intact so the user stays linked.
 
                 await db.SaveChangesAsync(cancellationToken); // inside bypass → guard permits the move
+
+                // Already linked means they have working credentials; moving them between
+                // companies does not require proving the mailbox again.
+                if (existing.AuthUserId is null)
+                {
+                    await ProvisionAndInviteAsync(email, cancellationToken);
+                }
+
                 return AppUserResponse.FromEntity(existing);
             }
         }
@@ -82,8 +93,47 @@ public sealed class InviteUserCommandHandler(
             return Error.Conflict(ErrorCodes.EmailAlreadyExists, "A user with this email already belongs to a company or has a pending invite.");
         }
 
+        await ProvisionAndInviteAsync(email, cancellationToken);
+
         return AppUserResponse.FromEntity(user);
     }
+
+    /// <summary>
+    /// Creates the login account for an invited address and emails a one-time code. The
+    /// account has no password until the invitee sets one via accept-invite, so an invite
+    /// alone never yields a usable credential.
+    /// </summary>
+    private async Task ProvisionAndInviteAsync(string address, CancellationToken ct)
+    {
+        var account = await accounts.FindByEmailAsync(address, ct);
+
+        if (account is null)
+        {
+            // A random password the invitee never learns. Identity requires one at
+            // creation; accept-invite replaces it.
+            var placeholder = Guid.NewGuid().ToString("N") + "Aa1!";
+
+            var (created, _) = await accounts.CreateAsync(address, placeholder, ct);
+            if (created is null)
+            {
+                // The invite row is already saved and an admin can resend. Failing the
+                // whole command here would leave the caller unable to retry cleanly.
+                return;
+            }
+
+            account = created;
+        }
+
+        var issued = await otp.IssueAsync(account.Id, OtpPurpose.Invite, ct);
+
+        if (issued.Status == OtpIssueStatus.Issued)
+        {
+            await emailSender.SendOtpAsync(
+                address, null, OtpPurpose.Invite, issued.Code!, InviteCodeLifetimeMinutes, ct);
+        }
+    }
+
+    private const int InviteCodeLifetimeMinutes = 15;
 
     public static class ErrorCodes
     {

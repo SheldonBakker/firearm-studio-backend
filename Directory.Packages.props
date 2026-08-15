@@ -6,8 +6,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Authentication: validate Supabase-issued ES256 JWTs via JWKS -->
+    <!-- Authentication: validate API-issued HS256 JWTs -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
+
+    <!-- Identity: user store, password hashing, lockout -->
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.11" />
+
+    <!-- JWT creation (validation comes from the JwtBearer package above) -->
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
 
     <!-- API versioning -->
     <PackageVersion Include="Asp.Versioning.Mvc" Version="8.1.1" />
@@ -22,12 +28,13 @@
     <!-- .env file loading -->
     <PackageVersion Include="DotNetEnv" Version="3.2.0" />
 
-    <!-- Data access (EF Core 10 + PostgreSQL) -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <!-- Data access (EF Core 10 + PostgreSQL).
+         Pinned to 10.0.11 because Identity.EntityFrameworkCore 10.0.11 requires it. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" />
 
     <!-- Validation + result types -->
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />

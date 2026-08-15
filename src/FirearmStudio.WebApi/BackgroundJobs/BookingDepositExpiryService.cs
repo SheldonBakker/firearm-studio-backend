@@ -13,7 +13,6 @@ public sealed class BookingDepositExpiryService(
 {
     private static readonly TimeSpan Interval = TimeSpan.FromHours(1);
 
-    // Set to true once the migration check passes; never checked again afterwards.
     private bool _migrationsVerified;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Model.Options;
+using FirearmStudio.Infrastructure.Identity;
 using FirearmStudio.Infrastructure.Persistence;
 using FirearmStudio.Infrastructure.Persistence.Interceptors;
 using FirearmStudio.Infrastructure.Services;
@@ -34,17 +35,61 @@ public static class DependencyInjection
                 "(e.g. ConnectionStrings__DefaultConnection in .env or user-secrets).");
         }
 
-        var dataSource = SupabaseDataSourceFactory.Build(connectionString);
+        var dataSource = NpgsqlDataSourceFactory.Build(connectionString);
 
         services.AddScoped<TenantAndAuditInterceptor>();
 
         services.AddDbContext<ApplicationDbContext>((sp, options) =>
             options
-                .UseNpgsql(dataSource, SupabaseDataSourceFactory.MapEnums)
+                .UseNpgsql(dataSource, NpgsqlDataSourceFactory.MapEnums)
                 .UseSnakeCaseNamingConvention()
                 .AddInterceptors(sp.GetRequiredService<TenantAndAuditInterceptor>()));
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+
+        // Auth state, same database and data source, different schema. Deliberately without
+        // TenantAndAuditInterceptor: identity records are not tenant-scoped.
+        services.AddDbContext<AuthDbContext>(options =>
+            options
+                .UseNpgsql(dataSource, npgsql =>
+                {
+                    NpgsqlDataSourceFactory.MapAuthEnums(npgsql);
+
+                    // Its own history table, so the two contexts cannot misread each
+                    // other's applied migrations.
+                    npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "identity");
+                })
+                .UseSnakeCaseNamingConvention());
+
+        services
+            .AddIdentityCore<AppIdentityUser>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+
+                options.Password.RequiredLength = 12;
+                options.Password.RequireDigit = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireUppercase = true;
+                options.Password.RequireNonAlphanumeric = false;
+
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                options.Lockout.AllowedForNewUsers = true;
+
+                // Confirmation is enforced at the login endpoint, using our own one-time
+                // codes rather than Identity's token providers.
+                options.SignIn.RequireConfirmedEmail = true;
+            })
+            .AddEntityFrameworkStores<AuthDbContext>();
+
+        services.AddSingleton(TimeProvider.System);
+
+        services.AddScoped<IUserAccountService, IdentityUserAccountService>();
+        services.AddScoped<IOtpService, OtpService>();
+        services.AddScoped<ITokenService, TokenService>();
+
+        // Capability-named seam. Klaviyo is one adapter behind it, not the interface.
+        services.AddScoped<IEmailSender, KlaviyoEmailSender>();
 
         AddKlaviyo(services, configuration);
         AddNotificationSettings(services, configuration);

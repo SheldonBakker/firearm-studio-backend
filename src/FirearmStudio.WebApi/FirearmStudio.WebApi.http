@@ -1,7 +1,18 @@
 @FirearmStudio.WebApi_HostAddress = http://localhost:5146
 
-# Supabase access token (omit the "Bearer " prefix here; it's added below).
-@token = PASTE_SUPABASE_ACCESS_TOKEN_HERE
+# Access token from POST /api/v1/auth/login (omit the "Bearer " prefix here; it's added below).
+@token = PASTE_ACCESS_TOKEN_HERE
+@apiKey = PASTE_API_KEY_HERE
+
+### Sign in -> 200 { accessToken, refreshToken, accessExpiresAt }
+POST {{FirearmStudio.WebApi_HostAddress}}/api/v1/auth/login
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+
+{
+  "email": "you@example.com",
+  "password": "your-password"
+}
 
 ### Unauthenticated -> 401
 GET {{FirearmStudio.WebApi_HostAddress}}/api/v1/me

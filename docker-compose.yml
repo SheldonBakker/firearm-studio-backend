@@ -1,16 +1,17 @@
 services:
   api:
-    image: ghcr.io/sheldonbakker/firearm-studio-api:latest
+    image: ${FIREARM_IMAGE:-ghcr.io/sheldonbakker/firearm-studio-api:latest}
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: "5146"
+
       ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
-      SupabaseJwtSettings__Authority: ${SupabaseJwtSettings__Authority}
+      JwtSettings__Issuer: ${JwtSettings__Issuer}
+      JwtSettings__SigningKey: ${JwtSettings__SigningKey}
       ApiKeySettings__Key: ${ApiKeySettings__Key}
       KlaviyoSettings__ApiKey: ${KlaviyoSettings__ApiKey}
       CredentialProtectionSettings__Key: ${CredentialProtectionSettings__Key}
       NotificationSettings__PublicBaseUrl: ${NotificationSettings__PublicBaseUrl}
-      # ForwardedHeaders__KnownNetworks__0: ${ForwardedHeaders__KnownNetworks__0}
     ports:
       - "5146:5146"

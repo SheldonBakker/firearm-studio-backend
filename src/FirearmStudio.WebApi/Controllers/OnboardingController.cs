@@ -26,8 +26,8 @@ public sealed class OnboardingController(IMediator mediator) : ControllerBase
         return Created("/api/v1/company", new
         {
             company = result.Value,
-            message = "Company created and you are its admin. Refresh your Supabase session to " +
-                      "receive your company_id and admin role in the access token.",
+            message = "Company created and you are its admin. Call /auth/refresh to receive your " +
+                      "company_id and admin role in a new access token.",
         });
     }
 }

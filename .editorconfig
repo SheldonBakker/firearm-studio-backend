@@ -27,3 +27,7 @@ dotnet_diagnostic.CA1862.severity = none
 [src/FirearmStudio.Infrastructure/Migrations/*.cs]
 generated_code = true
 dotnet_analyzer_diagnostic.severity = none
+
+[src/FirearmStudio.Infrastructure/Identity/Migrations/*.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none

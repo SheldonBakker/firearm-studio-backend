@@ -20,12 +20,12 @@ public sealed class CreateCompanyOnboardingCommandHandler(
         var user = currentUserService.User;
         if (!user.IsAuthenticated)
         {
-            return Error.Unauthorized(ErrorCodes.Unauthorized, "A valid Supabase session is required.");
+            return Error.Unauthorized(ErrorCodes.Unauthorized, "A valid session is required.");
         }
 
         if (string.IsNullOrWhiteSpace(user.Email))
         {
-            return Error.Validation(ErrorCodes.EmailMissing, "The Supabase token does not contain an email address.");
+            return Error.Validation(ErrorCodes.EmailMissing, "The access token does not contain an email address.");
         }
 
         var email = user.Email.Trim().ToLowerInvariant();
