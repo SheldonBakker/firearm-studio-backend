@@ -25,9 +25,10 @@ public sealed class WahaWhatsAppSender(HttpClient httpClient, WahaSettings setti
         using var response = await httpClient.PostAsJsonAsync(path, payload, ct);
         if (!response.IsSuccessStatusCode)
         {
-            var body = await response.Content.ReadAsStringAsync(ct);
+            // Never include the response body or session id in this message: WAHA echoes the
+            // recipient back in error bodies, and Task 5's dispatcher logs this exception.
             throw new HttpRequestException(
-                $"WAHA POST {path} failed with status {(int)response.StatusCode}: {body}");
+                $"WAHA send-text failed with status {(int)response.StatusCode}.");
         }
     }
 

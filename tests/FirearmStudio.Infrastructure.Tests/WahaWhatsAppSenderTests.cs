@@ -9,7 +9,7 @@ namespace FirearmStudio.Infrastructure.Tests;
 
 public sealed class WahaWhatsAppSenderTests
 {
-    private sealed class StubHandler(HttpStatusCode status) : HttpMessageHandler
+    private sealed class StubHandler(HttpStatusCode status, string? responseBody = null) : HttpMessageHandler
     {
         public HttpRequestMessage? Request { get; private set; }
         public string? Body { get; private set; }
@@ -19,13 +19,20 @@ public sealed class WahaWhatsAppSenderTests
         {
             Request = request;
             Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-            return new HttpResponseMessage(status);
+            var response = new HttpResponseMessage(status);
+            if (responseBody is not null)
+            {
+                response.Content = new StringContent(responseBody);
+            }
+
+            return response;
         }
     }
 
-    private static (WahaWhatsAppSender Sender, StubHandler Handler) Build(HttpStatusCode status = HttpStatusCode.OK)
+    private static (WahaWhatsAppSender Sender, StubHandler Handler) Build(
+        HttpStatusCode status = HttpStatusCode.OK, string? responseBody = null)
     {
-        var handler = new StubHandler(status);
+        var handler = new StubHandler(status, responseBody);
         var client = new HttpClient(handler) { BaseAddress = new Uri("http://waha.test/") };
         client.DefaultRequestHeaders.TryAddWithoutValidation("X-API-Key", "k");
         var settings = new WahaSettings { SessionId = "sess-123", ApiKey = "k" };
@@ -79,6 +86,22 @@ public sealed class WahaWhatsAppSenderTests
         var (sender, _) = Build(HttpStatusCode.InternalServerError);
         await Assert.ThrowsAsync<HttpRequestException>(() =>
             sender.SendOtpAsync("+27821234567", OtpPurpose.EmailConfirmation, "123456", 15, default));
+    }
+
+    [Fact]
+    public async Task Exception_message_does_not_leak_the_phone_number_or_code()
+    {
+        // WAHA echoes the offending recipient back in error bodies; the exception message must
+        // never repeat it (or the code), since Task 5's dispatcher logs this exception.
+        var (sender, _) = Build(
+            HttpStatusCode.UnprocessableEntity,
+            responseBody: """{"error":"invalid recipient 27821234567@c.us"}""");
+
+        var exception = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            sender.SendOtpAsync("+27821234567", OtpPurpose.EmailConfirmation, "123456", 15, default));
+
+        Assert.DoesNotContain("27821234567", exception.Message);
+        Assert.DoesNotContain("123456", exception.Message);
     }
 
     [Theory]
