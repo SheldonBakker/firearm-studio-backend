@@ -1,5 +1,5 @@
-using FluentValidation;
 using FirearmStudio.Application.Common;
+using FluentValidation;
 
 namespace FirearmStudio.Application.Auth;
 
