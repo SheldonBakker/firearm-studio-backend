@@ -25,12 +25,6 @@ public sealed class UpdatePhoneCommandHandler(
         var email = currentUser.User.Email;
         if (string.IsNullOrEmpty(email))
         {
-            var account = await accounts.FindByEmailAsync(currentUser.User.Email ?? string.Empty, ct);
-            email = account?.Email;
-        }
-
-        if (string.IsNullOrEmpty(email))
-        {
             return Error.Unauthorized(
                 AuthErrorCodes.InvalidCredentials,
                 "Your account has no email address on file; a phone change cannot be confirmed.");
