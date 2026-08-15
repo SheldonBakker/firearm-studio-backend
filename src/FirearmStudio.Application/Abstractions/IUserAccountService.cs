@@ -1,6 +1,12 @@
 namespace FirearmStudio.Application.Abstractions;
 
-public sealed record UserAccount(Guid Id, string Email, bool EmailConfirmed);
+public sealed record UserAccount(
+    Guid Id,
+    string Email,
+    bool EmailConfirmed,
+    bool TwoFactorEnabled,
+    string? PhoneNumber,
+    string? PendingPhoneNumber);
 
 public enum PasswordCheckResult
 {
@@ -29,4 +35,12 @@ public interface IUserAccountService
         Guid userId,
         string newPassword,
         CancellationToken ct);
+
+    Task SetTwoFactorEnabledAsync(Guid userId, bool enabled, CancellationToken ct);
+
+    Task SetPhoneNumberAsync(Guid userId, string? phoneE164, bool confirmed, CancellationToken ct);
+
+    Task SetPendingPhoneNumberAsync(Guid userId, string phoneE164, CancellationToken ct);
+
+    Task<string?> ConfirmPhoneChangeAsync(Guid userId, CancellationToken ct);
 }
