@@ -99,7 +99,7 @@ public sealed class LoginTwoFactorTests
     }
 
     private static UserAccount Account(bool twoFactor, bool emailConfirmed = true) =>
-        new(Guid.NewGuid(), "user@example.com", emailConfirmed, twoFactor, "+27820000001", null);
+        new(Guid.NewGuid(), "user@example.com", emailConfirmed, twoFactor, "+27820000001", true, null);
 
     private static LoginCommandHandler Build(FakeAccounts accounts, FakeTokens tokens, FakeOtp otp, RecordingDispatcher dispatcher) =>
         new(accounts, tokens, otp, dispatcher);

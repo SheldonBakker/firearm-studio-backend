@@ -6,6 +6,7 @@ public sealed record UserAccount(
     bool EmailConfirmed,
     bool TwoFactorEnabled,
     string? PhoneNumber,
+    bool PhoneNumberConfirmed,
     string? PendingPhoneNumber);
 
 public enum PasswordCheckResult

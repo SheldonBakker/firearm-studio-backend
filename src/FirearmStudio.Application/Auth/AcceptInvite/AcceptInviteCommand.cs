@@ -56,6 +56,8 @@ public sealed class AcceptInviteCommandHandler(
             ? null
             : command.Request.PhoneNumber.Trim();
 
+        var alreadyHasProvenNumber = account.PhoneNumberConfirmed;
+
         using (tenant.BeginBypass())
         {
             var appUser = await db.AppUsers
@@ -66,7 +68,7 @@ public sealed class AcceptInviteCommandHandler(
             {
                 effectivePhone ??= appUser.PhoneNumber;
 
-                if (!string.IsNullOrEmpty(effectivePhone))
+                if (!alreadyHasProvenNumber && !string.IsNullOrEmpty(effectivePhone))
                 {
                     appUser.PhoneNumber = effectivePhone;
                     await db.SaveChangesAsync(cancellationToken);
@@ -74,7 +76,7 @@ public sealed class AcceptInviteCommandHandler(
             }
         }
 
-        if (!string.IsNullOrEmpty(effectivePhone))
+        if (!alreadyHasProvenNumber && !string.IsNullOrEmpty(effectivePhone))
         {
             await accounts.SetPhoneNumberAsync(account.Id, effectivePhone, confirmed: false, cancellationToken);
         }

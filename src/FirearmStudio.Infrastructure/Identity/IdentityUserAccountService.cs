@@ -152,5 +152,12 @@ public sealed class IdentityUserAccountService(UserManager<AppIdentityUser> user
     }
 
     private static UserAccount Map(AppIdentityUser user) =>
-        new(user.Id, user.Email!, user.EmailConfirmed, user.TwoFactorEnabled, user.PhoneNumber, user.PendingPhoneNumber);
+        new(
+            user.Id,
+            user.Email!,
+            user.EmailConfirmed,
+            user.TwoFactorEnabled,
+            user.PhoneNumber,
+            user.PhoneNumberConfirmed,
+            user.PendingPhoneNumber);
 }

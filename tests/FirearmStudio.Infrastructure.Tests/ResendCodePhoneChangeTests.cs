@@ -56,7 +56,7 @@ public sealed class ResendCodePhoneChangeTests
     }
 
     private static UserAccount Account(string? pending) =>
-        new(Guid.NewGuid(), "user@example.com", true, false, "+27820000001", pending);
+        new(Guid.NewGuid(), "user@example.com", true, false, "+27820000001", true, pending);
 
     [Theory]
     [InlineData("PhoneChange")]
