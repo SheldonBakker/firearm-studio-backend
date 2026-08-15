@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Xunit;
 
-namespace FirearmStudio.Infrastructure.Tests;
+namespace FirearmStudio.WebApi.Tests;
 
 public sealed class ErrorOrExtensionsTests
 {

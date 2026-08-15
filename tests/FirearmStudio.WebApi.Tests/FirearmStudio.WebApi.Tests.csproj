@@ -1,20 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- TargetFramework / Nullable / ImplicitUsings come from Directory.Build.props -->
-
   <PropertyGroup>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNetEnv" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\FirearmStudio.Infrastructure\FirearmStudio.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\FirearmStudio.WebApi\FirearmStudio.WebApi.csproj" />
   </ItemGroup>
 
 </Project>
