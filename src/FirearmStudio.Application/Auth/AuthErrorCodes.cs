@@ -18,4 +18,5 @@ public static class AuthErrorCodes
     public const string TwoFactorNotEnabled = "Auth.TwoFactorNotEnabled";
     public const string PhoneMissing = "Auth.PhoneMissing";
     public const string NoPendingPhoneChange = "Auth.NoPendingPhoneChange";
+    public const string PhoneChannelUnavailable = "Auth.PhoneChannelUnavailable";
 }

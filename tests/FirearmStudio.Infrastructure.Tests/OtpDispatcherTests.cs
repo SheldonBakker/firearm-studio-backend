@@ -72,16 +72,35 @@ public sealed class OtpDispatcherTests
         Assert.Equal(1, email.Calls);
     }
 
-    [Fact]
-    public async Task Throwing_whatsapp_does_not_fail_phone_change()
+    [Theory]
+    [InlineData(OtpPurpose.EmailConfirmation)]
+    [InlineData(OtpPurpose.PasswordReset)]
+    [InlineData(OtpPurpose.Invite)]
+    [InlineData(OtpPurpose.TwoFactor)]
+    public async Task Throwing_whatsapp_does_not_fail_the_email_backed_purposes(OtpPurpose purpose)
     {
         var email = new RecordingEmailSender();
         var whatsApp = new RecordingWhatsAppSender(throws: true);
         await Build(email, whatsApp).SendAsync(
-            new OtpRecipient("user@example.com", null, "+27820000002"),
-            OtpPurpose.PhoneChange, "123456", 15, default);
+            new OtpRecipient("user@example.com", null, "+27821234567"),
+            purpose, "123456", 15, default);
 
         Assert.Equal(1, email.Calls);
+        Assert.Equal(1, whatsApp.Calls);
+    }
+
+    [Fact]
+    public async Task Throwing_whatsapp_fails_phone_change()
+    {
+        var email = new RecordingEmailSender();
+        var whatsApp = new RecordingWhatsAppSender(throws: true);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            Build(email, whatsApp).SendAsync(
+                new OtpRecipient("user@example.com", null, "+27820000002"),
+                OtpPurpose.PhoneChange, "123456", 15, default));
+
+        Assert.Equal(0, email.Calls);
     }
 
     [Theory]
@@ -89,7 +108,6 @@ public sealed class OtpDispatcherTests
     [InlineData(OtpPurpose.PasswordReset)]
     [InlineData(OtpPurpose.Invite)]
     [InlineData(OtpPurpose.TwoFactor)]
-    [InlineData(OtpPurpose.PhoneChange)]
     public async Task Null_phone_skips_whatsapp(OtpPurpose purpose)
     {
         var email = new RecordingEmailSender();
@@ -102,21 +120,25 @@ public sealed class OtpDispatcherTests
         Assert.Equal(0, whatsApp.Calls);
     }
 
-    [Fact]
-    public async Task PhoneChange_calls_email()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task PhoneChange_without_a_destination_number_is_a_programming_error(string? phone)
     {
         var email = new RecordingEmailSender();
         var whatsApp = new RecordingWhatsAppSender();
-        await Build(email, whatsApp).SendAsync(
-            new OtpRecipient("user@example.com", null, "+27820000002"),
-            OtpPurpose.PhoneChange, "123456", 15, default);
 
-        Assert.Equal(1, email.Calls);
-        Assert.Equal(1, whatsApp.Calls);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            Build(email, whatsApp).SendAsync(
+                new OtpRecipient("user@example.com", null, phone),
+                OtpPurpose.PhoneChange, "123456", 15, default));
+
+        Assert.Equal(0, email.Calls);
+        Assert.Equal(0, whatsApp.Calls);
     }
 
     [Fact]
-    public async Task PhoneChange_sends_email_and_whatsapp_to_distinct_destinations()
+    public async Task PhoneChange_goes_to_whatsapp_only()
     {
         var email = new RecordingEmailSender();
         var whatsApp = new RecordingWhatsAppSender();
@@ -124,7 +146,9 @@ public sealed class OtpDispatcherTests
             new OtpRecipient("account@example.com", null, "+27820000002"),
             OtpPurpose.PhoneChange, "123456", 15, default);
 
-        Assert.Equal("account@example.com", email.LastEmail);
+        Assert.Equal(0, email.Calls);
+        Assert.Null(email.LastEmail);
+        Assert.Equal(1, whatsApp.Calls);
         Assert.Equal("+27820000002", whatsApp.LastPhone);
     }
 

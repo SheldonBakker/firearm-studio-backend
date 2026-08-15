@@ -6,9 +6,11 @@ using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 using FirearmStudio.Infrastructure.Identity;
 using FirearmStudio.Infrastructure.Persistence;
+using FirearmStudio.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace FirearmStudio.Infrastructure.Tests.Integration;
@@ -35,6 +37,25 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
             return Task.CompletedTask;
         }
     }
+
+    private sealed class ThrowingWhatsAppSender : IWhatsAppSender
+    {
+        public Task SendOtpAsync(string phoneE164, OtpPurpose purpose, string code, int expiresInMinutes, CancellationToken ct) =>
+            throw new HttpRequestException("waha down");
+    }
+
+    private sealed class ThrowingEmailSender : IEmailSender
+    {
+        public Task SendOtpAsync(string email, string? name, OtpPurpose purpose, string code, int expiresInMinutes, CancellationToken ct) =>
+            throw new InvalidOperationException("email must not be used for a phone change");
+    }
+
+    private static UpdatePhoneCommandHandler BuildUpdateHandler(
+        ICurrentUserService currentUser,
+        IUserAccountService accounts,
+        IOtpService otp,
+        IOtpDispatcher dispatcher) =>
+        new(currentUser, accounts, otp, dispatcher, NullLogger<UpdatePhoneCommandHandler>.Instance);
 
     private static UserManager<AppIdentityUser> BuildUserManager(AuthDbContext auth)
     {
@@ -93,7 +114,7 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
         var (accounts, otp, app, tenant, currentUser, userId, companyId) = await SeedAsync();
         var dispatcher = new CapturingDispatcher();
 
-        var request = new UpdatePhoneCommandHandler(currentUser, accounts, otp, dispatcher);
+        var request = BuildUpdateHandler(currentUser, accounts, otp, dispatcher);
         var requested = await request.Handle(new UpdatePhoneCommand(new UpdatePhoneRequest("+27821234567")), default);
 
         Assert.False(requested.IsError);
@@ -123,10 +144,9 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
         var (accounts, otp, app, tenant, currentUser, userId, _) = await SeedAsync();
         var dispatcher = new CapturingDispatcher();
 
-        var request = new UpdatePhoneCommandHandler(currentUser, accounts, otp, dispatcher);
+        var request = BuildUpdateHandler(currentUser, accounts, otp, dispatcher);
         await request.Handle(new UpdatePhoneCommand(new UpdatePhoneRequest("+27821234567")), default);
 
-        // A code guaranteed to differ from the issued one.
         var wrong = dispatcher.LastCode == "000000" ? "111111" : "000000";
 
         var verify = new VerifyPhoneCommandHandler(currentUser, accounts, otp, app, tenant);
@@ -142,12 +162,30 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task Update_phone_returns_phone_channel_unavailable_when_whatsapp_is_down()
+    {
+        var (accounts, otp, _, _, currentUser, _, _) = await SeedAsync();
+
+        var dispatcher = new OtpDispatcher(
+            new ThrowingEmailSender(),
+            new ThrowingWhatsAppSender(),
+            NullLogger<OtpDispatcher>.Instance);
+
+        var request = BuildUpdateHandler(currentUser, accounts, otp, dispatcher);
+        var result = await request.Handle(
+            new UpdatePhoneCommand(new UpdatePhoneRequest("+27821234567")), default);
+
+        Assert.True(result.IsError);
+        Assert.Equal(
+            FirearmStudio.Application.Auth.AuthErrorCodes.PhoneChannelUnavailable,
+            result.FirstError.Code);
+    }
+
+    [Fact]
     public async Task Verify_with_no_pending_change_returns_error()
     {
         var (accounts, otp, app, tenant, currentUser, userId, _) = await SeedAsync();
 
-        // A code issued for PhoneChange purpose without ever setting a pending phone number,
-        // so it verifies successfully but there is nothing for ConfirmPhoneChangeAsync to promote.
         var issued = await otp.IssueAsync(userId, OtpPurpose.PhoneChange, default);
 
         var verify = new VerifyPhoneCommandHandler(currentUser, accounts, otp, app, tenant);

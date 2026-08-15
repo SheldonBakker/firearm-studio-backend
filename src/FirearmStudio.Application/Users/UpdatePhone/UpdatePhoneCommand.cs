@@ -3,6 +3,7 @@ using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
 using FirearmStudio.Application.Auth;
 using FirearmStudio.Domain.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace FirearmStudio.Application.Users.UpdatePhone;
 
@@ -12,7 +13,8 @@ public sealed class UpdatePhoneCommandHandler(
     ICurrentUserService currentUser,
     IUserAccountService accounts,
     IOtpService otp,
-    IOtpDispatcher dispatcher)
+    IOtpDispatcher dispatcher,
+    ILogger<UpdatePhoneCommandHandler> logger)
     : ICommandHandler<UpdatePhoneCommand, ErrorOr<Success>>
 {
     private const int CodeLifetimeMinutes = 15;
@@ -35,12 +37,26 @@ public sealed class UpdatePhoneCommandHandler(
         var issued = await otp.IssueAsync(userId, OtpPurpose.PhoneChange, ct);
         if (issued.Status == OtpIssueStatus.Issued)
         {
-            await dispatcher.SendAsync(
-                new OtpRecipient(email, null, phone),
-                OtpPurpose.PhoneChange,
-                issued.Code!,
-                CodeLifetimeMinutes,
-                ct);
+            try
+            {
+                await dispatcher.SendAsync(
+                    new OtpRecipient(email, null, phone),
+                    OtpPurpose.PhoneChange,
+                    issued.Code!,
+                    CodeLifetimeMinutes,
+                    ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(
+                    ex,
+                    "Delivery of a {Purpose} code failed.",
+                    OtpPurpose.PhoneChange);
+
+                return Error.Failure(
+                    AuthErrorCodes.PhoneChannelUnavailable,
+                    "A verification code could not be sent to that number right now. Try again later.");
+            }
         }
 
         return Result.Success;
