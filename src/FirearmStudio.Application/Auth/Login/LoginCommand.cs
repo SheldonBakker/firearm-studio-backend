@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Common;
 using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Auth.Login;
@@ -60,7 +61,8 @@ public sealed class LoginCommandHandler(
 
             if (issued.Status != OtpIssueStatus.Issued)
             {
-                return Error.Failure(
+                return Error.Custom(
+                    ThrottleErrorTypes.Throttled,
                     AuthErrorCodes.ChallengeUnavailable,
                     "Too many codes have been requested recently. Try again later.");
             }

@@ -41,6 +41,11 @@ public static class ErrorOrExtensions
             return StatusCodes.Status502BadGateway;
         }
 
+        if ((int)error.Type == ThrottleErrorTypes.Throttled)
+        {
+            return StatusCodes.Status429TooManyRequests;
+        }
+
         return error.Type switch
         {
             ErrorType.Validation => StatusCodes.Status400BadRequest,

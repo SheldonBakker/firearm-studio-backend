@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FirearmStudio.Infrastructure\FirearmStudio.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\FirearmStudio.WebApi\FirearmStudio.WebApi.csproj" />
   </ItemGroup>
 
 </Project>

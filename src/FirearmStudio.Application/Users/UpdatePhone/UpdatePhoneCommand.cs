@@ -2,6 +2,7 @@ using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
 using FirearmStudio.Application.Auth;
+using FirearmStudio.Application.Common;
 using FirearmStudio.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
@@ -39,7 +40,8 @@ public sealed class UpdatePhoneCommandHandler(
         var issued = await otp.IssueAsync(userId, OtpPurpose.PhoneChange, ct);
         if (issued.Status != OtpIssueStatus.Issued)
         {
-            return Error.Failure(
+            return Error.Custom(
+                ThrottleErrorTypes.Throttled,
                 AuthErrorCodes.ChallengeUnavailable,
                 "Too many codes have been requested recently. Try again later.");
         }
@@ -60,7 +62,8 @@ public sealed class UpdatePhoneCommandHandler(
                 "Delivery of a {Purpose} code failed.",
                 OtpPurpose.PhoneChange);
 
-            return Error.Failure(
+            return Error.Custom(
+                UpstreamErrorTypes.UpstreamFailure,
                 AuthErrorCodes.PhoneChannelUnavailable,
                 "A verification code could not be sent to that number right now. Try again later.");
         }

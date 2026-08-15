@@ -7,6 +7,9 @@ using FirearmStudio.Domain.Enums;
 using FirearmStudio.Infrastructure.Identity;
 using FirearmStudio.Infrastructure.Persistence;
 using FirearmStudio.Infrastructure.Services;
+using FirearmStudio.WebApi.Common;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -232,6 +235,9 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
         Assert.Equal(
             FirearmStudio.Application.Auth.AuthErrorCodes.ChallengeUnavailable,
             second.FirstError.Code);
+
+        var response = Assert.IsType<ObjectResult>(second.ToActionResult());
+        Assert.Equal(StatusCodes.Status429TooManyRequests, response.StatusCode);
     }
 
     [Fact]
@@ -252,6 +258,9 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
         Assert.Equal(
             FirearmStudio.Application.Auth.AuthErrorCodes.PhoneChannelUnavailable,
             result.FirstError.Code);
+
+        var response = Assert.IsType<ObjectResult>(result.ToActionResult());
+        Assert.Equal(StatusCodes.Status502BadGateway, response.StatusCode);
     }
 
     [Fact]

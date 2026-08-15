@@ -5,6 +5,9 @@ using FirearmStudio.Application.Auth.Login;
 using FirearmStudio.Application.Auth.TwoFactor;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.Domain.Enums;
+using FirearmStudio.WebApi.Common;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Xunit;
 
 namespace FirearmStudio.Infrastructure.Tests;
@@ -159,6 +162,9 @@ public sealed class LoginTwoFactorTests
         Assert.Equal(AuthErrorCodes.ChallengeUnavailable, result.FirstError.Code);
         Assert.False(tokens.PreAuthIssued);
         Assert.Equal(0, dispatcher.Calls);
+
+        var response = Assert.IsType<ObjectResult>(result.ToActionResult());
+        Assert.Equal(StatusCodes.Status429TooManyRequests, response.StatusCode);
     }
 
     [Fact]
