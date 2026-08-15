@@ -30,6 +30,7 @@ public sealed class LoginTwoFactorTests
         }
         public Task SetPhoneNumberAsync(Guid userId, string? phoneE164, bool confirmed, CancellationToken ct) => Task.CompletedTask;
         public Task SetPendingPhoneNumberAsync(Guid userId, string phoneE164, CancellationToken ct) => Task.CompletedTask;
+        public Task ClearPendingPhoneNumberAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
         public Task<string?> ConfirmPhoneChangeAsync(Guid userId, CancellationToken ct) => Task.FromResult<string?>(null);
     }
 

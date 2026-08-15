@@ -43,5 +43,7 @@ public interface IUserAccountService
 
     Task SetPendingPhoneNumberAsync(Guid userId, string phoneE164, CancellationToken ct);
 
+    Task ClearPendingPhoneNumberAsync(Guid userId, CancellationToken ct);
+
     Task<string?> ConfirmPhoneChangeAsync(Guid userId, CancellationToken ct);
 }

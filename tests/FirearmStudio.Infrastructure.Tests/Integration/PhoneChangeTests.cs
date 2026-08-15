@@ -254,6 +254,44 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task An_expired_code_clears_the_pending_number()
+    {
+        var (accounts, otp, app, tenant, currentUser, userId, _, clock) = await SeedAsync();
+        var dispatcher = new CapturingDispatcher();
+        var request = BuildUpdateHandler(currentUser, accounts, otp, dispatcher);
+
+        await request.Handle(new UpdatePhoneCommand(new UpdatePhoneRequest("+27821234567")), default);
+        var code = dispatcher.LastCode!;
+
+        clock.Advance(TimeSpan.FromMinutes(16));
+
+        var verify = new VerifyPhoneCommandHandler(currentUser, accounts, otp, app, tenant);
+        var expired = await verify.Handle(new VerifyPhoneCommand(new VerifyPhoneRequest(code)), default);
+
+        Assert.True(expired.IsError);
+        Assert.Equal(
+            FirearmStudio.Application.Auth.AuthErrorCodes.CodeExpired,
+            expired.FirstError.Code);
+
+        await using (var authAfter = fixture.CreateAuthDbContext())
+        {
+            var identityUser = await authAfter.Users.SingleAsync(u => u.Id == userId);
+            Assert.Null(identityUser.PendingPhoneNumber);
+            Assert.Null(identityUser.PhoneNumber);
+            Assert.False(identityUser.PhoneNumberConfirmed);
+        }
+
+        var reissued = await otp.IssueAsync(userId, OtpPurpose.PhoneChange, default);
+        var afterClearing = await verify.Handle(
+            new VerifyPhoneCommand(new VerifyPhoneRequest(reissued.Code!)), default);
+
+        Assert.True(afterClearing.IsError);
+        Assert.Equal(
+            FirearmStudio.Application.Auth.AuthErrorCodes.NoPendingPhoneChange,
+            afterClearing.FirstError.Code);
+    }
+
+    [Fact]
     public async Task Verify_with_no_pending_change_returns_error()
     {
         var (accounts, otp, app, tenant, currentUser, userId, _, _) = await SeedAsync();

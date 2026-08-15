@@ -25,6 +25,11 @@ public sealed class VerifyPhoneCommandHandler(
         var failure = AuthResults.ToError(result);
         if (failure is not null)
         {
+            if (NoLiveCodeRemains(result))
+            {
+                await accounts.ClearPendingPhoneNumberAsync(userId, ct);
+            }
+
             return failure.Value;
         }
 
@@ -53,4 +58,7 @@ public sealed class VerifyPhoneCommandHandler(
 
         return Result.Success;
     }
+
+    private static bool NoLiveCodeRemains(OtpVerifyResult result) =>
+        result is OtpVerifyResult.Expired or OtpVerifyResult.NotFound or OtpVerifyResult.TooManyAttempts;
 }

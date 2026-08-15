@@ -135,6 +135,18 @@ public sealed class IdentityUserAccountService(UserManager<AppIdentityUser> user
         await users.UpdateAsync(user);
     }
 
+    public async Task ClearPendingPhoneNumberAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await users.FindByIdAsync(userId.ToString());
+        if (user is null || user.PendingPhoneNumber is null)
+        {
+            return;
+        }
+
+        user.PendingPhoneNumber = null;
+        await users.UpdateAsync(user);
+    }
+
     public async Task<string?> ConfirmPhoneChangeAsync(Guid userId, CancellationToken ct)
     {
         var user = await users.FindByIdAsync(userId.ToString());
