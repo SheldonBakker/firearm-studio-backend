@@ -48,7 +48,13 @@ public sealed class LoginTwoFactorTests
         public Task<(TokenPair? Pair, RefreshFailure? Failure)> RefreshAsync(string refreshToken, CancellationToken ct) => throw new NotSupportedException();
         public Task RevokeAsync(string refreshToken, CancellationToken ct) => Task.CompletedTask;
         public Task RevokeAllAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
-        public string IssuePreAuthToken(Guid userId, string email) => PreAuthToken;
+        public bool PreAuthIssued { get; private set; }
+
+        public string IssuePreAuthToken(Guid userId, string email)
+        {
+            PreAuthIssued = true;
+            return PreAuthToken;
+        }
         public PreAuthPrincipal? ValidatePreAuthToken(string token) => PreAuth;
     }
 
@@ -133,6 +139,23 @@ public sealed class LoginTwoFactorTests
         Assert.Equal(1, dispatcher.Calls);
         Assert.Equal(OtpPurpose.TwoFactor, dispatcher.Purpose);
         Assert.Equal("+27820000001", dispatcher.Recipient!.PhoneNumber);
+    }
+
+    [Fact]
+    public async Task Throttled_two_factor_returns_an_error_and_no_challenge()
+    {
+        var accounts = new FakeAccounts { Account = Account(twoFactor: true) };
+        var tokens = new FakeTokens { PreAuthToken = "the-pre-auth" };
+        var otp = new FakeOtp { IssueStatus = OtpIssueStatus.Throttled };
+        var dispatcher = new RecordingDispatcher();
+
+        var result = await Build(accounts, tokens, otp, dispatcher).Handle(
+            new LoginCommand(new LoginRequest("user@example.com", "pw")), default);
+
+        Assert.True(result.IsError);
+        Assert.Equal(AuthErrorCodes.ChallengeUnavailable, result.FirstError.Code);
+        Assert.False(tokens.PreAuthIssued);
+        Assert.Equal(0, dispatcher.Calls);
     }
 
     [Fact]

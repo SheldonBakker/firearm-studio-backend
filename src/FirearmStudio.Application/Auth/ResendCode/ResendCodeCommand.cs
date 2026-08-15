@@ -26,6 +26,13 @@ public sealed class ResendCodeCommandHandler(
                 "Unknown code purpose.");
         }
 
+        if (!IsResendableAnonymously(purpose))
+        {
+            return Error.Validation(
+                AuthErrorCodes.PurposeNotResendable,
+                "Codes for that purpose cannot be resent from here.");
+        }
+
         var address = command.Request.Email.Trim().ToLowerInvariant();
         var account = await accounts.FindByEmailAsync(address, cancellationToken);
 
@@ -65,4 +72,7 @@ public sealed class ResendCodeCommandHandler(
 
         return Result.Success;
     }
+
+    private static bool IsResendableAnonymously(OtpPurpose purpose) =>
+        purpose is not (OtpPurpose.TwoFactor or OtpPurpose.PhoneChange);
 }

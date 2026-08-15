@@ -57,15 +57,20 @@ public sealed class LoginCommandHandler(
         if (account.TwoFactorEnabled)
         {
             var issued = await otp.IssueAsync(account.Id, OtpPurpose.TwoFactor, cancellationToken);
-            if (issued.Status == OtpIssueStatus.Issued)
+
+            if (issued.Status != OtpIssueStatus.Issued)
             {
-                await dispatcher.SendAsync(
-                    new OtpRecipient(account.Email, null, account.PhoneNumber),
-                    OtpPurpose.TwoFactor,
-                    issued.Code!,
-                    CodeLifetimeMinutes,
-                    cancellationToken);
+                return Error.Failure(
+                    AuthErrorCodes.ChallengeUnavailable,
+                    "Too many codes have been requested recently. Try again later.");
             }
+
+            await dispatcher.SendAsync(
+                new OtpRecipient(account.Email, null, account.PhoneNumber),
+                OtpPurpose.TwoFactor,
+                issued.Code!,
+                CodeLifetimeMinutes,
+                cancellationToken);
 
             var preAuth = tokens.IssuePreAuthToken(account.Id, account.Email);
             return new LoginOutcome(

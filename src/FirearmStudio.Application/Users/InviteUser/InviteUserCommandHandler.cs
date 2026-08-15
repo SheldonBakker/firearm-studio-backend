@@ -58,7 +58,6 @@ public sealed class InviteUserCommandHandler(
                 existing.Role = request.Role;
                 existing.IsActive = true;
                 existing.InvitedAt = DateTime.UtcNow;
-                // auth_user_id, linked_at, full_name left intact so the user stays linked.
 
                 if (!string.IsNullOrEmpty(request.PhoneNumber))
                 {
@@ -67,8 +66,6 @@ public sealed class InviteUserCommandHandler(
 
                 await db.SaveChangesAsync(cancellationToken); // inside bypass → guard permits the move
 
-                // Already linked means they have working credentials; moving them between
-                // companies does not require proving the mailbox again.
                 if (existing.AuthUserId is null)
                 {
                     await ProvisionAndInviteAsync(email, existing.PhoneNumber, cancellationToken);
@@ -104,34 +101,19 @@ public sealed class InviteUserCommandHandler(
         return AppUserResponse.FromEntity(user);
     }
 
-    /// <summary>
-    /// Creates the login account for an invited address and emails a one-time code. The
-    /// account has no password until the invitee sets one via accept-invite, so an invite
-    /// alone never yields a usable credential.
-    /// </summary>
     private async Task ProvisionAndInviteAsync(string address, string? phone, CancellationToken ct)
     {
         var account = await accounts.FindByEmailAsync(address, ct);
 
-        // An Invite code is credential-equivalent: accept-invite sets a password and issues
-        // tokens without a second factor. A request-supplied phone may therefore only be used
-        // when this invite creates the account. When the account already exists the code goes
-        // to the mailbox alone, so no caller can route an existing user's invite code to a
-        // number of their choosing. Captured before the create branch so it cannot be inferred
-        // from anything the rest of this method mutates.
-        var accountPreExisted = account is not null;
+        var deliverToMailboxOnly = account is not null;
 
         if (account is null)
         {
-            // A random password the invitee never learns. Identity requires one at
-            // creation; accept-invite replaces it.
             var placeholder = Guid.NewGuid().ToString("N") + "Aa1!";
 
             var (created, _) = await accounts.CreateAsync(address, placeholder, ct);
             if (created is null)
             {
-                // The invite row is already saved and an admin can resend. Failing the
-                // whole command here would leave the caller unable to retry cleanly.
                 return;
             }
 
@@ -143,7 +125,7 @@ public sealed class InviteUserCommandHandler(
         if (issued.Status == OtpIssueStatus.Issued)
         {
             await dispatcher.SendAsync(
-                new OtpRecipient(address, null, accountPreExisted ? null : phone),
+                new OtpRecipient(address, null, deliverToMailboxOnly ? null : phone),
                 OtpPurpose.Invite,
                 issued.Code!,
                 InviteCodeLifetimeMinutes,

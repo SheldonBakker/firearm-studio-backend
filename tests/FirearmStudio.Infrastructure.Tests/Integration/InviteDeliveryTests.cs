@@ -12,11 +12,6 @@ using Xunit;
 
 namespace FirearmStudio.Infrastructure.Tests.Integration;
 
-/// <summary>
-/// An Invite code is credential-equivalent, so these tests pin down which destinations an
-/// invite may reach. A request-supplied phone is only honoured when the invite creates the
-/// login account; otherwise the code must stay on the mailbox the account already owns.
-/// </summary>
 public sealed class InviteDeliveryTests(TestDatabaseFixture fixture)
     : IClassFixture<TestDatabaseFixture>
 {
@@ -109,8 +104,6 @@ public sealed class InviteDeliveryTests(TestDatabaseFixture fixture)
         var h = await CreateAsync();
         var victim = NewEmail();
 
-        // The victim already has a login account, so an Invite code is a working credential
-        // for it. The invite must not be able to route that code to a caller-chosen number.
         var (created, errors) = await h.Accounts.CreateAsync(victim, "VictimSecret123", default);
         Assert.Empty(errors);
         Assert.NotNull(created);
@@ -132,8 +125,6 @@ public sealed class InviteDeliveryTests(TestDatabaseFixture fixture)
         var h = await CreateAsync();
         var invitee = NewEmail();
 
-        // An AppUser row with no auth_user_id: invited before, never accepted, so this
-        // invite still creates the login account and may seed the supplied number.
         h.App.AppUsers.Add(new AppUser
         {
             CompanyId = h.CompanyId,

@@ -11,7 +11,14 @@ public sealed class ResendCodePhoneChangeTests
 {
     private sealed class FakeAccounts(UserAccount? account) : IUserAccountService
     {
-        public Task<UserAccount?> FindByEmailAsync(string email, CancellationToken ct) => Task.FromResult(account);
+        public int LookupCalls { get; private set; }
+
+        public Task<UserAccount?> FindByEmailAsync(string email, CancellationToken ct)
+        {
+            LookupCalls++;
+            return Task.FromResult(account);
+        }
+
         public Task<(UserAccount? Account, IReadOnlyList<string> Errors)> CreateAsync(string email, string password, CancellationToken ct) => throw new NotSupportedException();
         public Task<PasswordCheckResult> CheckPasswordAsync(Guid userId, string password, CancellationToken ct) => throw new NotSupportedException();
         public Task ConfirmEmailAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
@@ -50,23 +57,30 @@ public sealed class ResendCodePhoneChangeTests
     private static UserAccount Account(string? pending) =>
         new(Guid.NewGuid(), "user@example.com", true, false, "+27820000001", pending);
 
-    [Fact]
-    public async Task PhoneChange_resend_targets_the_pending_number()
+    [Theory]
+    [InlineData("PhoneChange")]
+    [InlineData("TwoFactor")]
+    public async Task Non_resendable_purposes_are_refused_without_issuing_or_dispatching(string purpose)
     {
         var otp = new FakeOtp();
         var dispatcher = new RecordingDispatcher();
-        var handler = new ResendCodeCommandHandler(new FakeAccounts(Account("+27820000002")), otp, dispatcher);
+        var accounts = new FakeAccounts(Account("+27820000002"));
+        var handler = new ResendCodeCommandHandler(accounts, otp, dispatcher);
 
         var result = await handler.Handle(
-            new ResendCodeCommand(new ResendCodeRequest("user@example.com", "PhoneChange")), default);
+            new ResendCodeCommand(new ResendCodeRequest("user@example.com", purpose)), default);
 
-        Assert.False(result.IsError);
-        Assert.Equal("+27820000002", dispatcher.Recipient!.PhoneNumber);
-        Assert.Equal(OtpPurpose.PhoneChange, dispatcher.Purpose);
+        Assert.True(result.IsError);
+        Assert.Equal(AuthErrorCodes.PurposeNotResendable, result.FirstError.Code);
+        Assert.Equal(0, otp.IssueCalls);
+        Assert.Equal(0, dispatcher.Calls);
+        Assert.Null(dispatcher.Recipient);
+
+        Assert.Equal(0, accounts.LookupCalls);
     }
 
     [Fact]
-    public async Task PhoneChange_resend_with_no_pending_returns_phone_missing()
+    public async Task PhoneChange_resend_with_no_pending_is_refused_the_same_way()
     {
         var otp = new FakeOtp();
         var dispatcher = new RecordingDispatcher();
@@ -76,17 +90,38 @@ public sealed class ResendCodePhoneChangeTests
             new ResendCodeCommand(new ResendCodeRequest("user@example.com", "PhoneChange")), default);
 
         Assert.True(result.IsError);
-        Assert.Equal(AuthErrorCodes.PhoneMissing, result.FirstError.Code);
+        Assert.Equal(AuthErrorCodes.PurposeNotResendable, result.FirstError.Code);
         Assert.Equal(0, otp.IssueCalls);
         Assert.Equal(0, dispatcher.Calls);
+    }
+
+    [Theory]
+    [InlineData("PhoneChange")]
+    [InlineData("TwoFactor")]
+    public async Task Refusal_is_identical_for_an_unknown_address(string purpose)
+    {
+        var known = new ResendCodeCommandHandler(
+            new FakeAccounts(Account("+27820000002")), new FakeOtp(), new RecordingDispatcher());
+        var unknown = new ResendCodeCommandHandler(
+            new FakeAccounts(null), new FakeOtp(), new RecordingDispatcher());
+
+        var forKnown = await known.Handle(
+            new ResendCodeCommand(new ResendCodeRequest("user@example.com", purpose)), default);
+        var forUnknown = await unknown.Handle(
+            new ResendCodeCommand(new ResendCodeRequest("nobody@example.com", purpose)), default);
+
+        Assert.True(forKnown.IsError);
+        Assert.True(forUnknown.IsError);
+        Assert.Equal(forKnown.FirstError.Code, forUnknown.FirstError.Code);
+        Assert.Equal(forKnown.FirstError.Description, forUnknown.FirstError.Description);
+        Assert.Equal(forKnown.FirstError.Type, forUnknown.FirstError.Type);
     }
 
     [Theory]
     [InlineData("EmailConfirmation")]
     [InlineData("PasswordReset")]
     [InlineData("Invite")]
-    [InlineData("TwoFactor")]
-    public async Task Non_phone_change_resend_targets_the_confirmed_number(string purpose)
+    public async Task Resendable_purposes_still_target_the_confirmed_number(string purpose)
     {
         var dispatcher = new RecordingDispatcher();
         var handler = new ResendCodeCommandHandler(new FakeAccounts(Account("+27820000002")), new FakeOtp(), dispatcher);
