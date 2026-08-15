@@ -14,6 +14,8 @@ public sealed class PhoneNumberValidationTests
     [InlineData("+27821234567")]
     [InlineData("+14155550123")]
     [InlineData("+441632960961")]
+    [InlineData("+12345678")]
+    [InlineData("+123456789012345")]
     public void Accepts_valid_e164_numbers(string phone)
     {
         var result = UpdatePhone.Validate(new UpdatePhoneRequest(phone));
@@ -28,6 +30,10 @@ public sealed class PhoneNumberValidationTests
     [InlineData("")]
     [InlineData("+")]
     [InlineData("+27abc4567")]
+    [InlineData("+27821234567\n")]
+    [InlineData("+27821234567\r\n")]
+    [InlineData("+1234567")]
+    [InlineData("+1234567890123456")]
     public void Rejects_non_e164_numbers(string phone)
     {
         var result = UpdatePhone.Validate(new UpdatePhoneRequest(phone));
