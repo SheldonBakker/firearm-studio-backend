@@ -16,6 +16,7 @@ using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 using FirearmStudio.Infrastructure.Identity;
 using FirearmStudio.Infrastructure.Persistence;
+using FirearmStudio.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -86,19 +87,20 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
         var otp = new OtpService(auth, new PasswordHasher<AppIdentityUser>(), clock);
         var tokens = new TokenService(auth, app, Settings, clock);
         var email = new CapturingEmailSender();
+        var dispatcher = new OtpDispatcher(email, new NullWhatsAppSender(), NullLogger<OtpDispatcher>.Instance);
 
         return new Harness(
-            new RegisterCommandHandler(accounts, otp, email),
+            new RegisterCommandHandler(accounts, otp, dispatcher),
             new VerifyEmailCommandHandler(accounts, otp, tokens, app, tenant),
             new LoginCommandHandler(accounts, tokens),
             new RefreshCommandHandler(tokens),
             new LogoutCommandHandler(tokens),
-            new ForgotPasswordCommandHandler(accounts, otp, email),
+            new ForgotPasswordCommandHandler(accounts, otp, dispatcher),
             new ResetPasswordCommandHandler(accounts, otp, tokens),
             email,
             clock,
             new AcceptInviteCommandHandler(accounts, otp, tokens, app, tenant),
-            new InviteUserCommandHandler(app, tenant, accounts, otp, email),
+            new InviteUserCommandHandler(app, tenant, accounts, otp, dispatcher),
             app,
             tenant);
     }

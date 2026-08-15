@@ -2,6 +2,7 @@ using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
 using FirearmStudio.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Auth.AcceptInvite;
 
@@ -50,6 +51,33 @@ public sealed class AcceptInviteCommandHandler(
         await accounts.ConfirmEmailAsync(account.Id, cancellationToken);
 
         await AppUserLinker.LinkAsync(db, tenant, account.Id, address, cancellationToken);
+
+        var effectivePhone = string.IsNullOrEmpty(command.Request.PhoneNumber)
+            ? null
+            : command.Request.PhoneNumber.Trim();
+
+        using (tenant.BeginBypass())
+        {
+            var appUser = await db.AppUsers
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(u => u.AuthUserId == account.Id, cancellationToken);
+
+            if (appUser is not null)
+            {
+                effectivePhone ??= appUser.PhoneNumber;
+
+                if (!string.IsNullOrEmpty(effectivePhone))
+                {
+                    appUser.PhoneNumber = effectivePhone;
+                    await db.SaveChangesAsync(cancellationToken);
+                }
+            }
+        }
+
+        if (!string.IsNullOrEmpty(effectivePhone))
+        {
+            await accounts.SetPhoneNumberAsync(account.Id, effectivePhone, confirmed: false, cancellationToken);
+        }
 
         var pair = await tokens.IssueAsync(account.Id, account.Email, cancellationToken);
 

@@ -11,7 +11,7 @@ public sealed record ForgotPasswordCommand(ForgotPasswordRequest Request)
 public sealed class ForgotPasswordCommandHandler(
     IUserAccountService accounts,
     IOtpService otp,
-    IEmailSender email)
+    IOtpDispatcher dispatcher)
     : ICommandHandler<ForgotPasswordCommand, ErrorOr<Success>>
 {
     private const int CodeLifetimeMinutes = 15;
@@ -31,9 +31,12 @@ public sealed class ForgotPasswordCommandHandler(
 
             if (issued.Status == OtpIssueStatus.Issued)
             {
-                await email.SendOtpAsync(
-                    address, null, OtpPurpose.PasswordReset, issued.Code!,
-                    CodeLifetimeMinutes, cancellationToken);
+                await dispatcher.SendAsync(
+                    new OtpRecipient(address, null, account.PhoneNumber),
+                    OtpPurpose.PasswordReset,
+                    issued.Code!,
+                    CodeLifetimeMinutes,
+                    cancellationToken);
             }
         }
 
