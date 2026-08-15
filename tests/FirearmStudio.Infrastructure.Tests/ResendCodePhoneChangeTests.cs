@@ -38,6 +38,7 @@ public sealed class ResendCodePhoneChangeTests
             return Task.FromResult(new OtpIssueResult(OtpIssueStatus.Issued, "123456", null));
         }
         public Task<OtpVerifyResult> VerifyAsync(Guid userId, OtpPurpose purpose, string code, CancellationToken ct) => throw new NotSupportedException();
+        public Task InvalidateAsync(Guid userId, OtpPurpose purpose, CancellationToken ct) => Task.CompletedTask;
     }
 
     private sealed class RecordingDispatcher : IOtpDispatcher

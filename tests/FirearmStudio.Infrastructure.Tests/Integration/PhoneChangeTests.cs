@@ -72,7 +72,8 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
     }
 
     private async Task<(IdentityUserAccountService Accounts, OtpService Otp, ApplicationDbContext App,
-        BypassTenantContext Tenant, FixedCurrentUser CurrentUser, Guid UserId, Guid CompanyId)> SeedAsync()
+        BypassTenantContext Tenant, FixedCurrentUser CurrentUser, Guid UserId, Guid CompanyId,
+        TestTimeProvider Clock)> SeedAsync()
     {
         await fixture.MigrateAllAsync();
 
@@ -105,13 +106,13 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
         var accounts = new IdentityUserAccountService(BuildUserManager(auth));
         var otp = new OtpService(auth, new PasswordHasher<AppIdentityUser>(), clock);
 
-        return (accounts, otp, app, tenant, new FixedCurrentUser(userId, email), userId, companyId);
+        return (accounts, otp, app, tenant, new FixedCurrentUser(userId, email), userId, companyId, clock);
     }
 
     [Fact]
     public async Task Verify_promotes_pending_and_mirrors_to_app_user()
     {
-        var (accounts, otp, app, tenant, currentUser, userId, companyId) = await SeedAsync();
+        var (accounts, otp, app, tenant, currentUser, userId, companyId, _) = await SeedAsync();
         var dispatcher = new CapturingDispatcher();
 
         var request = BuildUpdateHandler(currentUser, accounts, otp, dispatcher);
@@ -141,7 +142,7 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
     [Fact]
     public async Task Wrong_code_does_not_promote()
     {
-        var (accounts, otp, app, tenant, currentUser, userId, _) = await SeedAsync();
+        var (accounts, otp, app, tenant, currentUser, userId, _, _) = await SeedAsync();
         var dispatcher = new CapturingDispatcher();
 
         var request = BuildUpdateHandler(currentUser, accounts, otp, dispatcher);
@@ -162,9 +163,80 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task Requesting_a_second_number_invalidates_the_code_issued_for_the_first()
+    {
+        var (accounts, otp, app, tenant, currentUser, userId, _, clock) = await SeedAsync();
+        var dispatcher = new CapturingDispatcher();
+        var request = BuildUpdateHandler(currentUser, accounts, otp, dispatcher);
+
+        var first = await request.Handle(new UpdatePhoneCommand(new UpdatePhoneRequest("+27820000001")), default);
+        Assert.False(first.IsError);
+        var codeForFirst = dispatcher.LastCode!;
+
+        clock.Advance(TimeSpan.FromSeconds(90));
+
+        var second = await request.Handle(new UpdatePhoneCommand(new UpdatePhoneRequest("+27820000002")), default);
+        Assert.False(second.IsError);
+        Assert.NotEqual(codeForFirst, dispatcher.LastCode);
+
+        var verify = new VerifyPhoneCommandHandler(currentUser, accounts, otp, app, tenant);
+        var result = await verify.Handle(new VerifyPhoneCommand(new VerifyPhoneRequest(codeForFirst)), default);
+
+        Assert.True(result.IsError);
+
+        await using var authAfter = fixture.CreateAuthDbContext();
+        var identityUser = await authAfter.Users.SingleAsync(u => u.Id == userId);
+        Assert.Null(identityUser.PhoneNumber);
+        Assert.False(identityUser.PhoneNumberConfirmed);
+    }
+
+    [Fact]
+    public async Task The_code_for_the_latest_number_promotes_that_number()
+    {
+        var (accounts, otp, app, tenant, currentUser, userId, _, clock) = await SeedAsync();
+        var dispatcher = new CapturingDispatcher();
+        var request = BuildUpdateHandler(currentUser, accounts, otp, dispatcher);
+
+        await request.Handle(new UpdatePhoneCommand(new UpdatePhoneRequest("+27820000001")), default);
+
+        clock.Advance(TimeSpan.FromSeconds(90));
+
+        await request.Handle(new UpdatePhoneCommand(new UpdatePhoneRequest("+27820000002")), default);
+        var codeForSecond = dispatcher.LastCode!;
+
+        var verify = new VerifyPhoneCommandHandler(currentUser, accounts, otp, app, tenant);
+        var result = await verify.Handle(new VerifyPhoneCommand(new VerifyPhoneRequest(codeForSecond)), default);
+
+        Assert.False(result.IsError);
+
+        await using var authAfter = fixture.CreateAuthDbContext();
+        var identityUser = await authAfter.Users.SingleAsync(u => u.Id == userId);
+        Assert.Equal("+27820000002", identityUser.PhoneNumber);
+        Assert.True(identityUser.PhoneNumberConfirmed);
+    }
+
+    [Fact]
+    public async Task Update_phone_returns_challenge_unavailable_when_issuing_is_throttled()
+    {
+        var (accounts, otp, _, _, currentUser, _, _, _) = await SeedAsync();
+        var dispatcher = new CapturingDispatcher();
+        var request = BuildUpdateHandler(currentUser, accounts, otp, dispatcher);
+
+        var first = await request.Handle(new UpdatePhoneCommand(new UpdatePhoneRequest("+27820000001")), default);
+        Assert.False(first.IsError);
+
+        var second = await request.Handle(new UpdatePhoneCommand(new UpdatePhoneRequest("+27820000002")), default);
+
+        Assert.True(second.IsError);
+        Assert.Equal(
+            FirearmStudio.Application.Auth.AuthErrorCodes.ChallengeUnavailable,
+            second.FirstError.Code);
+    }
+
+    [Fact]
     public async Task Update_phone_returns_phone_channel_unavailable_when_whatsapp_is_down()
     {
-        var (accounts, otp, _, _, currentUser, _, _) = await SeedAsync();
+        var (accounts, otp, _, _, currentUser, _, _, _) = await SeedAsync();
 
         var dispatcher = new OtpDispatcher(
             new ThrowingEmailSender(),
@@ -184,7 +256,7 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
     [Fact]
     public async Task Verify_with_no_pending_change_returns_error()
     {
-        var (accounts, otp, app, tenant, currentUser, userId, _) = await SeedAsync();
+        var (accounts, otp, app, tenant, currentUser, userId, _, _) = await SeedAsync();
 
         var issued = await otp.IssueAsync(userId, OtpPurpose.PhoneChange, default);
 

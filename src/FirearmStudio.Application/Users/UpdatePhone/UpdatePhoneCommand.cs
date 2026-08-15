@@ -32,31 +32,37 @@ public sealed class UpdatePhoneCommandHandler(
                 "Your account has no email address on file; a phone change cannot be confirmed.");
         }
 
+        await otp.InvalidateAsync(userId, OtpPurpose.PhoneChange, ct);
+
         await accounts.SetPendingPhoneNumberAsync(userId, phone, ct);
 
         var issued = await otp.IssueAsync(userId, OtpPurpose.PhoneChange, ct);
-        if (issued.Status == OtpIssueStatus.Issued)
+        if (issued.Status != OtpIssueStatus.Issued)
         {
-            try
-            {
-                await dispatcher.SendAsync(
-                    new OtpRecipient(email, null, phone),
-                    OtpPurpose.PhoneChange,
-                    issued.Code!,
-                    CodeLifetimeMinutes,
-                    ct);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogWarning(
-                    ex,
-                    "Delivery of a {Purpose} code failed.",
-                    OtpPurpose.PhoneChange);
+            return Error.Failure(
+                AuthErrorCodes.ChallengeUnavailable,
+                "Too many codes have been requested recently. Try again later.");
+        }
 
-                return Error.Failure(
-                    AuthErrorCodes.PhoneChannelUnavailable,
-                    "A verification code could not be sent to that number right now. Try again later.");
-            }
+        try
+        {
+            await dispatcher.SendAsync(
+                new OtpRecipient(email, null, phone),
+                OtpPurpose.PhoneChange,
+                issued.Code!,
+                CodeLifetimeMinutes,
+                ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(
+                ex,
+                "Delivery of a {Purpose} code failed.",
+                OtpPurpose.PhoneChange);
+
+            return Error.Failure(
+                AuthErrorCodes.PhoneChannelUnavailable,
+                "A verification code could not be sent to that number right now. Try again later.");
         }
 
         return Result.Success;

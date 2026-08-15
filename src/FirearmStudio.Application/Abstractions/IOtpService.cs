@@ -31,4 +31,6 @@ public interface IOtpService
         OtpPurpose purpose,
         string code,
         CancellationToken ct);
+
+    Task InvalidateAsync(Guid userId, OtpPurpose purpose, CancellationToken ct);
 }

@@ -75,6 +75,8 @@ public sealed class LoginTwoFactorTests
             VerifyCalled = true;
             return Task.FromResult(VerifyResult);
         }
+
+        public Task InvalidateAsync(Guid userId, OtpPurpose purpose, CancellationToken ct) => Task.CompletedTask;
     }
 
     internal sealed class FakeCurrentUser(Guid userId) : ICurrentUserService
