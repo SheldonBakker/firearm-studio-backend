@@ -1,5 +1,7 @@
 namespace FirearmStudio.Application.Abstractions;
 
+public sealed record PreAuthPrincipal(Guid UserId, string Email);
+
 public sealed record TokenPair(
     string AccessToken,
     string RefreshToken,
@@ -25,4 +27,8 @@ public interface ITokenService
     Task RevokeAsync(string refreshToken, CancellationToken ct);
 
     Task RevokeAllAsync(Guid userId, CancellationToken ct);
+
+    string IssuePreAuthToken(Guid userId, string email);
+
+    PreAuthPrincipal? ValidatePreAuthToken(string token);
 }

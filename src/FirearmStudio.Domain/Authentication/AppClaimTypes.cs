@@ -9,4 +9,6 @@ public static class AppClaimTypes
     public const string CompanyId = "company_id";
 
     public const string TokenId = "jti";
+
+    public const string TokenPurpose = "purpose";
 }

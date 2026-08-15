@@ -12,4 +12,8 @@ public static class AuthErrorCodes
     public const string RefreshInvalid = "Auth.RefreshInvalid";
     public const string PasswordRejected = "Auth.PasswordRejected";
     public const string UnknownPurpose = "Auth.UnknownPurpose";
+    public const string PreAuthInvalid = "Auth.PreAuthInvalid";
+    public const string TwoFactorNotEnabled = "Auth.TwoFactorNotEnabled";
+    public const string PhoneMissing = "Auth.PhoneMissing";
+    public const string NoPendingPhoneChange = "Auth.NoPendingPhoneChange";
 }

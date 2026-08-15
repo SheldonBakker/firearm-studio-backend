@@ -157,6 +157,79 @@ public sealed class TokenService(
         await auth.SaveChangesAsync(ct);
     }
 
+    private const string PreAuthPurposeValue = "pre_auth";
+    private const int PreAuthLifetimeMinutes = 5;
+
+    private string PreAuthAudience => settings.Audience + ":pre-auth";
+
+    public string IssuePreAuthToken(Guid userId, string email)
+    {
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+
+        var claims = new List<Claim>
+        {
+            new(AppClaimTypes.Subject, userId.ToString()),
+            new(AppClaimTypes.Email, email),
+            new(AppClaimTypes.TokenPurpose, PreAuthPurposeValue),
+            new(AppClaimTypes.TokenId, Guid.NewGuid().ToString()),
+        };
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.SigningKey));
+
+        var token = new JwtSecurityToken(
+            issuer: settings.Issuer,
+            audience: PreAuthAudience,
+            claims: claims,
+            notBefore: now,
+            expires: now.AddMinutes(PreAuthLifetimeMinutes),
+            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public PreAuthPrincipal? ValidatePreAuthToken(string token)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.SigningKey));
+
+        var parameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = settings.Issuer,
+            ValidateAudience = true,
+            ValidAudience = PreAuthAudience,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = key,
+            ValidAlgorithms = settings.ValidAlgorithms,
+            ClockSkew = TimeSpan.FromSeconds(30),
+        };
+
+        try
+        {
+            var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
+            var principal = handler.ValidateToken(token, parameters, out _);
+
+            if (principal.FindFirst(AppClaimTypes.TokenPurpose)?.Value != PreAuthPurposeValue)
+            {
+                return null;
+            }
+
+            var sub = principal.FindFirst(AppClaimTypes.Subject)?.Value;
+            var email = principal.FindFirst(AppClaimTypes.Email)?.Value;
+
+            if (!Guid.TryParse(sub, out var userId) || string.IsNullOrEmpty(email))
+            {
+                return null;
+            }
+
+            return new PreAuthPrincipal(userId, email);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static string GenerateRefreshToken() =>
         Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 
