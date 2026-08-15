@@ -3,7 +3,11 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FirearmStudio.Infrastructure.Identity;
 
-public sealed class AppIdentityUser : IdentityUser<Guid>;
+public sealed class AppIdentityUser : IdentityUser<Guid>
+{
+    // E.164, holds a phone number awaiting confirmation during the phone-change flow.
+    public string? PendingPhoneNumber { get; set; }
+}
 
 public sealed class RefreshToken
 {

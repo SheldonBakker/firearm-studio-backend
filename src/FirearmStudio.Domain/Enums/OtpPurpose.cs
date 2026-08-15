@@ -5,4 +5,6 @@ public enum OtpPurpose
     EmailConfirmation,
     PasswordReset,
     Invite,
+    TwoFactor,
+    PhoneChange,
 }

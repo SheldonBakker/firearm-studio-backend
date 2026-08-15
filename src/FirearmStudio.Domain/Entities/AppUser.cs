@@ -11,6 +11,7 @@ public sealed class AppUser : BaseEntity, ITenantEntity
 
     public required string Email { get; set; }
     public string? FullName { get; set; }
+    public string? PhoneNumber { get; set; }
 
     public AppRole Role { get; set; } = AppRole.Viewer;
 

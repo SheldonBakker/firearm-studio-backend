@@ -69,6 +69,7 @@ internal sealed class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
     {
         builder.Property(x => x.Email).IsRequired().HasMaxLength(320);
         builder.Property(x => x.FullName).HasMaxLength(200);
+        builder.Property(x => x.PhoneNumber).HasMaxLength(20);
         builder.Property(x => x.IsActive).HasDefaultValue(true);
 
         builder.ToTable(table => table.HasCheckConstraint(
