@@ -271,28 +271,57 @@ public sealed class LoginTwoFactorTests
     }
 
     [Fact]
-    public async Task Enable_two_factor_flips_the_flag_on()
+    public async Task Enable_two_factor_needs_no_password()
     {
         var accounts = new FakeAccounts();
         var userId = Guid.NewGuid();
-        var handler = new SetTwoFactorCommandHandler(new FakeCurrentUser(userId), accounts);
+        var handler = new EnableTwoFactorCommandHandler(new FakeCurrentUser(userId), accounts);
 
-        var result = await handler.Handle(new SetTwoFactorCommand(true), default);
+        var result = await handler.Handle(new EnableTwoFactorCommand(), default);
 
         Assert.False(result.IsError);
         Assert.Equal((userId, true), accounts.TwoFactorCall);
     }
 
     [Fact]
-    public async Task Disable_two_factor_flips_the_flag_off()
+    public async Task Disable_two_factor_with_the_right_password_flips_the_flag_off()
     {
-        var accounts = new FakeAccounts();
+        var accounts = new FakeAccounts { PasswordResult = PasswordCheckResult.Succeeded };
         var userId = Guid.NewGuid();
-        var handler = new SetTwoFactorCommandHandler(new FakeCurrentUser(userId), accounts);
+        var handler = new DisableTwoFactorCommandHandler(new FakeCurrentUser(userId), accounts);
 
-        var result = await handler.Handle(new SetTwoFactorCommand(false), default);
+        var result = await handler.Handle(
+            new DisableTwoFactorCommand(new DisableTwoFactorRequest("CorrectHorse123")), default);
 
         Assert.False(result.IsError);
         Assert.Equal((userId, false), accounts.TwoFactorCall);
+    }
+
+    [Fact]
+    public async Task Disable_two_factor_with_a_wrong_password_changes_nothing()
+    {
+        var accounts = new FakeAccounts { PasswordResult = PasswordCheckResult.Failed };
+        var handler = new DisableTwoFactorCommandHandler(new FakeCurrentUser(Guid.NewGuid()), accounts);
+
+        var result = await handler.Handle(
+            new DisableTwoFactorCommand(new DisableTwoFactorRequest("wrong")), default);
+
+        Assert.True(result.IsError);
+        Assert.Equal(AuthErrorCodes.InvalidCredentials, result.FirstError.Code);
+        Assert.Null(accounts.TwoFactorCall);
+    }
+
+    [Fact]
+    public async Task Disable_two_factor_while_locked_out_changes_nothing()
+    {
+        var accounts = new FakeAccounts { PasswordResult = PasswordCheckResult.LockedOut };
+        var handler = new DisableTwoFactorCommandHandler(new FakeCurrentUser(Guid.NewGuid()), accounts);
+
+        var result = await handler.Handle(
+            new DisableTwoFactorCommand(new DisableTwoFactorRequest("CorrectHorse123")), default);
+
+        Assert.True(result.IsError);
+        Assert.Equal(AuthErrorCodes.LockedOut, result.FirstError.Code);
+        Assert.Null(accounts.TwoFactorCall);
     }
 }

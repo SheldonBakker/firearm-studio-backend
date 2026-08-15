@@ -136,16 +136,16 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     [EnableRateLimiting("public")]
     public async Task<ActionResult> EnableTwoFactor(CancellationToken ct)
     {
-        var result = await mediator.Send(new SetTwoFactorCommand(true), ct);
+        var result = await mediator.Send(new EnableTwoFactorCommand(), ct);
         return result.IsError ? result.ToActionResult() : NoContent();
     }
 
     [Authorize]
     [HttpPost("two-factor/disable")]
-    [EnableRateLimiting("public")]
-    public async Task<ActionResult> DisableTwoFactor(CancellationToken ct)
+    [EnableRateLimiting("public-write")]
+    public async Task<ActionResult> DisableTwoFactor(DisableTwoFactorRequest request, CancellationToken ct)
     {
-        var result = await mediator.Send(new SetTwoFactorCommand(false), ct);
+        var result = await mediator.Send(new DisableTwoFactorCommand(request), ct);
         return result.IsError ? result.ToActionResult() : NoContent();
     }
 }

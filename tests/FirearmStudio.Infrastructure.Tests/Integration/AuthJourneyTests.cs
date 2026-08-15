@@ -7,6 +7,7 @@ using FirearmStudio.Application.Auth.Login;
 using FirearmStudio.Application.Auth.PasswordReset;
 using FirearmStudio.Application.Auth.Register;
 using FirearmStudio.Application.Auth.Tokens;
+using FirearmStudio.Application.Auth.TwoFactor;
 using FirearmStudio.Application.Auth.VerifyEmail;
 using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Application.Users;
@@ -49,6 +50,11 @@ public sealed class CapturingEmailSender : IEmailSender
 public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
     : IClassFixture<TestDatabaseFixture>
 {
+    private sealed class FixedUser(Guid id) : ICurrentUserService
+    {
+        public CurrentUser User { get; } = new() { Id = id, IsAuthenticated = true };
+    }
+
     private static readonly JwtSettings Settings = new()
     {
         Issuer = "https://api.test.local",
@@ -72,7 +78,8 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
         InviteUserCommandHandler Invite,
         ApplicationDbContext App,
         BypassTenantContext Tenant,
-        AuthDbContext Auth);
+        AuthDbContext Auth,
+        IdentityUserAccountService Accounts);
 
     private async Task<Harness> CreateAsync()
     {
@@ -104,7 +111,8 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
             new InviteUserCommandHandler(app, tenant, accounts, otp, dispatcher),
             app,
             tenant,
-            auth);
+            auth,
+            accounts);
     }
 
     private static UserManager<AppIdentityUser> BuildUserManager(AuthDbContext auth)
@@ -421,6 +429,38 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
         Assert.Equal(
             companyId.ToString(),
             token.Claims.First(c => c.Type == AppClaimTypes.CompanyId).Value);
+    }
+
+    [Fact]
+    public async Task Disabling_two_factor_requires_the_account_password()
+    {
+        var h = await CreateAsync();
+        var email = NewEmail();
+
+        await h.Register.Handle(new RegisterCommand(new RegisterRequest(email, Password)), default);
+        var code = h.Email.LastCodeFor(email, OtpPurpose.EmailConfirmation);
+        await h.Verify.Handle(new VerifyEmailCommand(new VerifyEmailRequest(email, code)), default);
+
+        var account = await h.Accounts.FindByEmailAsync(email, default);
+        var currentUser = new FixedUser(account!.Id);
+
+        var enable = new EnableTwoFactorCommandHandler(currentUser, h.Accounts);
+        Assert.False((await enable.Handle(new EnableTwoFactorCommand(), default)).IsError);
+
+        var disable = new DisableTwoFactorCommandHandler(currentUser, h.Accounts);
+
+        var refused = await disable.Handle(
+            new DisableTwoFactorCommand(new DisableTwoFactorRequest("NotThePassword1")), default);
+
+        Assert.True(refused.IsError);
+        Assert.Equal(AuthErrorCodes.InvalidCredentials, refused.FirstError.Code);
+        Assert.True((await h.Accounts.FindByEmailAsync(email, default))!.TwoFactorEnabled);
+
+        var accepted = await disable.Handle(
+            new DisableTwoFactorCommand(new DisableTwoFactorRequest(Password)), default);
+
+        Assert.False(accepted.IsError);
+        Assert.False((await h.Accounts.FindByEmailAsync(email, default))!.TwoFactorEnabled);
     }
 
     [Fact]

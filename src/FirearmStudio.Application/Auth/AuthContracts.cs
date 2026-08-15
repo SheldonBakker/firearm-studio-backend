@@ -20,6 +20,8 @@ public sealed record AcceptInviteRequest(string Email, string Code, string Passw
 
 public sealed record LoginVerifyRequest(string PreAuthToken, string Code);
 
+public sealed record DisableTwoFactorRequest(string Password);
+
 public sealed record TwoFactorChallengeResponse(bool RequiresTwoFactor, string PreAuthToken);
 
 public sealed record AuthTokensResponse(

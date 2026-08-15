@@ -102,3 +102,11 @@ public sealed class LoginVerifyRequestValidator : AbstractValidator<LoginVerifyR
         RuleFor(x => x.Code).NotEmpty().Length(6).Matches("^[0-9]{6}$");
     }
 }
+
+public sealed class DisableTwoFactorRequestValidator : AbstractValidator<DisableTwoFactorRequest>
+{
+    public DisableTwoFactorRequestValidator()
+    {
+        RuleFor(x => x.Password).NotEmpty().MaximumLength(256);
+    }
+}
