@@ -164,6 +164,55 @@ public sealed class OtpServiceTests(TestDatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task Twenty_first_two_factor_code_within_an_hour_is_throttled()
+    {
+        var (service, clock, userId) = await CreateAsync();
+
+        for (var i = 0; i < 20; i++)
+        {
+            var issued = await service.IssueAsync(userId, OtpPurpose.TwoFactor, default);
+            Assert.Equal(OtpIssueStatus.Issued, issued.Status);
+            clock.Advance(TimeSpan.FromSeconds(61));
+        }
+
+        var twentyFirst = await service.IssueAsync(userId, OtpPurpose.TwoFactor, default);
+
+        Assert.Equal(OtpIssueStatus.Throttled, twentyFirst.Status);
+    }
+
+    [Fact]
+    public async Task Sixth_password_reset_code_within_an_hour_is_still_throttled()
+    {
+        var (service, clock, userId) = await CreateAsync();
+
+        for (var i = 0; i < 5; i++)
+        {
+            var issued = await service.IssueAsync(userId, OtpPurpose.PasswordReset, default);
+            Assert.Equal(OtpIssueStatus.Issued, issued.Status);
+            clock.Advance(TimeSpan.FromSeconds(61));
+        }
+
+        var sixth = await service.IssueAsync(userId, OtpPurpose.PasswordReset, default);
+
+        Assert.Equal(OtpIssueStatus.Throttled, sixth.Status);
+    }
+
+    [Fact]
+    public async Task Resending_a_two_factor_code_within_sixty_seconds_is_still_throttled()
+    {
+        var (service, clock, userId) = await CreateAsync();
+        await service.IssueAsync(userId, OtpPurpose.TwoFactor, default);
+
+        clock.Advance(TimeSpan.FromSeconds(30));
+
+        var second = await service.IssueAsync(userId, OtpPurpose.TwoFactor, default);
+
+        Assert.Equal(OtpIssueStatus.Throttled, second.Status);
+        Assert.Null(second.Code);
+        Assert.NotNull(second.RetryAfter);
+    }
+
+    [Fact]
     public async Task Issuing_a_new_code_invalidates_the_previous_one()
     {
         var (service, clock, userId) = await CreateAsync();

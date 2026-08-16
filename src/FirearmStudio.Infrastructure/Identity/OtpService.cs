@@ -16,9 +16,16 @@ public sealed class OtpService(
     private static readonly TimeSpan ResendWindow = TimeSpan.FromHours(1);
 
     private const int MaxAttempts = 5;
-    private const int MaxPerWindow = 5;
+    private const int DefaultMaxPerWindow = 5;
+    private const int TwoFactorMaxPerWindow = 20;
 
     private static readonly AppIdentityUser HashingPlaceholder = new();
+
+    private static int MaxPerWindowFor(OtpPurpose purpose) => purpose switch
+    {
+        OtpPurpose.TwoFactor => TwoFactorMaxPerWindow,
+        _ => DefaultMaxPerWindow,
+    };
 
     public async Task<OtpIssueResult> IssueAsync(
         Guid userId,
@@ -43,7 +50,7 @@ public sealed class OtpService(
                 RetryAfter: last.CreatedAt + ResendInterval - now);
         }
 
-        if (recent.Count >= MaxPerWindow)
+        if (recent.Count >= MaxPerWindowFor(purpose))
         {
             var oldest = recent[^1];
             return new OtpIssueResult(
