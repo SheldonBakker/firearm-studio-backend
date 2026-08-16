@@ -1,3 +1,4 @@
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Enums;
 using FluentValidation;
 
@@ -8,7 +9,7 @@ public sealed class UpdateCompanyRequestValidator : AbstractValidator<UpdateComp
     public UpdateCompanyRequestValidator()
     {
         RuleFor(request => request)
-            .Must(HasAtLeastOneChange)
+            .Must(r => OptionalHelpers.HasAtLeastOneSet(r))
             .WithMessage("At least one field must be supplied.");
 
         RuleFor(request => request.Name.Value)
@@ -97,25 +98,4 @@ public sealed class UpdateCompanyRequestValidator : AbstractValidator<UpdateComp
                              && request.DepositMode.Value == DepositMode.Percentage
                              && request.DepositValue.IsSet);
     }
-
-    private static bool HasAtLeastOneChange(UpdateCompanyRequest request) =>
-        request.Name.IsSet
-        || request.RegistrationNumber.IsSet
-        || request.VatNumber.IsSet
-        || request.Email.IsSet
-        || request.Phone.IsSet
-        || request.AddressLine1.IsSet
-        || request.AddressLine2.IsSet
-        || request.City.IsSet
-        || request.Province.IsSet
-        || request.PostalCode.IsSet
-        || request.BankName.IsSet
-        || request.BankAccountHolder.IsSet
-        || request.BankAccountNumber.IsSet
-        || request.BankBranchCode.IsSet
-        || request.BankAccountType.IsSet
-        || request.BankSwiftCode.IsSet
-        || request.DepositMode.IsSet
-        || request.DepositValue.IsSet
-        || request.DepositWindowHours.IsSet;
 }

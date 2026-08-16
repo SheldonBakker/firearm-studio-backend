@@ -1,3 +1,4 @@
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Services;
 using FluentValidation;
 
@@ -8,15 +9,7 @@ public sealed class UpdateAttendeeRequestValidator : AbstractValidator<UpdateAtt
     public UpdateAttendeeRequestValidator()
     {
         RuleFor(request => request)
-            .Must(request => request.FullName.IsSet
-                             || request.IdNumber.IsSet
-                             || request.LicenceNumber.IsSet
-                             || request.FirearmMakeModel.IsSet
-                             || request.FirearmSerialNumber.IsSet
-                             || request.Calibre.IsSet
-                             || request.FirearmOrigin.IsSet
-                             || request.SignedIndemnity.IsSet
-                             || request.Notes.IsSet)
+            .Must(r => OptionalHelpers.HasAtLeastOneSet(r))
             .WithMessage("At least one field must be supplied.");
 
         RuleFor(request => request.FullName.Value)

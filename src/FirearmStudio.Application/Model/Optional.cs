@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -15,6 +16,45 @@ public readonly struct Optional<T>
     public bool IsSet { get; }
 
     public T Value { get; }
+
+    public void ApplyTo(Action<T> set)
+    {
+        if (IsSet)
+        {
+            set(Value);
+        }
+    }
+}
+
+public static class OptionalHelpers
+{
+    public static bool HasAtLeastOneSet<T>(T value) where T : notnull =>
+        CompiledOptionalProbe<T>.HasAnySet(value);
+
+    private static class CompiledOptionalProbe<T>
+    {
+        private static readonly Func<T, bool> Probe = Compile();
+
+        internal static bool HasAnySet(T value) => Probe(value);
+
+        private static Func<T, bool> Compile()
+        {
+            var request = Expression.Parameter(typeof(T), "request");
+
+            var isSetChecks = typeof(T).GetProperties()
+                .Where(p => p.PropertyType.IsGenericType
+                            && p.PropertyType.GetGenericTypeDefinition() == typeof(Optional<>))
+                .Select(p => (Expression)Expression.Property(Expression.Property(request, p), nameof(Optional<int>.IsSet)))
+                .ToList();
+
+            if (isSetChecks.Count == 0)
+            {
+                return static _ => false;
+            }
+
+            return Expression.Lambda<Func<T, bool>>(isSetChecks.Aggregate(Expression.OrElse), request).Compile();
+        }
+    }
 }
 
 public sealed class OptionalJsonConverterFactory : JsonConverterFactory

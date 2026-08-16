@@ -18,45 +18,14 @@ public sealed class UpdateStorageRecordCommandHandler(IApplicationDbContext db)
         }
 
         var request = command.Request;
-        if (request.StoredFrom.IsSet)
-        {
-            record.StoredFrom = request.StoredFrom.Value;
-        }
-
-        if (request.StoredUntil.IsSet)
-        {
-            record.StoredUntil = request.StoredUntil.Value;
-        }
-
-        if (request.MonthlyRate.IsSet)
-        {
-            record.MonthlyRate = request.MonthlyRate.Value;
-        }
-
-        if (request.StorageStatus.IsSet)
-        {
-            record.StorageStatus = request.StorageStatus.Value;
-        }
-
-        if (request.StorageLocation.IsSet)
-        {
-            record.StorageLocation = request.StorageLocation.Value;
-        }
-
-        if (request.RackNumber.IsSet)
-        {
-            record.RackNumber = request.RackNumber.Value;
-        }
-
-        if (request.SafeNumber.IsSet)
-        {
-            record.SafeNumber = request.SafeNumber.Value;
-        }
-
-        if (request.Notes.IsSet)
-        {
-            record.Notes = request.Notes.Value;
-        }
+        request.StoredFrom.ApplyTo(v => record.StoredFrom = v);
+        request.StoredUntil.ApplyTo(v => record.StoredUntil = v);
+        request.MonthlyRate.ApplyTo(v => record.MonthlyRate = v);
+        request.StorageStatus.ApplyTo(v => record.StorageStatus = v);
+        request.StorageLocation.ApplyTo(v => record.StorageLocation = v);
+        request.RackNumber.ApplyTo(v => record.RackNumber = v);
+        request.SafeNumber.ApplyTo(v => record.SafeNumber = v);
+        request.Notes.ApplyTo(v => record.Notes = v);
 
         if (record.StoredUntil < record.StoredFrom)
         {

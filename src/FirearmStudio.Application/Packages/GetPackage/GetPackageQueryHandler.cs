@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Packages.GetPackage;
@@ -10,18 +11,10 @@ public sealed class GetPackageQueryHandler(IApplicationDbContext db)
 {
     public async Task<ErrorOr<PackageResponse>> Handle(GetPackageQuery query, CancellationToken cancellationToken)
     {
-        var package = await db.Packages
+        return await db.Packages
             .AsNoTracking()
             .Where(p => p.Id == query.Id)
-            .Select(PackageResponse.QueryProjection)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (package is null)
-        {
-            return Error.NotFound(ErrorCodes.NotFound, "Package not found.");
-        }
-
-        return package;
+            .FirstOrNotFoundAsync(PackageResponse.QueryProjection, ErrorCodes.NotFound, "Package not found.", cancellationToken);
     }
 
     public static class ErrorCodes

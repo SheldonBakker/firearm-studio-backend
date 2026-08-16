@@ -1,3 +1,4 @@
+using FirearmStudio.Application.Model;
 using FirearmStudio.Domain.Services;
 using FluentValidation;
 
@@ -8,13 +9,7 @@ public sealed class UpdateCustomerRequestValidator : AbstractValidator<UpdateCus
     public UpdateCustomerRequestValidator()
     {
         RuleFor(request => request)
-            .Must(request => request.FullName.IsSet
-                             || request.CompanyName.IsSet
-                             || request.Email.IsSet
-                             || request.Phone.IsSet
-                             || request.Notes.IsSet
-                             || request.IsActive.IsSet
-                             || request.IdNumber.IsSet)
+            .Must(r => OptionalHelpers.HasAtLeastOneSet(r))
             .WithMessage("At least one field must be supplied.");
 
         RuleFor(request => request.FullName.Value)

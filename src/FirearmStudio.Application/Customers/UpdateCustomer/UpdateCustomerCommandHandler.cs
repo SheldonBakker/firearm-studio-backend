@@ -17,42 +17,13 @@ public sealed class UpdateCustomerCommandHandler(IApplicationDbContext db)
         }
 
         var request = command.Request;
-        if (request.FullName.IsSet)
-        {
-            customer.FullName = request.FullName.Value;
-        }
-
-        if (request.CompanyName.IsSet)
-        {
-            customer.CompanyName = request.CompanyName.Value;
-        }
-
-        if (request.Email.IsSet)
-        {
-            customer.Email = request.Email.Value;
-        }
-
-        if (request.Phone.IsSet)
-        {
-            customer.Phone = request.Phone.Value;
-        }
-
-        if (request.Notes.IsSet)
-        {
-            customer.Notes = request.Notes.Value;
-        }
-
-        if (request.IsActive.IsSet)
-        {
-            customer.IsActive = request.IsActive.Value;
-        }
-
-        if (request.IdNumber.IsSet)
-        {
-            customer.IdNumber = string.IsNullOrWhiteSpace(request.IdNumber.Value)
-                ? null
-                : request.IdNumber.Value;
-        }
+        request.FullName.ApplyTo(v => customer.FullName = v);
+        request.CompanyName.ApplyTo(v => customer.CompanyName = v);
+        request.Email.ApplyTo(v => customer.Email = v);
+        request.Phone.ApplyTo(v => customer.Phone = v);
+        request.Notes.ApplyTo(v => customer.Notes = v);
+        request.IsActive.ApplyTo(v => customer.IsActive = v);
+        request.IdNumber.ApplyTo(v => customer.IdNumber = string.IsNullOrWhiteSpace(v) ? null : v);
 
         await db.SaveChangesAsync(cancellationToken);
 

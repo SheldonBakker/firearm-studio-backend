@@ -10,13 +10,8 @@ namespace FirearmStudio.Application.Firearms.GetFirearms;
 public sealed class GetFirearmsQueryHandler(IApplicationDbContext db)
     : IQueryHandler<GetFirearmsQuery, ErrorOr<PaginatedResponse<FirearmResponse>>>
 {
-    private const int MaxPageSize = 200;
-
     public async Task<ErrorOr<PaginatedResponse<FirearmResponse>>> Handle(GetFirearmsQuery query, CancellationToken cancellationToken)
     {
-        var pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
-        var pageSize = query.PageSize is < 1 or > MaxPageSize ? 20 : query.PageSize;
-
         var queryable = db.Firearms.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(query.SerialNumber))
@@ -42,20 +37,7 @@ public sealed class GetFirearmsQueryHandler(IApplicationDbContext db)
             .OrderBy(f => f.SerialNumber)
             .ThenBy(f => f.Id);
 
-        var totalCount = await queryable.CountAsync(cancellationToken);
-
-        var items = await queryable
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .Select(FirearmResponse.QueryProjection)
-            .ToListAsync(cancellationToken);
-
-        return new PaginatedResponse<FirearmResponse>
-        {
-            Items = items,
-            PageNumber = pageNumber,
-            PageSize = pageSize,
-            TotalCount = totalCount,
-        };
+        return await queryable.ToPaginatedAsync(
+            query.PageNumber, query.PageSize, FirearmResponse.QueryProjection, cancellationToken);
     }
 }

@@ -21,50 +21,23 @@ public sealed class UpdatePackageCommandHandler(IApplicationDbContext db)
         }
 
         var request = command.Request;
-
-        if (request.Name.IsSet)
-        {
-            package.Name = request.Name.Value;
-        }
-
-        if (request.Description.IsSet)
-        {
-            package.Description = request.Description.Value;
-        }
-
-        if (request.Price.IsSet)
-        {
-            package.Price = request.Price.Value;
-        }
-
-        if (request.DurationMinutes.IsSet)
-        {
-            package.DurationMinutes = request.DurationMinutes.Value;
-        }
-
-        if (request.MaxShooters.IsSet)
-        {
-            package.MaxShooters = request.MaxShooters.Value;
-        }
-
-        if (request.IsActive.IsSet)
-        {
-            package.IsActive = request.IsActive.Value;
-        }
-
-        if (request.Items.IsSet)
+        request.Name.ApplyTo(v => package.Name = v);
+        request.Description.ApplyTo(v => package.Description = v);
+        request.Price.ApplyTo(v => package.Price = v);
+        request.DurationMinutes.ApplyTo(v => package.DurationMinutes = v);
+        request.MaxShooters.ApplyTo(v => package.MaxShooters = v);
+        request.IsActive.ApplyTo(v => package.IsActive = v);
+        request.Items.ApplyTo(items =>
         {
             db.PackageItems.RemoveRange(package.Items);
-            package.Items = request.Items.Value
-                .Select(item => new PackageItem
-                {
-                    PackageId = package.Id,
-                    Description = item.Description,
-                    Quantity = item.Quantity,
-                    SortOrder = item.SortOrder,
-                })
-                .ToList();
-        }
+            package.Items = items.Select(item => new PackageItem
+            {
+                PackageId = package.Id,
+                Description = item.Description,
+                Quantity = item.Quantity,
+                SortOrder = item.SortOrder,
+            }).ToList();
+        });
 
         await db.SaveChangesAsync(cancellationToken);
 

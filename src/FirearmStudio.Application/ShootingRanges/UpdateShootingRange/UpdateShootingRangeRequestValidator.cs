@@ -1,3 +1,4 @@
+using FirearmStudio.Application.Model;
 using FluentValidation;
 
 namespace FirearmStudio.Application.ShootingRanges.UpdateShootingRange;
@@ -7,12 +8,7 @@ public sealed class UpdateShootingRangeRequestValidator : AbstractValidator<Upda
     public UpdateShootingRangeRequestValidator()
     {
         RuleFor(request => request)
-            .Must(request => request.Name.IsSet
-                             || request.Description.IsSet
-                             || request.LaneCount.IsSet
-                             || request.SlotIntervalMinutes.IsSet
-                             || request.IsActive.IsSet
-                             || request.OperatingHours.IsSet)
+            .Must(r => OptionalHelpers.HasAtLeastOneSet(r))
             .WithMessage("At least one field must be supplied.");
 
         RuleFor(request => request.Name.Value)

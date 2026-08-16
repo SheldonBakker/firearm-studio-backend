@@ -1,3 +1,4 @@
+using FirearmStudio.Application.Model;
 using FluentValidation;
 
 namespace FirearmStudio.Application.StorageRecords.UpdateStorageRecord;
@@ -7,14 +8,7 @@ public sealed class UpdateStorageRecordRequestValidator : AbstractValidator<Upda
     public UpdateStorageRecordRequestValidator()
     {
         RuleFor(request => request)
-            .Must(request => request.StoredFrom.IsSet
-                             || request.StoredUntil.IsSet
-                             || request.MonthlyRate.IsSet
-                             || request.StorageStatus.IsSet
-                             || request.StorageLocation.IsSet
-                             || request.RackNumber.IsSet
-                             || request.SafeNumber.IsSet
-                             || request.Notes.IsSet)
+            .Must(r => OptionalHelpers.HasAtLeastOneSet(r))
             .WithMessage("At least one field must be supplied.");
         RuleFor(request => request.StoredFrom.Value)
             .NotEqual(default(DateOnly))

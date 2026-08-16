@@ -10,14 +10,9 @@ namespace FirearmStudio.Application.StorageRecords.GetStorageRecords;
 public sealed class GetStorageRecordsQueryHandler(IApplicationDbContext db)
     : IQueryHandler<GetStorageRecordsQuery, ErrorOr<PaginatedResponse<StorageRecordDto>>>
 {
-    private const int MaxPageSize = 200;
-
     public async Task<ErrorOr<PaginatedResponse<StorageRecordDto>>> Handle(
         GetStorageRecordsQuery query, CancellationToken cancellationToken)
     {
-        var pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
-        var pageSize = query.PageSize is < 1 or > MaxPageSize ? 20 : query.PageSize;
-
         var queryable = db.StorageRecords.AsNoTracking();
 
         if (query.StorageStatus.HasValue)
@@ -43,20 +38,7 @@ public sealed class GetStorageRecordsQueryHandler(IApplicationDbContext db)
             .OrderByDescending(record => record.StoredFrom)
             .ThenBy(record => record.Id);
 
-        var totalCount = await queryable.CountAsync(cancellationToken);
-
-        var items = await queryable
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .Select(StorageRecordDto.QueryProjection)
-            .ToListAsync(cancellationToken);
-
-        return new PaginatedResponse<StorageRecordDto>
-        {
-            Items = items,
-            PageNumber = pageNumber,
-            PageSize = pageSize,
-            TotalCount = totalCount,
-        };
+        return await queryable.ToPaginatedAsync(
+            query.PageNumber, query.PageSize, StorageRecordDto.QueryProjection, cancellationToken);
     }
 }
