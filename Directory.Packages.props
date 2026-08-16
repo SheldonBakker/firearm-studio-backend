@@ -31,7 +31,7 @@
     <!-- Data access (EF Core 10 + PostgreSQL).
          Pinned to 10.0.11 because Identity.EntityFrameworkCore 10.0.11 requires it. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" />
