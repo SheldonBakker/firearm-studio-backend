@@ -41,6 +41,8 @@ public sealed class KlaviyoEmailSenderTests
     [InlineData(OtpPurpose.EmailConfirmation, "Signup Verification Code")]
     [InlineData(OtpPurpose.PasswordReset, "Password Reset Code")]
     [InlineData(OtpPurpose.Invite, "Team Invite Code")]
+    [InlineData(OtpPurpose.TwoFactor, "Login Verification Code")]
+    [InlineData(OtpPurpose.PhoneChange, "Phone Verification Code")]
     public async Task Each_purpose_maps_to_its_own_metric(OtpPurpose purpose, string expected)
     {
         var klaviyo = new FakeKlaviyoClient();
@@ -49,6 +51,20 @@ public sealed class KlaviyoEmailSenderTests
         await sender.SendOtpAsync("user@example.com", "User", purpose, "123456", 15, default);
 
         Assert.Equal(expected, klaviyo.Metric);
+    }
+
+    [Fact]
+    public async Task Every_OtpPurpose_value_maps_to_a_non_empty_metric()
+    {
+        foreach (var purpose in Enum.GetValues<OtpPurpose>())
+        {
+            var klaviyo = new FakeKlaviyoClient();
+            var sender = new KlaviyoEmailSender(klaviyo);
+
+            await sender.SendOtpAsync("user@example.com", "User", purpose, "123456", 15, default);
+
+            Assert.False(string.IsNullOrWhiteSpace(klaviyo.Metric));
+        }
     }
 
     [Fact]

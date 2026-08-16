@@ -27,6 +27,8 @@ public sealed class KlaviyoEmailSender(IKlaviyoClient klaviyo) : IEmailSender
         OtpPurpose.EmailConfirmation => "Signup Verification Code",
         OtpPurpose.PasswordReset => "Password Reset Code",
         OtpPurpose.Invite => "Team Invite Code",
+        OtpPurpose.TwoFactor => "Login Verification Code",
+        OtpPurpose.PhoneChange => "Phone Verification Code",
         _ => throw new ArgumentOutOfRangeException(nameof(purpose), purpose, null),
     };
 }
