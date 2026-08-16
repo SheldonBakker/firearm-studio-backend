@@ -1,0 +1,18 @@
+using ErrorOr;
+
+namespace FirearmStudio.Application.Abstractions;
+
+public interface IAccountingConnectionValidator
+{
+    Task<ErrorOr<AccountingCompanySummary>> ValidateConnectionAsync(
+        AccountingCredentials credentials,
+        CancellationToken cancellationToken);
+}
+
+public sealed record AccountingCredentials(
+    string ApiKey,
+    string Username,
+    string Password,
+    int ExternalCompanyId);
+
+public sealed record AccountingCompanySummary(int Id, string Name);

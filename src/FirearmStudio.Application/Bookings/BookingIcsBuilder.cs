@@ -4,10 +4,6 @@ using FirearmStudio.Application.Common;
 
 namespace FirearmStudio.Application.Bookings;
 
-/// <summary>
-/// Pure builder for the RFC 5545 (iCalendar) file backing a booking's "add to calendar" link.
-/// No database or file I/O; callers pre-load whatever data the fields below need.
-/// </summary>
 public static class BookingIcsBuilder
 {
     private const string DateTimeFormat = "yyyyMMddTHHmmss";
@@ -49,9 +45,9 @@ public static class BookingIcsBuilder
             $"DTSTAMP:{utcNow.ToString(DateTimeFormat, CultureInfo.InvariantCulture)}Z",
             $"DTSTART;TZID={SouthAfricaTimeZone.Instance.Id}:{start.ToString(DateTimeFormat, CultureInfo.InvariantCulture)}",
             $"DTEND;TZID={SouthAfricaTimeZone.Instance.Id}:{end.ToString(DateTimeFormat, CultureInfo.InvariantCulture)}",
-            $"SUMMARY:{EscapeText(summary)}",
-            $"LOCATION:{EscapeText(location)}",
-            $"DESCRIPTION:{EscapeText(description)}",
+            $"SUMMARY:{EscapeRfc5545Text(summary)}",
+            $"LOCATION:{EscapeRfc5545Text(location)}",
+            $"DESCRIPTION:{EscapeRfc5545Text(description)}",
             "END:VEVENT",
             "END:VCALENDAR",
         };
@@ -60,8 +56,6 @@ public static class BookingIcsBuilder
         return Encoding.UTF8.GetBytes(text);
     }
 
-    /// <summary>Exposed internally so <see cref="BookingCalendarLinkBuilder"/> can reuse the same
-    /// address-joining rules for the Google Calendar link's location field.</summary>
     internal static string BuildLocation(CompanyIcsData company)
     {
         var parts = new[]
@@ -76,8 +70,7 @@ public static class BookingIcsBuilder
         return string.Join(", ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
     }
 
-    /// <summary>RFC 5545 §3.3.11 TEXT escaping: backslash, comma, semicolon, and newline.</summary>
-    private static string EscapeText(string value)
+    private static string EscapeRfc5545Text(string value)
     {
         var builder = new StringBuilder(value.Length);
 

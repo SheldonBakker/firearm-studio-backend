@@ -23,7 +23,7 @@ public interface IApplicationDbContext
     DbSet<PackageItem> PackageItems { get; }
     DbSet<Booking> Bookings { get; }
     DbSet<BookingAttendee> BookingAttendees { get; }
-    DbSet<SageConnection> SageConnections { get; }
+    DbSet<AccountingConnection> AccountingConnections { get; }
     DbSet<OutboxMessage> OutboxMessages { get; }
 
     DbSet<TEntity> Set<TEntity>() where TEntity : class;
@@ -38,11 +38,6 @@ public interface IApplicationDbContext
 
     Task MarkOutboxProcessedAsync(Guid id, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Increments the attempt counter, clears the lock, and stores <paramref name="error"/> for the
-    /// given outbox message. <paramref name="error"/> is truncated to 4000 characters here to match
-    /// the column constraint declared in <c>OutboxMessageConfiguration</c>.
-    /// </summary>
     Task MarkOutboxFailedAsync(Guid id, string error, CancellationToken cancellationToken = default);
 
     Task<bool> TryExecuteInSerializableTransactionAsync(

@@ -32,5 +32,4 @@ public sealed class Customer : BaseEntity, ITenantEntity
 
     public ICollection<Firearm> Firearms { get; set; } = [];
     public ICollection<Invoice> Invoices { get; set; } = [];
-    public ICollection<Booking> Bookings { get; set; } = [];
 }

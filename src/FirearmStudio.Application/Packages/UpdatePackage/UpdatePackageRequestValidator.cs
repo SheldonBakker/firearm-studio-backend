@@ -1,3 +1,4 @@
+using FirearmStudio.Application.Model;
 using FluentValidation;
 
 namespace FirearmStudio.Application.Packages.UpdatePackage;
@@ -7,13 +8,7 @@ public sealed class UpdatePackageRequestValidator : AbstractValidator<UpdatePack
     public UpdatePackageRequestValidator()
     {
         RuleFor(request => request)
-            .Must(request => request.Name.IsSet
-                             || request.Description.IsSet
-                             || request.Price.IsSet
-                             || request.DurationMinutes.IsSet
-                             || request.MaxShooters.IsSet
-                             || request.IsActive.IsSet
-                             || request.Items.IsSet)
+            .Must(r => OptionalHelpers.HasAtLeastOneSet(r))
             .WithMessage("At least one field must be supplied.");
 
         RuleFor(request => request.Name.Value)

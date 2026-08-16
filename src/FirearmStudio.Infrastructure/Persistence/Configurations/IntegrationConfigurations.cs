@@ -4,21 +4,21 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FirearmStudio.Infrastructure.Persistence.Configurations;
 
-internal sealed class SageConnectionConfiguration : IEntityTypeConfiguration<SageConnection>
+internal sealed class AccountingConnectionConfiguration : IEntityTypeConfiguration<AccountingConnection>
 {
-    public void Configure(EntityTypeBuilder<SageConnection> builder)
+    public void Configure(EntityTypeBuilder<AccountingConnection> builder)
     {
         builder.ConfigureTenant();
 
         builder.Property(x => x.ApiKeyCiphertext).IsRequired();
         builder.Property(x => x.UsernameCiphertext).IsRequired();
         builder.Property(x => x.PasswordCiphertext).IsRequired();
-        builder.Property(x => x.SageCompanyName).IsRequired().HasMaxLength(200);
+        builder.Property(x => x.ExternalCompanyName).IsRequired().HasMaxLength(200);
 
         builder.HasIndex(x => x.CompanyId).IsUnique();
 
         builder.ToTable(table => table.HasCheckConstraint(
-            "ck_sage_connections_sage_company_id",
-            "sage_company_id > 0"));
+            "ck_accounting_connections_external_company_id",
+            "external_company_id > 0"));
     }
 }

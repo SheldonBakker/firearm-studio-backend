@@ -2,6 +2,7 @@ using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Common;
 using FirearmStudio.Application.Users;
 using FirearmStudio.Application.Users.UpdatePhone;
+using FirearmStudio.Application.Users.VerifyPhone;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
@@ -149,7 +150,6 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
         var request = BuildUpdateHandler(currentUser, accounts, otp, dispatcher);
         await request.Handle(new UpdatePhoneCommand(new UpdatePhoneRequest("+27821234567")), default);
 
-        // A code guaranteed to differ from the issued one.
         var wrong = dispatcher.LastCode == "000000" ? "111111" : "000000";
 
         var verify = new VerifyPhoneCommandHandler(currentUser, accounts, otp, app, tenant);
@@ -300,8 +300,6 @@ public sealed class PhoneChangeTests(TestDatabaseFixture fixture)
     {
         var (accounts, otp, app, tenant, currentUser, userId, _, _) = await SeedAsync();
 
-        // A code issued for PhoneChange purpose without ever setting a pending phone number,
-        // so it verifies successfully but there is nothing for ConfirmPhoneChangeAsync to promote.
         var issued = await otp.IssueAsync(userId, OtpPurpose.PhoneChange, default);
 
         var verify = new VerifyPhoneCommandHandler(currentUser, accounts, otp, app, tenant);

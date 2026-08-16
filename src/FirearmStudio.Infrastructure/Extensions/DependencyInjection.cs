@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Infrastructure.Identity;
+using FirearmStudio.Infrastructure.Options;
 using FirearmStudio.Infrastructure.Persistence;
 using FirearmStudio.Infrastructure.Persistence.Interceptors;
 using FirearmStudio.Infrastructure.Services;
@@ -47,16 +48,11 @@ public static class DependencyInjection
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
-        // Auth state, same database and data source, different schema. Deliberately without
-        // TenantAndAuditInterceptor: identity records are not tenant-scoped.
         services.AddDbContext<AuthDbContext>(options =>
             options
                 .UseNpgsql(dataSource, npgsql =>
                 {
                     NpgsqlDataSourceFactory.MapAuthEnums(npgsql);
-
-                    // Its own history table, so the two contexts cannot misread each
-                    // other's applied migrations.
                     npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "identity");
                 })
                 .UseSnakeCaseNamingConvention());
@@ -76,8 +72,6 @@ public static class DependencyInjection
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
                 options.Lockout.AllowedForNewUsers = true;
 
-                // Confirmation is enforced at the login endpoint, using our own one-time
-                // codes rather than Identity's token providers.
                 options.SignIn.RequireConfirmedEmail = true;
             })
             .AddEntityFrameworkStores<AuthDbContext>();
@@ -88,11 +82,10 @@ public static class DependencyInjection
         services.AddScoped<IOtpService, OtpService>();
         services.AddScoped<ITokenService, TokenService>();
 
-        // Capability-named seam. Klaviyo is one adapter behind it, not the interface.
         services.AddScoped<IEmailSender, KlaviyoEmailSender>();
         services.AddScoped<IOtpDispatcher, OtpDispatcher>();
 
-        AddKlaviyo(services, configuration);
+        AddCustomerEngagement(services, configuration);
         AddWhatsApp(services, configuration);
         AddNotificationSettings(services, configuration);
         AddSageAccounting(services);
@@ -100,7 +93,7 @@ public static class DependencyInjection
         return services;
     }
 
-    private static void AddKlaviyo(IServiceCollection services, IConfiguration configuration)
+    private static void AddCustomerEngagement(IServiceCollection services, IConfiguration configuration)
     {
         var settings = configuration.GetSection(KlaviyoSettings.SectionName).Get<KlaviyoSettings>()
             ?? new KlaviyoSettings();
@@ -125,7 +118,14 @@ public static class DependencyInjection
 
         services.AddSingleton(settings);
 
-        services.AddHttpClient<IKlaviyoClient, KlaviyoClient>(client =>
+        var engagementSettings = configuration
+            .GetSection(CustomerEngagementSettings.SectionName)
+            .Get<CustomerEngagementSettings>()
+            ?? new CustomerEngagementSettings();
+
+        services.AddSingleton(engagementSettings);
+
+        services.AddHttpClient<ICustomerEngagementClient, KlaviyoClient>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(10);
             client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
@@ -169,7 +169,6 @@ public static class DependencyInjection
 
         if (!complete)
         {
-            // Dev/CI and any misconfigured-but-non-prod case: no-op adapter.
             services.AddSingleton<IWhatsAppSender, NullWhatsAppSender>();
             return;
         }
@@ -224,7 +223,7 @@ public static class DependencyInjection
 
     private static void AddSageAccounting(IServiceCollection services)
     {
-        services.AddHttpClient<ISageAccountingClient, SageAccountingClient>(client =>
+        services.AddHttpClient<IAccountingConnectionValidator, SageAccountingClient>(client =>
         {
             client.Timeout = SageAccountingTimeout;
             client.BaseAddress = new Uri(SageAccountingBaseUrl + "/");

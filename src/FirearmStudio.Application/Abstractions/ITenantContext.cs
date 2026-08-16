@@ -4,8 +4,6 @@ public interface ITenantContext
 {
     Guid? CompanyId { get; }
 
-    bool HasTenant => CompanyId is not null;
-
     bool BypassFilter { get; }
 
     IDisposable BeginBypass();

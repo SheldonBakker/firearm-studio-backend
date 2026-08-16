@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Bookings;
 using FirearmStudio.Application.Bookings.CreatePublicBooking;
 using FirearmStudio.Application.Bookings.GetDayAvailability;
@@ -13,12 +12,10 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/public/companies/{companyId:guid}")]
 [AllowAnonymous]
 [EnableRateLimiting("public")]
-public sealed class PublicBookingsController(IMediator mediator) : ControllerBase
+public sealed class PublicBookingsController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet("bookings")]
     [OutputCache(PolicyName = "public-options")]

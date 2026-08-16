@@ -56,6 +56,8 @@ public sealed record CustomerStorageRecordDto(
 public sealed record StartStorageRequest(
     DateOnly StoredFrom, decimal MonthlyRate, string? StorageLocation, string? RackNumber, string? SafeNumber, string? Notes);
 
+public sealed record CreateStorageResponse(Guid Id);
+
 public sealed record UpdateStorageRecordRequest(
     Optional<DateOnly> StoredFrom,
     Optional<DateOnly?> StoredUntil,

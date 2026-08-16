@@ -1,12 +1,14 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Auth;
 using FirearmStudio.Application.Auth.AcceptInvite;
+using FirearmStudio.Application.Auth.DisableTwoFactor;
+using FirearmStudio.Application.Auth.EnableTwoFactor;
+using FirearmStudio.Application.Auth.ForgotPassword;
 using FirearmStudio.Application.Auth.Login;
-using FirearmStudio.Application.Auth.PasswordReset;
+using FirearmStudio.Application.Auth.Logout;
+using FirearmStudio.Application.Auth.Refresh;
 using FirearmStudio.Application.Auth.Register;
 using FirearmStudio.Application.Auth.ResendCode;
-using FirearmStudio.Application.Auth.Tokens;
-using FirearmStudio.Application.Auth.TwoFactor;
+using FirearmStudio.Application.Auth.ResetPassword;
 using FirearmStudio.Application.Auth.VerifyEmail;
 using FirearmStudio.WebApi.Common;
 using MediatR;
@@ -16,10 +18,8 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/auth")]
-public sealed class AuthController(IMediator mediator) : ControllerBase
+public sealed class AuthController(IMediator mediator) : ApiControllerBase
 {
     [AllowAnonymous]
     [HttpPost("register")]
@@ -30,7 +30,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
 
         return result.IsError
             ? result.ToActionResult()
-            : Accepted(new { message = "If that address can be registered, a verification code is on its way." });
+            : Accepted(new RegisterResponse());
     }
 
     [AllowAnonymous]
@@ -52,7 +52,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
 
         return result.IsError
             ? result.ToActionResult()
-            : Accepted(new { message = "If that address can receive a code, one is on its way." });
+            : Accepted(new ResendCodeResponse());
     }
 
     [AllowAnonymous]

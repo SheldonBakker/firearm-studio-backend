@@ -11,8 +11,8 @@ namespace FirearmStudio.Application.Invoices.SendInvoice;
 
 public sealed class SendInvoiceCommandHandler(
     IApplicationDbContext db,
-    IKlaviyoClient klaviyo,
-    KlaviyoSettings settings,
+    ICustomerEngagementClient engagement,
+    CustomerEngagementSettings settings,
     ILogger<SendInvoiceCommandHandler> logger)
     : ICommandHandler<SendInvoiceCommand, ErrorOr<Updated>>
 {
@@ -36,18 +36,18 @@ public sealed class SendInvoiceCommandHandler(
         invoice.SentAt = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
-        await SendKlaviyoEventAsync(invoice, cancellationToken);
+        await SendEngagementEventAsync(invoice, cancellationToken);
 
         return Result.Updated;
     }
 
-    private async Task SendKlaviyoEventAsync(Invoice invoice, CancellationToken cancellationToken)
+    private async Task SendEngagementEventAsync(Invoice invoice, CancellationToken cancellationToken)
     {
         var email = invoice.Customer?.Email;
         if (string.IsNullOrWhiteSpace(email))
         {
             logger.LogWarning(
-                "Skipped Klaviyo invoice-sent event for invoice {InvoiceNumber}: customer has no email.",
+                "Skipped invoice-sent engagement event for invoice {InvoiceNumber}: customer has no email.",
                 invoice.InvoiceNumber);
             return;
         }
@@ -61,7 +61,7 @@ public sealed class SendInvoiceCommandHandler(
             var name = invoice.Customer?.FullName ?? invoice.Customer?.CompanyName;
             var properties = BuildEventProperties(invoice, company);
 
-            await klaviyo.TrackEventAsync(
+            await engagement.TrackEventAsync(
                 settings.InvoiceSentMetricName,
                 email,
                 name,
@@ -72,7 +72,7 @@ public sealed class SendInvoiceCommandHandler(
         {
             logger.LogError(
                 ex,
-                "Failed to send invoice-sent event to Klaviyo for invoice {InvoiceNumber}.",
+                "Failed to send the invoice-sent engagement event for invoice {InvoiceNumber}.",
                 invoice.InvoiceNumber);
         }
     }

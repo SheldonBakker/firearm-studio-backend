@@ -6,9 +6,8 @@ namespace FirearmStudio.Application.Registers;
 public static class RegisterDocumentFactory
 {
     private const string EmptyState = "No movements in period.";
+    private const string WetInkSignatureColumn = "Signature";
 
-    // Equal-width columns break ID/serial numbers mid-token in the rendered PDF, so each kind
-    // carries its own relative weights, wider for the free-text and identifier columns.
     private static readonly float[] FirearmsColumnWeights =
         [0.8f, 0.8f, 0.9f, 0.9f, 0.8f, 1.1f, 1.3f, 1.2f, 1.8f, 1.2f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f];
 
@@ -38,9 +37,8 @@ public static class RegisterDocumentFactory
         }
         else
         {
-            // The printed safe custody register carries a blank column for wet-ink sign-off.
             title = "Safe Custody Register";
-            columns = [.. SafeCustodyRegisterCsvBuilder.Headers, "Signature"];
+            columns = [.. SafeCustodyRegisterCsvBuilder.Headers, WetInkSignatureColumn];
             formatRow = row => [.. SafeCustodyRegisterCsvBuilder.FormatRow(row), string.Empty];
             columnWeights = SafeCustodyColumnWeights;
         }

@@ -1,8 +1,9 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Auth;
+using FirearmStudio.Application.Auth.DisableTwoFactor;
+using FirearmStudio.Application.Auth.EnableTwoFactor;
 using FirearmStudio.Application.Auth.Login;
-using FirearmStudio.Application.Auth.TwoFactor;
 using FirearmStudio.Application.Common;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.Domain.Enums;
@@ -279,7 +280,6 @@ public sealed class LoginTwoFactorTests
 
         Assert.False(first.IsError);
 
-        // Mirrors OtpService.VerifyAsync: a consumed code is gone on replay, not merely wrong.
         otp.VerifyResult = OtpVerifyResult.NotFound;
 
         var second = await BuildVerify(tokens, otp).Handle(

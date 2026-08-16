@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Extensions;
 using FirearmStudio.Domain.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,17 +12,17 @@ public sealed class GetCustomerQueryHandler(IApplicationDbContext db)
 {
     public async Task<ErrorOr<CustomerDetailResponse>> Handle(GetCustomerQuery query, CancellationToken cancellationToken)
     {
-        var customer = await db.Customers
+        var result = await db.Customers
             .AsNoTracking()
             .Where(c => c.Id == query.Id)
-            .Select(CustomerDetailResponse.QueryProjection)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrNotFoundAsync(CustomerDetailResponse.QueryProjection, ErrorCodes.NotFound, "Customer not found.", cancellationToken);
 
-        if (customer is null)
+        if (result.IsError)
         {
-            return Error.NotFound(ErrorCodes.NotFound, "Customer not found.");
+            return result.Errors;
         }
 
+        var customer = result.Value;
         return customer.IdNumber is null
             ? customer
             : customer with { IdNumberMasked = IdNumberMask.Mask(customer.IdNumber) };

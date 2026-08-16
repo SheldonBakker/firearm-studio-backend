@@ -6,11 +6,10 @@ namespace FirearmStudio.Domain.Tests;
 public class CalendarTokenGeneratorTests
 {
     [Fact]
-    public void Generate_returns_url_safe_token_of_expected_length()
+    public void Generate_returns_url_safe_token_of_43_characters()
     {
         var token = CalendarTokenGenerator.Generate();
 
-        // 32 random bytes, Base64Url-encoded without padding, is 43 characters.
         Assert.Equal(43, token.Length);
     }
 

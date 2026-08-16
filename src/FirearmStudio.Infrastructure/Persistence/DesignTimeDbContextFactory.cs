@@ -12,8 +12,6 @@ public sealed class DesignTimeDbContextFactory
 
     public ApplicationDbContext CreateDbContext(string[] args)
     {
-        // NoClobber: an explicitly-set environment variable (e.g. a connection string override
-        // passed inline) must win over .env - .env should only fill in variables that are unset.
         DotNetEnv.Env
             .NoClobber()
             .TraversePath()

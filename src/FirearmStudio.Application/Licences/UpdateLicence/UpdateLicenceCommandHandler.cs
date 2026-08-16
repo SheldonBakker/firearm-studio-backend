@@ -17,30 +17,11 @@ public sealed class UpdateLicenceCommandHandler(IApplicationDbContext db)
         }
 
         var request = command.Request;
-        if (request.LicenceNumber.IsSet)
-        {
-            licence.LicenceNumber = request.LicenceNumber.Value;
-        }
-
-        if (request.IssuedOn.IsSet)
-        {
-            licence.IssuedOn = request.IssuedOn.Value;
-        }
-
-        if (request.ExpiresOn.IsSet)
-        {
-            licence.ExpiresOn = request.ExpiresOn.Value;
-        }
-
-        if (request.Status.IsSet)
-        {
-            licence.Status = request.Status.Value;
-        }
-
-        if (request.DocumentUrl.IsSet)
-        {
-            licence.DocumentUrl = request.DocumentUrl.Value;
-        }
+        request.LicenceNumber.ApplyTo(v => licence.LicenceNumber = v);
+        request.IssuedOn.ApplyTo(v => licence.IssuedOn = v);
+        request.ExpiresOn.ApplyTo(v => licence.ExpiresOn = v);
+        request.Status.ApplyTo(v => licence.Status = v);
+        request.DocumentUrl.ApplyTo(v => licence.DocumentUrl = v);
 
         if (licence.IssuedOn > licence.ExpiresOn)
         {

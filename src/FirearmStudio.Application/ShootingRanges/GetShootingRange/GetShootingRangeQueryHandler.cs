@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.ShootingRanges.GetShootingRange;
@@ -11,18 +12,10 @@ public sealed class GetShootingRangeQueryHandler(IApplicationDbContext db)
     public async Task<ErrorOr<ShootingRangeResponse>> Handle(
         GetShootingRangeQuery query, CancellationToken cancellationToken)
     {
-        var range = await db.ShootingRanges
+        return await db.ShootingRanges
             .AsNoTracking()
             .Where(r => r.Id == query.Id)
-            .Select(ShootingRangeResponse.QueryProjection)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (range is null)
-        {
-            return Error.NotFound(ErrorCodes.NotFound, "Shooting range not found.");
-        }
-
-        return range;
+            .FirstOrNotFoundAsync(ShootingRangeResponse.QueryProjection, ErrorCodes.NotFound, "Shooting range not found.", cancellationToken);
     }
 
     public static class ErrorCodes

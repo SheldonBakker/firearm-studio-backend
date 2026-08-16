@@ -22,45 +22,22 @@ public sealed class UpdateShootingRangeCommandHandler(IApplicationDbContext db)
         }
 
         var request = command.Request;
-
-        if (request.Name.IsSet)
-        {
-            range.Name = request.Name.Value;
-        }
-
-        if (request.Description.IsSet)
-        {
-            range.Description = request.Description.Value;
-        }
-
-        if (request.LaneCount.IsSet)
-        {
-            range.LaneCount = request.LaneCount.Value;
-        }
-
-        if (request.SlotIntervalMinutes.IsSet)
-        {
-            range.SlotIntervalMinutes = request.SlotIntervalMinutes.Value;
-        }
-
-        if (request.IsActive.IsSet)
-        {
-            range.IsActive = request.IsActive.Value;
-        }
-
-        if (request.OperatingHours.IsSet)
+        request.Name.ApplyTo(v => range.Name = v);
+        request.Description.ApplyTo(v => range.Description = v);
+        request.LaneCount.ApplyTo(v => range.LaneCount = v);
+        request.SlotIntervalMinutes.ApplyTo(v => range.SlotIntervalMinutes = v);
+        request.IsActive.ApplyTo(v => range.IsActive = v);
+        request.OperatingHours.ApplyTo(hours =>
         {
             db.RangeOperatingHours.RemoveRange(range.OperatingHours);
-            range.OperatingHours = request.OperatingHours.Value
-                .Select(hours => new RangeOperatingHours
-                {
-                    ShootingRangeId = range.Id,
-                    Day = hours.Day,
-                    OpenTime = hours.OpenTime,
-                    CloseTime = hours.CloseTime,
-                })
-                .ToList();
-        }
+            range.OperatingHours = hours.Select(h => new RangeOperatingHours
+            {
+                ShootingRangeId = range.Id,
+                Day = h.Day,
+                OpenTime = h.OpenTime,
+                CloseTime = h.CloseTime,
+            }).ToList();
+        });
 
         await db.SaveChangesAsync(cancellationToken);
 

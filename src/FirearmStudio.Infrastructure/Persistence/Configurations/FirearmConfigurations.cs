@@ -1,3 +1,4 @@
+using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -22,13 +23,6 @@ internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(x => x.PostalCode).HasMaxLength(20);
         builder.Property(x => x.Notes).HasMaxLength(4000);
         builder.Property(x => x.IsActive).HasDefaultValue(true);
-
-        // Unique per-tenant email invariant enforced by a functional index in raw migration SQL
-        // (migrations 20260706202625 and 20260713212044):
-        //   CREATE UNIQUE INDEX ix_customers_company_id_email
-        //     ON customers (company_id, lower(email))
-        //     WHERE email IS NOT NULL;
-        // EF HasIndex cannot express lower() expressions, so the index lives only in the migration.
 
         builder.HasIndex(x => x.FullName).HasMethod("gin").HasOperators("gin_trgm_ops");
         builder.HasIndex(x => x.CompanyName).HasMethod("gin").HasOperators("gin_trgm_ops");
@@ -77,7 +71,7 @@ internal sealed class FirearmLicenceConfiguration : IEntityTypeConfiguration<Fir
             "issued_on is null or issued_on <= expires_on"));
 
         builder.Property(x => x.RenewalDueOn)
-            .HasComputedColumnSql("expires_on - 90", stored: true)
+            .HasComputedColumnSql($"expires_on - {LicenceConstants.RenewalWindowDays}", stored: true)
             .ValueGeneratedOnAddOrUpdate();
         builder.Property(x => x.RenewalDueOn).Metadata
             .SetAfterSaveBehavior(Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
@@ -120,7 +114,6 @@ internal sealed class StorageRecordConfiguration : IEntityTypeConfiguration<Stor
                 "(storage_status <> 'active' and stored_until is not null)");
         });
 
-        builder.HasIndex(x => x.FirearmId);
         builder.HasIndex(x => x.FirearmId)
             .HasFilter("storage_status = 'active'")
             .IsUnique()

@@ -18,6 +18,4 @@ public sealed record CurrentUser
         IsAuthenticated = false,
     };
 
-    public bool IsInRole(string role) =>
-        Roles.Contains(role, StringComparer.OrdinalIgnoreCase);
 }

@@ -3,7 +3,7 @@ using FirearmStudio.Application.Abstractions;
 
 namespace FirearmStudio.Infrastructure.Services;
 
-public sealed class KlaviyoClient(HttpClient httpClient) : IKlaviyoClient
+public sealed class KlaviyoClient(HttpClient httpClient) : ICustomerEngagementClient
 {
     public Task TrackEventAsync(
         string metricName,

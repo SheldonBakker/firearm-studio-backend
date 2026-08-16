@@ -4,10 +4,6 @@ using FirearmStudio.Application.Common;
 
 namespace FirearmStudio.Application.Bookings;
 
-/// <summary>
-/// Pure builder for the attendance register CSV export. No database or file I/O; callers
-/// pre-load the rows. CSV quoting behaviour is documented on <see cref="CsvWriting"/>.
-/// </summary>
 public static class RegisterCsvBuilder
 {
     private static readonly string[] Headers =

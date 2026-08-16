@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Invoices;
 using FirearmStudio.Application.Invoices.CancelInvoice;
 using FirearmStudio.Application.Invoices.GetInvoice;
@@ -15,11 +14,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/invoices")]
 [Authorize(Roles = AppRoles.Policy.AnyAuthenticatedRole)]
-public sealed class InvoicesController(IMediator mediator) : ControllerBase
+public sealed class InvoicesController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<PaginatedResponse<InvoiceListItemDto>>> List(

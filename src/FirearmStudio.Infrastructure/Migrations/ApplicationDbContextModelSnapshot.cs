@@ -36,6 +36,71 @@ namespace FirearmStudio.Infrastructure.Migrations
 
             modelBuilder.HasSequence("booking_number_seq");
 
+            modelBuilder.Entity("FirearmStudio.Domain.Entities.AccountingConnection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ApiKeyCiphertext")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("api_key_ciphertext");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("ExternalCompanyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("external_company_id");
+
+                    b.Property<string>("ExternalCompanyName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("external_company_name");
+
+                    b.Property<Guid>("LastRegisteredByAuthUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_registered_by_auth_user_id");
+
+                    b.Property<DateTime>("LastValidatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_validated_at");
+
+                    b.Property<string>("PasswordCiphertext")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("password_ciphertext");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UsernameCiphertext")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("username_ciphertext");
+
+                    b.HasKey("Id")
+                        .HasName("pk_accounting_connections");
+
+                    b.HasIndex("CompanyId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_accounting_connections_company_id");
+
+                    b.ToTable("accounting_connections", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_accounting_connections_external_company_id", "external_company_id > 0");
+                        });
+                });
+
             modelBuilder.Entity("FirearmStudio.Domain.Entities.AppUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1152,6 +1217,9 @@ namespace FirearmStudio.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_outbox_messages");
 
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_outbox_messages_company_id");
+
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("ix_outbox_messages_pending")
                         .HasFilter("processed_at IS NULL");
@@ -1393,71 +1461,6 @@ namespace FirearmStudio.Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("FirearmStudio.Domain.Entities.SageConnection", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ApiKeyCiphertext")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("api_key_ciphertext");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("company_id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid>("LastRegisteredByAuthUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("last_registered_by_auth_user_id");
-
-                    b.Property<DateTime>("LastValidatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_validated_at");
-
-                    b.Property<string>("PasswordCiphertext")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("password_ciphertext");
-
-                    b.Property<int>("SageCompanyId")
-                        .HasColumnType("integer")
-                        .HasColumnName("sage_company_id");
-
-                    b.Property<string>("SageCompanyName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("sage_company_name");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("UsernameCiphertext")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("username_ciphertext");
-
-                    b.HasKey("Id")
-                        .HasName("pk_sage_connections");
-
-                    b.HasIndex("CompanyId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_sage_connections_company_id");
-
-                    b.ToTable("sage_connections", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_sage_connections_sage_company_id", "sage_company_id > 0");
-                        });
-                });
-
             modelBuilder.Entity("FirearmStudio.Domain.Entities.ShootingRange", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1602,10 +1605,20 @@ namespace FirearmStudio.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FirearmStudio.Domain.Entities.AccountingConnection", b =>
+                {
+                    b.HasOne("FirearmStudio.Domain.Entities.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_accounting_connections_companies_company_id");
+                });
+
             modelBuilder.Entity("FirearmStudio.Domain.Entities.AppUser", b =>
                 {
                     b.HasOne("FirearmStudio.Domain.Entities.Company", "Company")
-                        .WithMany("Users")
+                        .WithMany()
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
@@ -1642,7 +1655,7 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasConstraintName("fk_bookings_companies_company_id");
 
                     b.HasOne("FirearmStudio.Domain.Entities.Customer", "Customer")
-                        .WithMany("Bookings")
+                        .WithMany()
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
@@ -1655,14 +1668,14 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasConstraintName("fk_bookings_invoices_invoice_id");
 
                     b.HasOne("FirearmStudio.Domain.Entities.Package", "Package")
-                        .WithMany("Bookings")
+                        .WithMany()
                         .HasForeignKey("PackageId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_bookings_packages_package_id");
 
                     b.HasOne("FirearmStudio.Domain.Entities.ShootingRange", "ShootingRange")
-                        .WithMany("Bookings")
+                        .WithMany()
                         .HasForeignKey("ShootingRangeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
@@ -1809,6 +1822,16 @@ namespace FirearmStudio.Infrastructure.Migrations
                     b.Navigation("Licence");
                 });
 
+            modelBuilder.Entity("FirearmStudio.Domain.Entities.OutboxMessage", b =>
+                {
+                    b.HasOne("FirearmStudio.Domain.Entities.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_outbox_messages_companies_company_id");
+                });
+
             modelBuilder.Entity("FirearmStudio.Domain.Entities.Package", b =>
                 {
                     b.HasOne("FirearmStudio.Domain.Entities.Company", null)
@@ -1876,16 +1899,6 @@ namespace FirearmStudio.Infrastructure.Migrations
                     b.Navigation("ShootingRange");
                 });
 
-            modelBuilder.Entity("FirearmStudio.Domain.Entities.SageConnection", b =>
-                {
-                    b.HasOne("FirearmStudio.Domain.Entities.Company", null)
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_sage_connections_companies_company_id");
-                });
-
             modelBuilder.Entity("FirearmStudio.Domain.Entities.ShootingRange", b =>
                 {
                     b.HasOne("FirearmStudio.Domain.Entities.Company", null)
@@ -1915,15 +1928,8 @@ namespace FirearmStudio.Infrastructure.Migrations
                     b.Navigation("Firearm");
                 });
 
-            modelBuilder.Entity("FirearmStudio.Domain.Entities.Company", b =>
-                {
-                    b.Navigation("Users");
-                });
-
             modelBuilder.Entity("FirearmStudio.Domain.Entities.Customer", b =>
                 {
-                    b.Navigation("Bookings");
-
                     b.Navigation("Firearms");
 
                     b.Navigation("Invoices");
@@ -1945,15 +1951,11 @@ namespace FirearmStudio.Infrastructure.Migrations
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.Package", b =>
                 {
-                    b.Navigation("Bookings");
-
                     b.Navigation("Items");
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.ShootingRange", b =>
                 {
-                    b.Navigation("Bookings");
-
                     b.Navigation("OperatingHours");
                 });
 #pragma warning restore 612, 618

@@ -1,3 +1,4 @@
+using FirearmStudio.Application.Model;
 using FluentValidation;
 
 namespace FirearmStudio.Application.Licences.UpdateLicence;
@@ -7,11 +8,7 @@ public sealed class UpdateLicenceRequestValidator : AbstractValidator<UpdateLice
     public UpdateLicenceRequestValidator()
     {
         RuleFor(request => request)
-            .Must(request => request.LicenceNumber.IsSet
-                             || request.IssuedOn.IsSet
-                             || request.ExpiresOn.IsSet
-                             || request.Status.IsSet
-                             || request.DocumentUrl.IsSet)
+            .Must(r => OptionalHelpers.HasAtLeastOneSet(r))
             .WithMessage("At least one field must be supplied.");
         RuleFor(request => request.LicenceNumber.Value)
             .NotEmpty()

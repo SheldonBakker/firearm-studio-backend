@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Bookings;
 using FirearmStudio.Application.Bookings.RemoveAttendee;
 using FirearmStudio.Application.Bookings.UpdateAttendee;
@@ -10,11 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/attendees")]
 [Authorize(Roles = AppRoles.Policy.StaffOrAbove)]
-public sealed class AttendeesController(IMediator mediator) : ControllerBase
+public sealed class AttendeesController(IMediator mediator) : ApiControllerBase
 {
     [HttpPatch("{id:guid}")]
     public async Task<ActionResult> Update(Guid id, UpdateAttendeeRequest request, CancellationToken ct)

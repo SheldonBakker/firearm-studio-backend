@@ -60,7 +60,6 @@ public class LicenceReminderPlannerTests
     [Fact]
     public void Plan_recovers_status_when_expiry_moves_out()
     {
-        // A licence marked Expired whose ExpiresOn was corrected to the future goes back to Valid.
         var plan = PlanWithDaysRemaining(120, LicenceStatus.Expired);
 
         Assert.Equal(LicenceStatus.Valid, plan.Status);

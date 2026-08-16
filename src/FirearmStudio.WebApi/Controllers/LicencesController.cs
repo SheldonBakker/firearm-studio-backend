@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Licences;
 using FirearmStudio.Application.Licences.CreateLicence;
 using FirearmStudio.Application.Licences.GetLicence;
@@ -14,11 +13,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}")]
 [Authorize(Roles = AppRoles.Policy.AnyAuthenticatedRole)]
-public sealed class LicencesController(IMediator mediator) : ControllerBase
+public sealed class LicencesController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet("licences")]
     public async Task<ActionResult<PaginatedResponse<LicenceListItemDto>>> List(
@@ -47,7 +44,7 @@ public sealed class LicencesController(IMediator mediator) : ControllerBase
         var result = await mediator.Send(new CreateLicenceCommand(firearmId, request), ct);
         return result.IsError
             ? result.ToActionResult()
-            : Created($"/api/v1/firearms/{firearmId}/licences", new { Id = result.Value });
+            : CreatedAtAction(nameof(Get), new { id = result.Value, version = CurrentApiVersion }, new CreateLicenceResponse(result.Value));
     }
 
     [HttpPatch("licences/{id:guid}")]

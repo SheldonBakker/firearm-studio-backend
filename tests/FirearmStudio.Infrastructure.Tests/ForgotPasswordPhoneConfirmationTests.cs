@@ -1,7 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Auth;
-using FirearmStudio.Application.Auth.PasswordReset;
+using FirearmStudio.Application.Auth.ForgotPassword;
 using FirearmStudio.Domain.Enums;
 using Xunit;
 

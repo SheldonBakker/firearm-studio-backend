@@ -10,14 +10,9 @@ namespace FirearmStudio.Application.Packages.GetPackages;
 public sealed class GetPackagesQueryHandler(IApplicationDbContext db)
     : IQueryHandler<GetPackagesQuery, ErrorOr<PaginatedResponse<PackageListItemDto>>>
 {
-    private const int MaxPageSize = 200;
-
     public async Task<ErrorOr<PaginatedResponse<PackageListItemDto>>> Handle(
         GetPackagesQuery query, CancellationToken cancellationToken)
     {
-        var pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
-        var pageSize = query.PageSize is < 1 or > MaxPageSize ? 20 : query.PageSize;
-
         var queryable = db.Packages.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(query.Name))
@@ -45,20 +40,7 @@ public sealed class GetPackagesQueryHandler(IApplicationDbContext db)
                 : queryable.OrderBy(p => p.Name).ThenBy(p => p.Id),
         };
 
-        var totalCount = await queryable.CountAsync(cancellationToken);
-
-        var items = await queryable
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .Select(PackageListItemDto.QueryProjection)
-            .ToListAsync(cancellationToken);
-
-        return new PaginatedResponse<PackageListItemDto>
-        {
-            Items = items,
-            PageNumber = pageNumber,
-            PageSize = pageSize,
-            TotalCount = totalCount,
-        };
+        return await queryable.ToPaginatedAsync(
+            query.PageNumber, query.PageSize, PackageListItemDto.QueryProjection, cancellationToken);
     }
 }

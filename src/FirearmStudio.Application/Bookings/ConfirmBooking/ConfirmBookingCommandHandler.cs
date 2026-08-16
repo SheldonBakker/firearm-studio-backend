@@ -52,11 +52,8 @@ public sealed class ConfirmBookingCommandHandler(
             .FirstAsync(cancellationToken);
 
         string? invoiceNumber;
-
-        // Bookings created through the public cart already belong to a single combined invoice.
-        // Only generate a per-booking invoice when the booking is not already invoiced, so
-        // confirming a multi-session cart does not spawn one extra invoice per booking.
-        if (booking.InvoiceId is null)
+        var bookingIsUninvoiced = booking.InvoiceId is null;
+        if (bookingIsUninvoiced)
         {
             var packageItems = await db.PackageItems
                 .AsNoTracking()

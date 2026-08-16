@@ -6,8 +6,8 @@ using Microsoft.Extensions.Logging;
 namespace FirearmStudio.Application.Bookings;
 
 internal sealed class BookingLifecycleDispatcher(
-    IKlaviyoClient klaviyo,
-    KlaviyoSettings settings,
+    ICustomerEngagementClient engagement,
+    CustomerEngagementSettings settings,
     ILogger<BookingLifecycleDispatcher> logger) : IBookingLifecycleDispatcher
 {
     public async Task DispatchAsync(string messageType, string payloadJson, CancellationToken cancellationToken)
@@ -20,14 +20,14 @@ internal sealed class BookingLifecycleDispatcher(
         if (string.IsNullOrWhiteSpace(payload.Email))
         {
             logger.LogWarning(
-                "Skipped Klaviyo {MessageType} event for booking {BookingNumber}: customer has no email.",
+                "Skipped {MessageType} engagement event for booking {BookingNumber}: customer has no email.",
                 messageType, payload.BookingNumber);
             return;
         }
 
         var properties = BuildProperties(payload);
 
-        await klaviyo.TrackEventAsync(
+        await engagement.TrackEventAsync(
             metricName,
             payload.Email,
             payload.FullName,

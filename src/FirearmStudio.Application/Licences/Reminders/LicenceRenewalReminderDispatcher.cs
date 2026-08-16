@@ -5,8 +5,8 @@ using FirearmStudio.Application.Model.Options;
 namespace FirearmStudio.Application.Licences.Reminders;
 
 internal sealed class LicenceRenewalReminderDispatcher(
-    IKlaviyoClient klaviyo,
-    KlaviyoSettings settings) : ILicenceRenewalReminderDispatcher
+    ICustomerEngagementClient engagement,
+    CustomerEngagementSettings settings) : ILicenceRenewalReminderDispatcher
 {
     public async Task DispatchAsync(string payloadJson, CancellationToken cancellationToken)
     {
@@ -26,7 +26,7 @@ internal sealed class LicenceRenewalReminderDispatcher(
             ["company_name"] = payload.CompanyName,
         };
 
-        await klaviyo.TrackEventAsync(
+        await engagement.TrackEventAsync(
             settings.LicenceRenewalMetricName,
             payload.Email,
             payload.CustomerName,

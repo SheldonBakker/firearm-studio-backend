@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Bookings;
 using FirearmStudio.Application.Bookings.GetDayAvailability;
 using FirearmStudio.Application.Bookings.GetMonthAvailability;
@@ -17,11 +16,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/ranges")]
 [Authorize(Roles = AppRoles.Policy.AnyAuthenticatedRole)]
-public sealed class ShootingRangesController(IMediator mediator) : ControllerBase
+public sealed class ShootingRangesController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<PaginatedResponse<ShootingRangeListItemDto>>> List(
@@ -50,7 +47,7 @@ public sealed class ShootingRangesController(IMediator mediator) : ControllerBas
         var result = await mediator.Send(new CreateShootingRangeCommand(request), ct);
         return result.IsError
             ? result.ToActionResult()
-            : CreatedAtAction(nameof(Get), new { id = result.Value.Id, version = "1" }, result.Value);
+            : CreatedAtAction(nameof(Get), new { id = result.Value.Id, version = CurrentApiVersion }, result.Value);
     }
 
     [HttpPatch("{id:guid}")]

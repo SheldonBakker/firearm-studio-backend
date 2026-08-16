@@ -17,51 +17,15 @@ public sealed class UpdateAttendeeCommandHandler(IApplicationDbContext db)
         }
 
         var request = command.Request;
-
-        if (request.FullName.IsSet)
-        {
-            attendee.FullName = request.FullName.Value;
-        }
-
-        if (request.IdNumber.IsSet)
-        {
-            attendee.IdNumber = request.IdNumber.Value;
-        }
-
-        if (request.LicenceNumber.IsSet)
-        {
-            attendee.LicenceNumber = request.LicenceNumber.Value;
-        }
-
-        if (request.FirearmMakeModel.IsSet)
-        {
-            attendee.FirearmMakeModel = request.FirearmMakeModel.Value;
-        }
-
-        if (request.FirearmSerialNumber.IsSet)
-        {
-            attendee.FirearmSerialNumber = request.FirearmSerialNumber.Value;
-        }
-
-        if (request.Calibre.IsSet)
-        {
-            attendee.Calibre = request.Calibre.Value;
-        }
-
-        if (request.FirearmOrigin.IsSet)
-        {
-            attendee.FirearmOrigin = request.FirearmOrigin.Value;
-        }
-
-        if (request.SignedIndemnity.IsSet)
-        {
-            attendee.SignedIndemnity = request.SignedIndemnity.Value;
-        }
-
-        if (request.Notes.IsSet)
-        {
-            attendee.Notes = request.Notes.Value;
-        }
+        request.FullName.ApplyTo(v => attendee.FullName = v);
+        request.IdNumber.ApplyTo(v => attendee.IdNumber = v);
+        request.LicenceNumber.ApplyTo(v => attendee.LicenceNumber = v);
+        request.FirearmMakeModel.ApplyTo(v => attendee.FirearmMakeModel = v);
+        request.FirearmSerialNumber.ApplyTo(v => attendee.FirearmSerialNumber = v);
+        request.Calibre.ApplyTo(v => attendee.Calibre = v);
+        request.FirearmOrigin.ApplyTo(v => attendee.FirearmOrigin = v);
+        request.SignedIndemnity.ApplyTo(v => attendee.SignedIndemnity = v);
+        request.Notes.ApplyTo(v => attendee.Notes = v);
 
         await db.SaveChangesAsync(cancellationToken);
 

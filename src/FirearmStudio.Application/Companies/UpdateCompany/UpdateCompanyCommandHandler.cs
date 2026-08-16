@@ -25,100 +25,25 @@ public sealed class UpdateCompanyCommandHandler(
         }
 
         var request = command.Request;
-        if (request.Name.IsSet)
-        {
-            company.Name = request.Name.Value;
-        }
-
-        if (request.RegistrationNumber.IsSet)
-        {
-            company.RegistrationNumber = request.RegistrationNumber.Value;
-        }
-
-        if (request.VatNumber.IsSet)
-        {
-            company.VatNumber = request.VatNumber.Value;
-        }
-
-        if (request.Email.IsSet)
-        {
-            company.Email = request.Email.Value;
-        }
-
-        if (request.Phone.IsSet)
-        {
-            company.Phone = request.Phone.Value;
-        }
-
-        if (request.AddressLine1.IsSet)
-        {
-            company.AddressLine1 = request.AddressLine1.Value;
-        }
-
-        if (request.AddressLine2.IsSet)
-        {
-            company.AddressLine2 = request.AddressLine2.Value;
-        }
-
-        if (request.City.IsSet)
-        {
-            company.City = request.City.Value;
-        }
-
-        if (request.Province.IsSet)
-        {
-            company.Province = request.Province.Value;
-        }
-
-        if (request.PostalCode.IsSet)
-        {
-            company.PostalCode = request.PostalCode.Value;
-        }
-
-        if (request.BankName.IsSet)
-        {
-            company.BankName = request.BankName.Value;
-        }
-
-        if (request.BankAccountHolder.IsSet)
-        {
-            company.BankAccountHolder = request.BankAccountHolder.Value;
-        }
-
-        if (request.BankAccountNumber.IsSet)
-        {
-            company.BankAccountNumber = request.BankAccountNumber.Value;
-        }
-
-        if (request.BankBranchCode.IsSet)
-        {
-            company.BankBranchCode = request.BankBranchCode.Value;
-        }
-
-        if (request.BankAccountType.IsSet)
-        {
-            company.BankAccountType = request.BankAccountType.Value;
-        }
-
-        if (request.BankSwiftCode.IsSet)
-        {
-            company.BankSwiftCode = request.BankSwiftCode.Value;
-        }
-
-        if (request.DepositMode.IsSet)
-        {
-            company.DepositMode = request.DepositMode.Value;
-        }
-
-        if (request.DepositValue.IsSet)
-        {
-            company.DepositValue = request.DepositValue.Value;
-        }
-
-        if (request.DepositWindowHours.IsSet)
-        {
-            company.DepositWindowHours = request.DepositWindowHours.Value;
-        }
+        request.Name.ApplyTo(v => company.Name = v);
+        request.RegistrationNumber.ApplyTo(v => company.RegistrationNumber = v);
+        request.VatNumber.ApplyTo(v => company.VatNumber = v);
+        request.Email.ApplyTo(v => company.Email = v);
+        request.Phone.ApplyTo(v => company.Phone = v);
+        request.AddressLine1.ApplyTo(v => company.AddressLine1 = v);
+        request.AddressLine2.ApplyTo(v => company.AddressLine2 = v);
+        request.City.ApplyTo(v => company.City = v);
+        request.Province.ApplyTo(v => company.Province = v);
+        request.PostalCode.ApplyTo(v => company.PostalCode = v);
+        request.BankName.ApplyTo(v => company.BankName = v);
+        request.BankAccountHolder.ApplyTo(v => company.BankAccountHolder = v);
+        request.BankAccountNumber.ApplyTo(v => company.BankAccountNumber = v);
+        request.BankBranchCode.ApplyTo(v => company.BankBranchCode = v);
+        request.BankAccountType.ApplyTo(v => company.BankAccountType = v);
+        request.BankSwiftCode.ApplyTo(v => company.BankSwiftCode = v);
+        request.DepositMode.ApplyTo(v => company.DepositMode = v);
+        request.DepositValue.ApplyTo(v => company.DepositValue = v);
+        request.DepositWindowHours.ApplyTo(v => company.DepositWindowHours = v);
 
         if (company.DepositMode == DepositMode.Percentage && company.DepositValue > 100)
         {

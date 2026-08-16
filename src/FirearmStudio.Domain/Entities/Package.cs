@@ -18,5 +18,4 @@ public sealed class Package : BaseEntity, ITenantEntity
     public bool IsActive { get; set; } = true;
 
     public ICollection<PackageItem> Items { get; set; } = [];
-    public ICollection<Booking> Bookings { get; set; } = [];
 }

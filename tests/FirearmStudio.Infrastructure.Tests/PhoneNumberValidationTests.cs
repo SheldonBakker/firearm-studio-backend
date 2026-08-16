@@ -1,4 +1,5 @@
 using FirearmStudio.Application.Auth;
+using FirearmStudio.Application.Auth.Register;
 using FirearmStudio.Application.Users;
 using FirearmStudio.Application.Users.UpdatePhone;
 using Xunit;

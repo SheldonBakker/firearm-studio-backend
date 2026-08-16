@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Invoices.GetInvoice;
@@ -10,15 +11,10 @@ public sealed class GetInvoiceQueryHandler(IApplicationDbContext db)
 {
     public async Task<ErrorOr<InvoiceDetailDto>> Handle(GetInvoiceQuery query, CancellationToken cancellationToken)
     {
-        var invoice = await db.Invoices
+        return await db.Invoices
             .AsNoTracking()
             .Where(i => i.Id == query.Id)
-            .Select(InvoiceDetailDto.QueryProjection)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return invoice is null
-            ? Error.NotFound(ErrorCodes.NotFound, "Invoice not found.")
-            : invoice;
+            .FirstOrNotFoundAsync(InvoiceDetailDto.QueryProjection, ErrorCodes.NotFound, "Invoice not found.", cancellationToken);
     }
 
     public static class ErrorCodes

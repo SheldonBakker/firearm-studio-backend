@@ -7,8 +7,8 @@ namespace FirearmStudio.Application.Bookings;
 internal static class BookingRequestedNotifier
 {
     internal static async Task SendAsync(
-        IKlaviyoClient klaviyo,
-        KlaviyoSettings settings,
+        ICustomerEngagementClient engagement,
+        CustomerEngagementSettings settings,
         ILogger logger,
         string email,
         string? name,
@@ -19,12 +19,12 @@ internal static class BookingRequestedNotifier
         if (string.IsNullOrWhiteSpace(email))
         {
             logger.LogWarning(
-                "Skipped Klaviyo booking-requested event ({LogContext}): customer has no email.",
+                "Skipped booking-requested engagement event ({LogContext}): customer has no email.",
                 logContext);
             return;
         }
 
-        await klaviyo.TrackEventAsync(
+        await engagement.TrackEventAsync(
             settings.BookingRequestedMetricName,
             email,
             name,
@@ -72,13 +72,6 @@ internal static class BookingRequestedNotifier
         };
     }
 
-    /// <summary>
-    /// Collapses nested property objects into top-level keys joined by <paramref name="separator"/>
-    /// (e.g. <c>company.bank_name</c> becomes <c>company_bank_name</c>) so Klaviyo can use them in
-    /// segments, flow triggers, and conditions. Arrays (such as the <c>bookings</c> line-item list)
-    /// are left intact, since flattening them would produce unbounded, unsegmentable keys and they
-    /// are useful as-is for looping in email templates.
-    /// </summary>
     internal static Dictionary<string, object?> Flatten(
         IReadOnlyDictionary<string, object?> properties, string separator = "_")
     {

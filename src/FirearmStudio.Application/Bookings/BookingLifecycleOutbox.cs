@@ -42,7 +42,6 @@ internal sealed class BookingLifecycleOutbox(IApplicationDbContext db) : IBookin
         {
             Type = messageType,
             Payload = JsonSerializer.Serialize(payload, OutboxJson.Options),
-            CompanyId = company.Id,
         });
     }
 }

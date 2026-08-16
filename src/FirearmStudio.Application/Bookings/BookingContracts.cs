@@ -184,3 +184,5 @@ public sealed record UpdateAttendeeRequest(
     Optional<string?> Notes);
 
 public sealed record CheckInBookingRequest(IReadOnlyList<AttendeeRequest> Attendees);
+
+public sealed record CreateAttendeeResponse(Guid Id);

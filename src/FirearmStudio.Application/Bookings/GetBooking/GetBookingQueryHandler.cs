@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Bookings.GetBooking;
@@ -10,18 +11,10 @@ public sealed class GetBookingQueryHandler(IApplicationDbContext db)
 {
     public async Task<ErrorOr<BookingResponse>> Handle(GetBookingQuery query, CancellationToken cancellationToken)
     {
-        var booking = await db.Bookings
+        return await db.Bookings
             .AsNoTracking()
             .Where(b => b.Id == query.Id)
-            .Select(BookingResponse.QueryProjection)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (booking is null)
-        {
-            return Error.NotFound(ErrorCodes.NotFound, "Booking not found.");
-        }
-
-        return booking;
+            .FirstOrNotFoundAsync(BookingResponse.QueryProjection, ErrorCodes.NotFound, "Booking not found.", cancellationToken);
     }
 
     public static class ErrorCodes

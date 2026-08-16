@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text.Json;
-using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Enums;
+using FirearmStudio.Infrastructure.Options;
 using FirearmStudio.Infrastructure.Services;
 using Xunit;
 
@@ -91,8 +91,6 @@ public sealed class WahaWhatsAppSenderTests
     [Fact]
     public async Task Exception_message_does_not_leak_the_phone_number_or_code()
     {
-        // WAHA echoes the offending recipient back in error bodies; the exception message must
-        // never repeat it (or the code), since Task 5's dispatcher logs this exception.
         var (sender, _) = Build(
             HttpStatusCode.UnprocessableEntity,
             responseBody: """{"error":"invalid recipient 27821234567@c.us"}""");

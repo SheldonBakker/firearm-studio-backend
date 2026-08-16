@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Licences.GetLicence;
@@ -10,15 +11,10 @@ public sealed class GetLicenceQueryHandler(IApplicationDbContext db)
 {
     public async Task<ErrorOr<LicenceDetailDto>> Handle(GetLicenceQuery query, CancellationToken cancellationToken)
     {
-        var licence = await db.FirearmLicences
+        return await db.FirearmLicences
             .AsNoTracking()
             .Where(l => l.Id == query.Id)
-            .Select(LicenceDetailDto.QueryProjection)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return licence is null
-            ? Error.NotFound(ErrorCodes.NotFound, "Licence not found.")
-            : licence;
+            .FirstOrNotFoundAsync(LicenceDetailDto.QueryProjection, ErrorCodes.NotFound, "Licence not found.", cancellationToken);
     }
 
     public static class ErrorCodes

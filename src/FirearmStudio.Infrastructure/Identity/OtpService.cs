@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,7 @@ public sealed class OtpService(
     IPasswordHasher<AppIdentityUser> hasher,
     TimeProvider timeProvider) : IOtpService
 {
-    private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(15);
+    internal static readonly TimeSpan Ttl = TimeSpan.FromMinutes(OtpConstants.CodeLifetimeMinutes);
     private static readonly TimeSpan ResendInterval = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan ResendWindow = TimeSpan.FromHours(1);
 

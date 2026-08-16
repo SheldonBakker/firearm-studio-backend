@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Model;
 using FirearmStudio.Application.StorageRecords;
 using FirearmStudio.Application.StorageRecords.GetCustomerStorageRecords;
@@ -14,11 +13,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}")]
 [Authorize(Roles = AppRoles.Policy.AnyAuthenticatedRole)]
-public sealed class StorageRecordsController(IMediator mediator) : ControllerBase
+public sealed class StorageRecordsController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet("storage")]
     public async Task<ActionResult<PaginatedResponse<StorageRecordDto>>> GetAll(
@@ -51,7 +48,7 @@ public sealed class StorageRecordsController(IMediator mediator) : ControllerBas
         var result = await mediator.Send(new StartStorageCommand(firearmId, request), ct);
         return result.IsError
             ? result.ToActionResult()
-            : Created("/api/v1/storage", new { Id = result.Value });
+            : Created(VersionedUrl("storage"), new CreateStorageResponse(result.Value));
     }
 
     [HttpPatch("storage-records/{id:guid}")]

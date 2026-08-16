@@ -71,7 +71,7 @@ public class RegisterCsvBuilderTests
         var text = BuildText(DefaultRow(attendeeFullName: "Jane Shooter"), DefaultRow(attendeeFullName: "John Shooter"));
 
         var lines = text.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
-        Assert.Equal(3, lines.Length); // header + 2 rows
+        Assert.Equal(3, lines.Length);
         Assert.Contains("Jane Shooter", lines[1]);
         Assert.Contains("John Shooter", lines[2]);
     }

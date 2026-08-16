@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Customers;
 using FirearmStudio.Application.Customers.CreateCustomer;
 using FirearmStudio.Application.Customers.GetCustomer;
@@ -13,11 +12,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/customers")]
 [Authorize(Roles = AppRoles.Policy.AnyAuthenticatedRole)]
-public sealed class CustomersController(IMediator mediator) : ControllerBase
+public sealed class CustomersController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<PaginatedResponse<CustomerListItemDto>>> List(
@@ -47,7 +44,7 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
         var result = await mediator.Send(new CreateCustomerCommand(request), ct);
         return result.IsError
             ? result.ToActionResult()
-            : CreatedAtAction(nameof(Get), new { id = result.Value.Id, version = "1" }, result.Value);
+            : CreatedAtAction(nameof(Get), new { id = result.Value.Id, version = CurrentApiVersion }, result.Value);
     }
 
     [HttpPatch("{id:guid}")]

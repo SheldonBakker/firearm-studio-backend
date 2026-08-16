@@ -1,7 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <!-- TargetFramework / Nullable / ImplicitUsings come from Directory.Build.props -->
-
   <PropertyGroup>
     <UserSecretsId>firearm-studio-backend</UserSecretsId>
   </PropertyGroup>
@@ -17,6 +15,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FirearmStudio.WebApi.Tests" />
   </ItemGroup>
 
   <ItemGroup>

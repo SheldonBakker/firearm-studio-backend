@@ -83,12 +83,7 @@ public sealed class RecordPaymentCommandHandler(
                 invoice.DepositPaidAt = DateTime.UtcNow;
             }
 
-            // No deposit policy on this invoice: preserve the pre-deposit behaviour of confirming
-            // pending bookings as soon as any payment is recorded. When a deposit policy applies,
-            // only confirm once the deposit threshold is actually reached.
-            var shouldConfirmPendingBookings = invoice.DepositAmount is null || depositJustCovered;
-
-            if (shouldConfirmPendingBookings)
+            if (NoDepositOrDepositJustCovered(invoice, depositJustCovered))
             {
                 var pendingBookings = await db.Bookings
                     .Where(b => b.InvoiceId == command.Id && b.Status == BookingStatus.Pending)
@@ -206,6 +201,9 @@ public sealed class RecordPaymentCommandHandler(
 
         return outcome;
     }
+
+    private static bool NoDepositOrDepositJustCovered(Invoice invoice, bool depositJustCovered)
+        => invoice.DepositAmount is null || depositJustCovered;
 
     public static class ErrorCodes
     {

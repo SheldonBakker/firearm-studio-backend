@@ -17,9 +17,6 @@ public sealed record CustomerResponse(
     string? Notes,
     bool IsActive)
 {
-    public static Expression<Func<Customer, CustomerResponse>> QueryProjection => c => new CustomerResponse(
-        c.Id, c.CustomerType, c.FullName, c.CompanyName, c.Email, c.Phone, c.Notes, c.IsActive);
-
     public static CustomerResponse FromEntity(Customer c) =>
         new(c.Id, c.CustomerType, c.FullName, c.CompanyName, c.Email, c.Phone, c.Notes, c.IsActive);
 }
@@ -79,17 +76,9 @@ public sealed record CustomerListItemDto(
         c.Id, c.CustomerType, c.FullName, c.CompanyName, c.Email, c.Phone, c.IsActive, c.CreatedAt);
 }
 
-public sealed record CustomerFirearmListItemDto(Guid Id, string? Make, string? Model, string? SerialNumber, FirearmStatus Status)
-{
-    public static Expression<Func<Firearm, CustomerFirearmListItemDto>> QueryProjection => f => new CustomerFirearmListItemDto(
-        f.Id, f.Make, f.Model, f.SerialNumber, f.Status);
-}
+public sealed record CustomerFirearmListItemDto(Guid Id, string? Make, string? Model, string? SerialNumber, FirearmStatus Status);
 
-public sealed record CustomerInvoiceListItemDto(Guid Id, string? InvoiceNumber, DateOnly InvoiceMonth, decimal Total, InvoiceStatus Status)
-{
-    public static Expression<Func<Invoice, CustomerInvoiceListItemDto>> QueryProjection => i => new CustomerInvoiceListItemDto(
-        i.Id, i.InvoiceNumber, i.InvoiceMonth, i.Total, i.Status);
-}
+public sealed record CustomerInvoiceListItemDto(Guid Id, string? InvoiceNumber, DateOnly InvoiceMonth, decimal Total, InvoiceStatus Status);
 
 public sealed record CreateCustomerRequest(
     CustomerType CustomerType, string? FullName, string? CompanyName, string? RegistrationNumber,

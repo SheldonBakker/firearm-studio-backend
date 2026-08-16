@@ -1,3 +1,4 @@
+using FirearmStudio.Application.Common;
 using FluentValidation;
 
 namespace FirearmStudio.Application.Bookings.CreatePublicBooking;
@@ -35,7 +36,7 @@ public sealed class PublicBookingSessionRequestValidator : AbstractValidator<Pub
         RuleFor(session => session.BookingDate)
             .Must(date =>
             {
-                var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+                var today = BusinessDate.Today();
                 return date >= today && date <= today.AddDays(CreatePublicBookingRequestValidator.MaxDaysInAdvance);
             })
             .WithMessage($"Booking date must be within the next {CreatePublicBookingRequestValidator.MaxDaysInAdvance} days.");

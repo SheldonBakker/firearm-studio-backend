@@ -24,19 +24,19 @@ public class StorageRecordPeriodTests
         DateOnly.Parse(value, CultureInfo.InvariantCulture);
 
     [Theory]
-    [InlineData("2026-02-01", "2026-03-01", true)]  // fully inside the range
-    [InlineData("2025-01-01", null, true)]           // open-ended, started before the range
-    [InlineData("2026-06-30", null, true)]           // starts on the last day of the range
-    [InlineData("2026-07-01", null, false)]          // starts after the range
+    [InlineData("2026-02-01", "2026-03-01", true)]
+    [InlineData("2025-01-01", null, true)]
+    [InlineData("2026-06-30", null, true)]
+    [InlineData("2026-07-01", null, false)]
     public void OverlapsRange_handles_start_dates(string storedFrom, string? storedUntil, bool expected)
     {
         Assert.Equal(expected, Overlaps("2026-01-01", "2026-06-30", storedFrom, storedUntil));
     }
 
     [Theory]
-    [InlineData("2025-12-31", false)] // ended before the range
-    [InlineData("2026-01-01", true)]  // ended on the first day of the range
-    [InlineData("2026-02-15", true)]  // ended inside the range
+    [InlineData("2025-12-31", false)]
+    [InlineData("2026-01-01", true)]
+    [InlineData("2026-02-15", true)]
     public void OverlapsRange_handles_end_dates(string storedUntil, bool expected)
     {
         Assert.Equal(expected, Overlaps("2026-01-01", "2026-06-30", "2025-01-01", storedUntil));

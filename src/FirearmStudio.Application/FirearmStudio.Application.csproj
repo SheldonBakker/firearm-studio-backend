@@ -1,9 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- TargetFramework / Nullable / ImplicitUsings come from Directory.Build.props -->
-
   <ItemGroup>
-    <!-- Gives access to DI, Options, Configuration and Http abstractions without NuGet packages -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 

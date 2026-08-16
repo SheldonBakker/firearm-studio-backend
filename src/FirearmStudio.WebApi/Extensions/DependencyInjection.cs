@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using FirearmStudio.Application.Model.Options;
 using FirearmStudio.WebApi.Common;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 
 namespace FirearmStudio.WebApi.Extensions;
@@ -10,9 +11,23 @@ public static class DependencyInjection
     public static IServiceCollection AddWebApi(this IServiceCollection services)
     {
         services.AddProblemDetails();
+        services.AddExceptionHandler<GlobalExceptionHandler>();
 
         services
             .AddControllers(options => options.Filters.Add<ValidationFilter>());
+
+        services.Configure<ApiBehaviorOptions>(options =>
+        {
+            options.InvalidModelStateResponseFactory = actionContext =>
+            {
+                var details = new ValidationProblemDetails(actionContext.ModelState)
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                };
+                details.Extensions["code"] = "validation_failed";
+                return new BadRequestObjectResult(details);
+            };
+        });
         services.AddEndpointsApiExplorer();
 
         services
