@@ -57,7 +57,7 @@ jobs:
         run: dotnet test FirearmStudio.slnx --configuration Release --no-restore --filter "Category!=Performance" --logger "trx;LogFileName=tests.trx"
 
       - name: Publish test results
-        uses: dorny/test-reporter@d61b558e8df85cb60d09ca3e5b09653b4477cea7
+        uses: dorny/test-reporter@a53e41438c2381e621dc719a47a57180e30c7075
         if: success() || failure()
         with:
           name: xUnit Tests
