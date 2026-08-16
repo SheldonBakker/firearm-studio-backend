@@ -2,22 +2,19 @@ services:
   api:
     image: ${FIREARM_IMAGE:-ghcr.io/sheldonbakker/firearm-studio-api:latest}
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: "5146"
-
-      ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
-      JwtSettings__Issuer: ${JwtSettings__Issuer}
-      JwtSettings__SigningKey: ${JwtSettings__SigningKey}
-      ApiKeySettings__Key: ${ApiKeySettings__Key}
-      KlaviyoSettings__ApiKey: ${KlaviyoSettings__ApiKey}
-      CredentialProtectionSettings__Key: ${CredentialProtectionSettings__Key}
-      NotificationSettings__PublicBaseUrl: ${NotificationSettings__PublicBaseUrl}
-
-      WahaSettings__Enabled: ${WahaSettings__Enabled:-false}
-      WahaSettings__BaseUrl: ${WahaSettings__BaseUrl:-}
-      WahaSettings__SessionId: ${WahaSettings__SessionId:-}
-      WahaSettings__ApiKey: ${WahaSettings__ApiKey:-}
-      WahaSettings__TimeoutSeconds: ${WahaSettings__TimeoutSeconds:-10}
     ports:
-      - "5146:5146"
+      - "${API_BIND_ADDRESS:-0.0.0.0}:5146:5146"
+    networks:
+      - default
+      - dbnet
+
+networks:
+  default:
+    name: firearm-studio-backend_default
+  dbnet:
+    external: true
