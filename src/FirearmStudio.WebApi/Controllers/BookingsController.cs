@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Bookings;
 using FirearmStudio.Application.Bookings.AddAttendee;
 using FirearmStudio.Application.Bookings.CancelBooking;
@@ -23,11 +22,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/bookings")]
 [Authorize(Roles = AppRoles.Policy.AnyAuthenticatedRole)]
-public sealed class BookingsController(IMediator mediator) : ControllerBase
+public sealed class BookingsController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<PaginatedResponse<BookingListItemDto>>> List(
@@ -71,7 +68,7 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
         var result = await mediator.Send(new CreateBookingCommand(request), ct);
         return result.IsError
             ? result.ToActionResult()
-            : CreatedAtAction(nameof(Get), new { id = result.Value.Id, version = "1" }, result.Value);
+            : CreatedAtAction(nameof(Get), new { id = result.Value.Id, version = CurrentApiVersion }, result.Value);
     }
 
     [HttpPost("{id:guid}/confirm")]
@@ -121,7 +118,7 @@ public sealed class BookingsController(IMediator mediator) : ControllerBase
         var result = await mediator.Send(new AddAttendeeCommand(id, request), ct);
         return result.IsError
             ? result.ToActionResult()
-            : Created($"/api/v1/bookings/{id}/attendees", new { Id = result.Value });
+            : Created(VersionedUrl($"bookings/{id}/attendees"), new { Id = result.Value });
     }
 
     [HttpGet("{id:guid}/attendees")]

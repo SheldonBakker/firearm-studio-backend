@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Registers;
 using FirearmStudio.Application.Registers.ExportStorageRegister;
 using FirearmStudio.Domain.Authentication;
@@ -10,11 +9,9 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/registers")]
 [Authorize(Roles = AppRoles.Policy.ManagerOrAbove)]
-public sealed class RegistersController(IMediator mediator) : ControllerBase
+public sealed class RegistersController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet("firearms/export")]
     public Task<ActionResult> ExportFirearmsRegister(

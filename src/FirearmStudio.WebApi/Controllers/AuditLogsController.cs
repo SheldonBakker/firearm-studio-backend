@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.AuditLogs;
 using FirearmStudio.Application.AuditLogs.GetAuditLogs;
 using FirearmStudio.Application.Model;
@@ -10,11 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/audit-logs")]
 [Authorize(Roles = AppRoles.Policy.ManagerOrAbove)]
-public sealed class AuditLogsController(IMediator mediator) : ControllerBase
+public sealed class AuditLogsController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<PaginatedResponse<AuditLogListItemDto>>> List(

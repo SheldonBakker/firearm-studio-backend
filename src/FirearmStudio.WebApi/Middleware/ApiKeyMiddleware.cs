@@ -28,7 +28,8 @@ public sealed class ApiKeyMiddleware(ApiKeySettings settings) : IMiddleware
         {
             await Results.Problem(
                 detail: "Missing or invalid API key.",
-                statusCode: StatusCodes.Status401Unauthorized).ExecuteAsync(context);
+                statusCode: StatusCodes.Status401Unauthorized,
+                extensions: new Dictionary<string, object?> { ["code"] = "api_key.invalid" }).ExecuteAsync(context);
             return;
         }
 

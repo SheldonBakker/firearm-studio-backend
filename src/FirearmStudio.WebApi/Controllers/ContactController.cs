@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Contact;
 using FirearmStudio.Application.Contact.SubmitContactForm;
 using FirearmStudio.WebApi.Common;
@@ -9,11 +8,9 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/contact")]
 [AllowAnonymous]
-public sealed class ContactController(IMediator mediator) : ControllerBase
+public sealed class ContactController(IMediator mediator) : ApiControllerBase
 {
     [HttpPost]
     [EnableRateLimiting("public-write")]

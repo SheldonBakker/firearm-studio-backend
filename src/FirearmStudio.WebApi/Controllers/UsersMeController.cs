@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Users;
 using FirearmStudio.Application.Users.UpdatePhone;
 using FirearmStudio.WebApi.Common;
@@ -9,11 +8,9 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/users/me")]
 [Authorize]
-public sealed class UsersMeController(IMediator mediator) : ControllerBase
+public sealed class UsersMeController(IMediator mediator) : ApiControllerBase
 {
     [HttpPost("phone")]
     [EnableRateLimiting("public-write")]

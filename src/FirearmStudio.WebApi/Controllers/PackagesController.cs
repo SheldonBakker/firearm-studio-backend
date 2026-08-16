@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Model;
 using FirearmStudio.Application.Packages;
 using FirearmStudio.Application.Packages.CreatePackage;
@@ -14,11 +13,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/packages")]
 [Authorize(Roles = AppRoles.Policy.AnyAuthenticatedRole)]
-public sealed class PackagesController(IMediator mediator) : ControllerBase
+public sealed class PackagesController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<PaginatedResponse<PackageListItemDto>>> List(
@@ -48,7 +45,7 @@ public sealed class PackagesController(IMediator mediator) : ControllerBase
         var result = await mediator.Send(new CreatePackageCommand(request), ct);
         return result.IsError
             ? result.ToActionResult()
-            : CreatedAtAction(nameof(Get), new { id = result.Value.Id, version = "1" }, result.Value);
+            : CreatedAtAction(nameof(Get), new { id = result.Value.Id, version = CurrentApiVersion }, result.Value);
     }
 
     [HttpPatch("{id:guid}")]

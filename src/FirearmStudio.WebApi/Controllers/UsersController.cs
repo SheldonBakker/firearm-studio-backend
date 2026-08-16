@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Model;
 using FirearmStudio.Application.Users;
 using FirearmStudio.Application.Users.ChangeUserRole;
@@ -13,11 +12,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/users")]
 [Authorize(Roles = AppRoles.Admin)]
-public sealed class UsersController(IMediator mediator) : ControllerBase
+public sealed class UsersController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<PaginatedResponse<AppUserResponse>>> List(
@@ -33,7 +30,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     public async Task<ActionResult> Invite(InviteUserRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new InviteUserCommand(request), ct);
-        return result.IsError ? result.ToActionResult() : Created("/api/v1/users", result.Value);
+        return result.IsError ? result.ToActionResult() : Created(VersionedUrl("users"), result.Value);
     }
 
     [HttpPatch("{id:guid}/role")]

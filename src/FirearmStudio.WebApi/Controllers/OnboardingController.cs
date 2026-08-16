@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Onboarding;
 using FirearmStudio.Application.Onboarding.CreateCompanyOnboarding;
 using FirearmStudio.WebApi.Common;
@@ -8,11 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/onboarding")]
 [Authorize]
-public sealed class OnboardingController(IMediator mediator) : ControllerBase
+public sealed class OnboardingController(IMediator mediator) : ApiControllerBase
 {
     [HttpPost("company")]
     public async Task<ActionResult> CreateCompany(CreateCompanyRequest request, CancellationToken ct)
@@ -23,7 +20,7 @@ public sealed class OnboardingController(IMediator mediator) : ControllerBase
             return result.ToActionResult();
         }
 
-        return Created("/api/v1/company", new
+        return Created(VersionedUrl("company"), new
         {
             company = result.Value,
             message = "Company created and you are its admin. Call /auth/refresh to receive your " +

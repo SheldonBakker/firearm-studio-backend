@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Me;
 using FirearmStudio.Application.Me.GetAdminCheck;
 using FirearmStudio.Application.Me.GetCurrentUser;
@@ -10,11 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/me")]
 [Authorize]
-public sealed class MeController(IMediator mediator) : ControllerBase
+public sealed class MeController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<CurrentUserResponse>> Get(CancellationToken ct)

@@ -11,7 +11,7 @@ public static class ErrorOrExtensions
         if (result.IsError)
         {
             var error = result.Errors.FirstOrDefault();
-            var statusCode = StatusCode(result);
+            var statusCode = StatusCode(error);
             var problem = new ProblemDetails
             {
                 Detail = error.Description,
@@ -32,9 +32,8 @@ public static class ErrorOrExtensions
         };
     }
 
-    private static int StatusCode<T>(ErrorOr<T> result)
+    private static int StatusCode(Error error)
     {
-        var error = result.Errors.FirstOrDefault();
         if ((int)error.Type == UpstreamErrorTypes.UpstreamFailure)
         {
             return StatusCodes.Status502BadGateway;
@@ -52,7 +51,6 @@ public static class ErrorOrExtensions
             ErrorType.Forbidden => StatusCodes.Status403Forbidden,
             ErrorType.NotFound => StatusCodes.Status404NotFound,
             ErrorType.Conflict => StatusCodes.Status409Conflict,
-            ErrorType.Failure => StatusCodes.Status500InternalServerError,
             _ => StatusCodes.Status500InternalServerError,
         };
     }

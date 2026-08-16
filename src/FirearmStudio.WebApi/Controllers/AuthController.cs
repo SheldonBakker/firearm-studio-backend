@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Auth;
 using FirearmStudio.Application.Auth.AcceptInvite;
 using FirearmStudio.Application.Auth.Login;
@@ -16,10 +15,8 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/auth")]
-public sealed class AuthController(IMediator mediator) : ControllerBase
+public sealed class AuthController(IMediator mediator) : ApiControllerBase
 {
     [AllowAnonymous]
     [HttpPost("register")]

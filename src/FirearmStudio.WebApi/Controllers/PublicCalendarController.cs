@@ -1,4 +1,3 @@
-using Asp.Versioning;
 using FirearmStudio.Application.Bookings.GetBookingIcs;
 using FirearmStudio.WebApi.Common;
 using MediatR;
@@ -8,12 +7,10 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace FirearmStudio.WebApi.Controllers;
 
-[ApiController]
-[ApiVersion(1)]
 [Route("api/v{version:apiVersion}/public/bookings")]
 [AllowAnonymous]
 [EnableRateLimiting("public")]
-public sealed class PublicCalendarController(IMediator mediator) : ControllerBase
+public sealed class PublicCalendarController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet("{token}/calendar.ics")]
     public async Task<ActionResult> Calendar(string token, CancellationToken ct)
