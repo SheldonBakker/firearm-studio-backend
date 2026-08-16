@@ -1,5 +1,6 @@
 using FirearmStudio.Application.Users;
 using FirearmStudio.Application.Users.UpdatePhone;
+using FirearmStudio.Application.Users.VerifyPhone;
 using FirearmStudio.WebApi.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;

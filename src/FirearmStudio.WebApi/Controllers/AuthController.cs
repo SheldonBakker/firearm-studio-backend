@@ -1,11 +1,14 @@
 using FirearmStudio.Application.Auth;
 using FirearmStudio.Application.Auth.AcceptInvite;
+using FirearmStudio.Application.Auth.DisableTwoFactor;
+using FirearmStudio.Application.Auth.EnableTwoFactor;
+using FirearmStudio.Application.Auth.ForgotPassword;
 using FirearmStudio.Application.Auth.Login;
-using FirearmStudio.Application.Auth.PasswordReset;
+using FirearmStudio.Application.Auth.Logout;
+using FirearmStudio.Application.Auth.Refresh;
 using FirearmStudio.Application.Auth.Register;
 using FirearmStudio.Application.Auth.ResendCode;
-using FirearmStudio.Application.Auth.Tokens;
-using FirearmStudio.Application.Auth.TwoFactor;
+using FirearmStudio.Application.Auth.ResetPassword;
 using FirearmStudio.Application.Auth.VerifyEmail;
 using FirearmStudio.WebApi.Common;
 using MediatR;

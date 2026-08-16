@@ -1,8 +1,9 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Auth;
+using FirearmStudio.Application.Auth.DisableTwoFactor;
+using FirearmStudio.Application.Auth.EnableTwoFactor;
 using FirearmStudio.Application.Auth.Login;
-using FirearmStudio.Application.Auth.TwoFactor;
 using FirearmStudio.Application.Common;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.Domain.Enums;

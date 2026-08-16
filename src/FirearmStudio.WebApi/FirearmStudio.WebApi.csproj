@@ -18,6 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="FirearmStudio.WebApi.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FirearmStudio.Application\FirearmStudio.Application.csproj" />
     <ProjectReference Include="..\FirearmStudio.Infrastructure\FirearmStudio.Infrastructure.csproj" />
   </ItemGroup>

@@ -2,12 +2,11 @@ using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
 using FirearmStudio.Application.Auth;
+using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace FirearmStudio.Application.Users.UpdatePhone;
-
-public sealed record VerifyPhoneCommand(VerifyPhoneRequest Request) : ICommand<ErrorOr<Success>>;
+namespace FirearmStudio.Application.Users.VerifyPhone;
 
 public sealed class VerifyPhoneCommandHandler(
     ICurrentUserService currentUser,

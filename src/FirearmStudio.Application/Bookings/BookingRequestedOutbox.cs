@@ -61,7 +61,6 @@ internal sealed class BookingRequestedOutbox(IApplicationDbContext db, Notificat
         {
             Type = OutboxMessageTypes.BookingRequested,
             Payload = JsonSerializer.Serialize(payload, OutboxJson.Options),
-            CompanyId = company.Id,
         });
     }
 }

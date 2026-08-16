@@ -1152,6 +1152,9 @@ namespace FirearmStudio.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_outbox_messages");
 
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_outbox_messages_company_id");
+
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("ix_outbox_messages_pending")
                         .HasFilter("processed_at IS NULL");
@@ -1807,6 +1810,16 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasConstraintName("fk_licence_reminders_firearm_licences_licence_id");
 
                     b.Navigation("Licence");
+                });
+
+            modelBuilder.Entity("FirearmStudio.Domain.Entities.OutboxMessage", b =>
+                {
+                    b.HasOne("FirearmStudio.Domain.Entities.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_outbox_messages_companies_company_id");
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.Package", b =>

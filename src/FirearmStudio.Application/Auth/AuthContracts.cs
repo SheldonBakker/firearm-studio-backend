@@ -1,5 +1,9 @@
 namespace FirearmStudio.Application.Auth;
 
+public sealed record LoginOutcome(
+    AuthTokensResponse? Tokens,
+    TwoFactorChallengeResponse? Challenge);
+
 public sealed record RegisterRequest(string Email, string Password, string? PhoneNumber = null);
 
 public sealed record VerifyEmailRequest(string Email, string Code);

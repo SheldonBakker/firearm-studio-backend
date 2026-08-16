@@ -83,7 +83,6 @@ internal sealed class LicenceReminderGenerator(
 
             db.LicenceReminders.Add(new LicenceReminder
             {
-                CompanyId = company.Id,
                 LicenceId = licence.Id,
                 Tier = tier,
             });
@@ -92,7 +91,6 @@ internal sealed class LicenceReminderGenerator(
             {
                 Type = OutboxMessageTypes.LicenceRenewalReminder,
                 Payload = JsonSerializer.Serialize(payload, OutboxJson.Options),
-                CompanyId = company.Id,
             });
 
             queued++;

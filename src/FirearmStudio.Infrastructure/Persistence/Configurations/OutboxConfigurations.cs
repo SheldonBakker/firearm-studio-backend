@@ -9,6 +9,8 @@ internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outb
 {
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
     {
+        builder.ConfigureTenant();
+
         builder.Property(x => x.Type).IsRequired().HasMaxLength(100);
         builder.Property(x => x.Payload).IsRequired().HasColumnType("jsonb");
         builder.Property(x => x.Error).HasMaxLength(OutboxConstants.ErrorMaxLength);

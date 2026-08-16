@@ -2,6 +2,7 @@ using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Common;
 using FirearmStudio.Application.Users;
 using FirearmStudio.Application.Users.UpdatePhone;
+using FirearmStudio.Application.Users.VerifyPhone;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;

@@ -3,60 +3,27 @@ using FirearmStudio.Application.Bookings;
 using FirearmStudio.Application.Common;
 using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Enums;
-using FirearmStudio.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.WebApi.BackgroundJobs;
 
 public sealed class BookingReminderService(
     IServiceScopeFactory scopeFactory,
-    ILogger<BookingReminderService> logger) : BackgroundService
+    ILogger<BookingReminderService> logger)
+    : PeriodicJobBase(scopeFactory, logger)
 {
-    private static readonly TimeSpan Interval = TimeSpan.FromHours(1);
+    protected override TimeSpan Interval => TimeSpan.FromHours(1);
+    protected override void LogRunFailed(Exception ex) =>
+        logger.LogError(ex, "Booking reminder run failed.");
 
-    private bool _migrationsVerified;
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        using var timer = new PeriodicTimer(Interval);
-
-        do
-        {
-            try
-            {
-                await RunAsync(stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Booking reminder run failed.");
-            }
-        }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
-    }
-
-    private async Task RunAsync(CancellationToken cancellationToken)
+    protected override async Task RunAsync(CancellationToken cancellationToken)
     {
         List<Guid> companyIds;
-        using (var scope = scopeFactory.CreateScope())
+        using (var scope = ScopeFactory.CreateScope())
         {
-            if (!_migrationsVerified)
+            if (!await EnsureMigrationsVerifiedAsync(scope, "booking reminders", cancellationToken))
             {
-                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
-                if (pending.Count > 0)
-                {
-                    logger.LogError(
-                        "Skipping booking reminders: {Count} pending database migration(s): {Migrations}. " +
-                        "Apply migrations and the job will resume on its next tick.",
-                        pending.Count, string.Join(", ", pending));
-                    return;
-                }
-
-                _migrationsVerified = true;
+                return;
             }
 
             var db = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
@@ -72,42 +39,29 @@ public sealed class BookingReminderService(
         var fromDate = todayLocal.AddDays(-1);
         var toDate = todayLocal.AddDays(1);
 
-        foreach (var companyId in companyIds)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
+        await RunForAllCompaniesAsync(
+            companyIds,
+            static id => id,
+            async (scope, companyId, ct) =>
             {
-                using var scope = scopeFactory.CreateScope();
-                var tenant = scope.ServiceProvider.GetRequiredService<ITenantContext>();
                 var db = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
                 var lifecycleOutbox = scope.ServiceProvider.GetRequiredService<IBookingLifecycleOutbox>();
                 var notificationSettings = scope.ServiceProvider.GetRequiredService<NotificationSettings>();
 
-                using (tenant.BeginCompanyScope(companyId))
-                {
-                    var result = await RunForCompanyAsync(
-                        db, lifecycleOutbox, notificationSettings, companyId, fromDate, toDate, nowUtc, cancellationToken);
+                var result = await RunForCompanyAsync(
+                    db, lifecycleOutbox, notificationSettings, companyId, fromDate, toDate, nowUtc, ct);
 
-                    if ((result.Queued > 0 || result.SkippedNoEmail > 0 || result.SkippedMissingRange > 0)
-                        && logger.IsEnabled(LogLevel.Information))
-                    {
-                        logger.LogInformation(
-                            "Booking reminders for company {CompanyId}: {Queued} queued, {SkippedNoEmail} skipped " +
-                            "(no email), {SkippedMissingRange} skipped (missing range).",
-                            companyId, result.Queued, result.SkippedNoEmail, result.SkippedMissingRange);
-                    }
+                if ((result.Queued > 0 || result.SkippedNoEmail > 0 || result.SkippedMissingRange > 0)
+                    && Logger.IsEnabled(LogLevel.Information))
+                {
+                    Logger.LogInformation(
+                        "Booking reminders for company {CompanyId}: {Queued} queued, {SkippedNoEmail} skipped " +
+                        "(no email), {SkippedMissingRange} skipped (missing range).",
+                        companyId, result.Queued, result.SkippedNoEmail, result.SkippedMissingRange);
                 }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Booking reminder generation failed for company {CompanyId}.", companyId);
-            }
-        }
+            },
+            (ex, id) => logger.LogError(ex, "Booking reminder generation failed for company {CompanyId}.", id),
+            cancellationToken);
     }
 
     private async Task<BookingReminderRunResult> RunForCompanyAsync(

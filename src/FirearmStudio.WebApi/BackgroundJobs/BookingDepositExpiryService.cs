@@ -2,60 +2,27 @@ using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Bookings;
 using FirearmStudio.Application.Common;
 using FirearmStudio.Domain.Enums;
-using FirearmStudio.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.WebApi.BackgroundJobs;
 
 public sealed class BookingDepositExpiryService(
     IServiceScopeFactory scopeFactory,
-    ILogger<BookingDepositExpiryService> logger) : BackgroundService
+    ILogger<BookingDepositExpiryService> logger)
+    : PeriodicJobBase(scopeFactory, logger)
 {
-    private static readonly TimeSpan Interval = TimeSpan.FromHours(1);
+    protected override TimeSpan Interval => TimeSpan.FromHours(1);
+    protected override void LogRunFailed(Exception ex) =>
+        logger.LogError(ex, "Booking deposit expiry run failed.");
 
-    private bool _migrationsVerified;
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        using var timer = new PeriodicTimer(Interval);
-
-        do
-        {
-            try
-            {
-                await RunAsync(stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Booking deposit expiry run failed.");
-            }
-        }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
-    }
-
-    private async Task RunAsync(CancellationToken cancellationToken)
+    protected override async Task RunAsync(CancellationToken cancellationToken)
     {
         List<Guid> companyIds;
-        using (var scope = scopeFactory.CreateScope())
+        using (var scope = ScopeFactory.CreateScope())
         {
-            if (!_migrationsVerified)
+            if (!await EnsureMigrationsVerifiedAsync(scope, "booking deposit expiry", cancellationToken))
             {
-                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
-                if (pending.Count > 0)
-                {
-                    logger.LogError(
-                        "Skipping booking deposit expiry: {Count} pending database migration(s): {Migrations}. " +
-                        "Apply migrations and the job will resume on its next tick.",
-                        pending.Count, string.Join(", ", pending));
-                    return;
-                }
-
-                _migrationsVerified = true;
+                return;
             }
 
             var db = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
@@ -68,40 +35,27 @@ public sealed class BookingDepositExpiryService(
 
         var nowUtc = DateTime.UtcNow;
 
-        foreach (var companyId in companyIds)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
+        await RunForAllCompaniesAsync(
+            companyIds,
+            static id => id,
+            async (scope, companyId, ct) =>
             {
-                using var scope = scopeFactory.CreateScope();
-                var tenant = scope.ServiceProvider.GetRequiredService<ITenantContext>();
                 var db = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
                 var lifecycleOutbox = scope.ServiceProvider.GetRequiredService<IBookingLifecycleOutbox>();
 
-                using (tenant.BeginCompanyScope(companyId))
-                {
-                    var result = await RunForCompanyAsync(db, lifecycleOutbox, companyId, nowUtc, cancellationToken);
+                var result = await RunForCompanyAsync(db, lifecycleOutbox, companyId, nowUtc, ct);
 
-                    if ((result.Cancelled > 0 || result.SkippedNoEmail > 0 || result.InvoicesLeftOpen > 0)
-                        && logger.IsEnabled(LogLevel.Information))
-                    {
-                        logger.LogInformation(
-                            "Booking deposit expiry for company {CompanyId}: {Cancelled} cancelled, {SkippedNoEmail} " +
-                            "skipped (no email), {InvoicesLeftOpen} invoice(s) left open (has payments).",
-                            companyId, result.Cancelled, result.SkippedNoEmail, result.InvoicesLeftOpen);
-                    }
+                if ((result.Cancelled > 0 || result.SkippedNoEmail > 0 || result.InvoicesLeftOpen > 0)
+                    && Logger.IsEnabled(LogLevel.Information))
+                {
+                    Logger.LogInformation(
+                        "Booking deposit expiry for company {CompanyId}: {Cancelled} cancelled, {SkippedNoEmail} " +
+                        "skipped (no email), {InvoicesLeftOpen} invoice(s) left open (has payments).",
+                        companyId, result.Cancelled, result.SkippedNoEmail, result.InvoicesLeftOpen);
                 }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Booking deposit expiry failed for company {CompanyId}.", companyId);
-            }
-        }
+            },
+            (ex, id) => logger.LogError(ex, "Booking deposit expiry failed for company {CompanyId}.", id),
+            cancellationToken);
     }
 
     private async Task<BookingDepositExpiryRunResult> RunForCompanyAsync(

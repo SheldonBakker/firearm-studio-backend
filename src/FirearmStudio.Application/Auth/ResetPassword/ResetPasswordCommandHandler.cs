@@ -4,50 +4,7 @@ using FirearmStudio.Application.Abstractions.Messaging;
 using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Enums;
 
-namespace FirearmStudio.Application.Auth.PasswordReset;
-
-public sealed record ForgotPasswordCommand(ForgotPasswordRequest Request)
-    : ICommand<ErrorOr<Success>>;
-
-public sealed class ForgotPasswordCommandHandler(
-    IUserAccountService accounts,
-    IOtpService otp,
-    IOtpDispatcher dispatcher)
-    : ICommandHandler<ForgotPasswordCommand, ErrorOr<Success>>
-{
-    public async Task<ErrorOr<Success>> Handle(
-        ForgotPasswordCommand command,
-        CancellationToken cancellationToken)
-    {
-        var address = command.Request.Email.Trim().ToLowerInvariant();
-
-        var account = await accounts.FindByEmailAsync(address, cancellationToken);
-
-        if (account is not null)
-        {
-            var issued = await otp.IssueAsync(
-                account.Id, OtpPurpose.PasswordReset, cancellationToken);
-
-            if (issued.Status == OtpIssueStatus.Issued)
-            {
-                await dispatcher.SendAsync(
-                    new OtpRecipient(
-                        address,
-                        null,
-                        account.PhoneNumberConfirmed ? account.PhoneNumber : null),
-                    OtpPurpose.PasswordReset,
-                    issued.Code!,
-                    OtpConstants.CodeLifetimeMinutes,
-                    cancellationToken);
-            }
-        }
-
-        return Result.Success;
-    }
-}
-
-public sealed record ResetPasswordCommand(ResetPasswordRequest Request)
-    : ICommand<ErrorOr<Success>>;
+namespace FirearmStudio.Application.Auth.ResetPassword;
 
 public sealed class ResetPasswordCommandHandler(
     IUserAccountService accounts,
