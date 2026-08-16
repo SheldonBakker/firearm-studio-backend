@@ -68,7 +68,10 @@ public sealed class LoginCommandHandler(
             }
 
             await dispatcher.SendAsync(
-                new OtpRecipient(account.Email, null, account.PhoneNumber),
+                new OtpRecipient(
+                    account.Email,
+                    null,
+                    account.PhoneNumberConfirmed ? account.PhoneNumber : null),
                 OtpPurpose.TwoFactor,
                 issued.Code!,
                 CodeLifetimeMinutes,

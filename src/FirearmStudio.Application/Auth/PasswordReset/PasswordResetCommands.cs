@@ -32,7 +32,10 @@ public sealed class ForgotPasswordCommandHandler(
             if (issued.Status == OtpIssueStatus.Issued)
             {
                 await dispatcher.SendAsync(
-                    new OtpRecipient(address, null, account.PhoneNumber),
+                    new OtpRecipient(
+                        address,
+                        null,
+                        account.PhoneNumberConfirmed ? account.PhoneNumber : null),
                     OtpPurpose.PasswordReset,
                     issued.Code!,
                     CodeLifetimeMinutes,

@@ -56,8 +56,8 @@ public sealed class ResendCodePhoneChangeTests
         }
     }
 
-    private static UserAccount Account(string? pending) =>
-        new(Guid.NewGuid(), "user@example.com", true, false, "+27820000001", true, pending);
+    private static UserAccount Account(string? pending, bool phoneConfirmed = true) =>
+        new(Guid.NewGuid(), "user@example.com", true, false, "+27820000001", phoneConfirmed, pending);
 
     [Theory]
     [InlineData("PhoneChange")]
@@ -133,5 +133,41 @@ public sealed class ResendCodePhoneChangeTests
 
         Assert.False(result.IsError);
         Assert.Equal("+27820000001", dispatcher.Recipient!.PhoneNumber);
+    }
+
+    [Theory]
+    [InlineData("EmailConfirmation")]
+    [InlineData("PasswordReset")]
+    [InlineData("Invite")]
+    public async Task Resendable_purposes_send_a_null_phone_when_the_number_is_unconfirmed(string purpose)
+    {
+        var dispatcher = new RecordingDispatcher();
+        var handler = new ResendCodeCommandHandler(
+            new FakeAccounts(Account("+27820000002", phoneConfirmed: false)), new FakeOtp(), dispatcher);
+
+        var result = await handler.Handle(
+            new ResendCodeCommand(new ResendCodeRequest("user@example.com", purpose)), default);
+
+        Assert.False(result.IsError);
+        Assert.Null(dispatcher.Recipient!.PhoneNumber);
+        Assert.Equal("user@example.com", dispatcher.Recipient.Email);
+    }
+
+    [Fact]
+    public async Task PhoneChange_resend_is_still_refused_when_the_phone_is_unconfirmed()
+    {
+        var otp = new FakeOtp();
+        var dispatcher = new RecordingDispatcher();
+        var handler = new ResendCodeCommandHandler(
+            new FakeAccounts(Account("+27820000002", phoneConfirmed: false)), otp, dispatcher);
+
+        var result = await handler.Handle(
+            new ResendCodeCommand(new ResendCodeRequest("user@example.com", "PhoneChange")), default);
+
+        Assert.True(result.IsError);
+        Assert.Equal(AuthErrorCodes.PurposeNotResendable, result.FirstError.Code);
+        Assert.Equal(0, otp.IssueCalls);
+        Assert.Equal(0, dispatcher.Calls);
+        Assert.Null(dispatcher.Recipient);
     }
 }

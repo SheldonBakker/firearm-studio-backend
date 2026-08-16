@@ -55,7 +55,7 @@ public sealed class ResendCodeCommandHandler(
         }
         else
         {
-            destinationPhone = account.PhoneNumber;
+            destinationPhone = account.PhoneNumberConfirmed ? account.PhoneNumber : null;
         }
 
         var issued = await otp.IssueAsync(account.Id, purpose, cancellationToken);
