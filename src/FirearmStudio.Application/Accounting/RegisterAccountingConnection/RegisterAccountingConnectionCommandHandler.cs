@@ -32,7 +32,7 @@ public sealed class RegisterAccountingConnectionCommandHandler(
             request.ApiKey,
             request.Username,
             request.Password,
-            request.SageCompanyId);
+            request.ExternalCompanyId);
 
         var accountingCompanyResult = await accountingConnectionValidator.ValidateConnectionAsync(credentials, cancellationToken);
         if (accountingCompanyResult.IsError)
@@ -56,8 +56,8 @@ public sealed class RegisterAccountingConnectionCommandHandler(
                 ApiKeyCiphertext = apiKeyCiphertext,
                 UsernameCiphertext = usernameCiphertext,
                 PasswordCiphertext = passwordCiphertext,
-                SageCompanyId = accountingCompany.Id,
-                SageCompanyName = accountingCompany.Name,
+                ExternalCompanyId = accountingCompany.Id,
+                ExternalCompanyName = accountingCompany.Name,
                 LastValidatedAt = validatedAt,
                 LastRegisteredByAuthUserId = currentUserService.User.Id,
             };
@@ -69,8 +69,8 @@ public sealed class RegisterAccountingConnectionCommandHandler(
             connection.ApiKeyCiphertext = apiKeyCiphertext;
             connection.UsernameCiphertext = usernameCiphertext;
             connection.PasswordCiphertext = passwordCiphertext;
-            connection.SageCompanyId = accountingCompany.Id;
-            connection.SageCompanyName = accountingCompany.Name;
+            connection.ExternalCompanyId = accountingCompany.Id;
+            connection.ExternalCompanyName = accountingCompany.Name;
             connection.LastValidatedAt = validatedAt;
             connection.LastRegisteredByAuthUserId = currentUserService.User.Id;
         }
@@ -79,8 +79,8 @@ public sealed class RegisterAccountingConnectionCommandHandler(
 
         return new AccountingConnectionResponse(
             Connected: true,
-            SageCompanyId: connection.SageCompanyId,
-            SageCompanyName: connection.SageCompanyName,
+            ExternalCompanyId: connection.ExternalCompanyId,
+            ExternalCompanyName: connection.ExternalCompanyName,
             LastValidatedAt: connection.LastValidatedAt);
     }
 

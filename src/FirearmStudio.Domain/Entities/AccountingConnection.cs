@@ -10,8 +10,8 @@ public sealed class AccountingConnection : BaseEntity, ITenantEntity
     public required string UsernameCiphertext { get; set; }
     public required string PasswordCiphertext { get; set; }
 
-    public int SageCompanyId { get; set; }
-    public required string SageCompanyName { get; set; }
+    public int ExternalCompanyId { get; set; }
+    public required string ExternalCompanyName { get; set; }
 
     public DateTime LastValidatedAt { get; set; }
     public Guid LastRegisteredByAuthUserId { get; set; }

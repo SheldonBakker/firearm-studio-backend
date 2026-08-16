@@ -95,7 +95,7 @@ public sealed class SageAccountingClient(
         var companies = await response.Content.ReadFromJsonAsync<SagePagedResponse<SageCompany>>(
             cancellationToken);
 
-        var company = companies?.Results.FirstOrDefault(c => c.ID == credentials.SageCompanyId);
+        var company = companies?.Results.FirstOrDefault(c => c.ID == credentials.ExternalCompanyId);
         if (company is null)
         {
             return Error.Validation(

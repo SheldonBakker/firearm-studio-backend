@@ -18,7 +18,7 @@ public sealed class RegisterAccountingConnectionRequestValidator : AbstractValid
             .NotEmpty()
             .MaximumLength(1024);
 
-        RuleFor(request => request.SageCompanyId)
+        RuleFor(request => request.ExternalCompanyId)
             .GreaterThan(0);
     }
 }

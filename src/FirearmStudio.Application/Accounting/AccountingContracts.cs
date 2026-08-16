@@ -4,12 +4,12 @@ public sealed record RegisterAccountingConnectionRequest(
     string ApiKey,
     string Username,
     string Password,
-    int SageCompanyId);
+    int ExternalCompanyId);
 
 public sealed record AccountingConnectionResponse(
     bool Connected,
-    int SageCompanyId,
-    string SageCompanyName,
+    int ExternalCompanyId,
+    string ExternalCompanyName,
     DateTime LastValidatedAt);
 
 public sealed record AccountingConnectionDetailsResponse(
@@ -18,8 +18,8 @@ public sealed record AccountingConnectionDetailsResponse(
     bool ApiKey,
     bool Username,
     bool Password,
-    int SageCompanyId,
-    string SageCompanyName,
+    int ExternalCompanyId,
+    string ExternalCompanyName,
     DateTime LastValidatedAt,
     Guid LastRegisteredByAuthUserId,
     DateTime CreatedAt,

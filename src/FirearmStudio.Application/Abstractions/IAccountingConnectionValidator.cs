@@ -13,6 +13,6 @@ public sealed record AccountingCredentials(
     string ApiKey,
     string Username,
     string Password,
-    int SageCompanyId);
+    int ExternalCompanyId);
 
 public sealed record AccountingCompanySummary(int Id, string Name);
