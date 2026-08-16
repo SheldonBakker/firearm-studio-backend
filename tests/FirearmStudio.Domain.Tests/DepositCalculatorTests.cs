@@ -51,7 +51,6 @@ public class DepositCalculatorTests
     [Fact]
     public void Calculate_Percentage_rounds_midpoint_away_from_zero()
     {
-        // 133 * 12.5 / 100 = 16.625, which is a midpoint at the third decimal.
         var result = DepositCalculator.Calculate(DepositMode.Percentage, 12.5m, 133m);
 
         Assert.Equal(16.63m, result);

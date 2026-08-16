@@ -6,11 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FirearmStudio.Application.Bookings.GetBookingIcs;
 
-/// <summary>
-/// Looks up a booking by its public calendar token. The token is unauthenticated (anonymous
-/// endpoint) and unique across companies, so the lookup bypasses the tenant filter entirely;
-/// the tenant is not known until the booking row itself has been read.
-/// </summary>
 public sealed class GetBookingIcsQueryHandler(IApplicationDbContext db, ITenantContext tenant)
     : IQueryHandler<GetBookingIcsQuery, ErrorOr<byte[]>>
 {

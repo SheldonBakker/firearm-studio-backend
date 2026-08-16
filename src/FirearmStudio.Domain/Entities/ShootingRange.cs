@@ -16,5 +16,4 @@ public sealed class ShootingRange : BaseEntity, ITenantEntity
     public bool IsActive { get; set; } = true;
 
     public ICollection<RangeOperatingHours> OperatingHours { get; set; } = [];
-    public ICollection<Booking> Bookings { get; set; } = [];
 }

@@ -72,13 +72,6 @@ internal static class BookingRequestedNotifier
         };
     }
 
-    /// <summary>
-    /// Collapses nested property objects into top-level keys joined by <paramref name="separator"/>
-    /// (e.g. <c>company.bank_name</c> becomes <c>company_bank_name</c>) so Klaviyo can use them in
-    /// segments, flow triggers, and conditions. Arrays (such as the <c>bookings</c> line-item list)
-    /// are left intact, since flattening them would produce unbounded, unsegmentable keys and they
-    /// are useful as-is for looping in email templates.
-    /// </summary>
     internal static Dictionary<string, object?> Flatten(
         IReadOnlyDictionary<string, object?> properties, string separator = "_")
     {

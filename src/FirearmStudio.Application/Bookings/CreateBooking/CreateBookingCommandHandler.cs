@@ -37,7 +37,6 @@ public sealed class CreateBookingCommandHandler(
                 return;
             }
 
-            // Load the single range with all operating hours.
             var rawRange = await db.ShootingRanges
                 .AsNoTracking()
                 .Where(r => r.Id == request.ShootingRangeId && r.IsActive)
@@ -62,7 +61,6 @@ public sealed class CreateBookingCommandHandler(
                         .Select(h => new BookingCreation.OperatingHoursEntry(h.Day, h.OpenTime, h.CloseTime))
                         .ToList());
 
-            // Load the single package with items.
             var rawPackage = await db.Packages
                 .AsNoTracking()
                 .Where(p => p.Id == request.PackageId && p.IsActive)
@@ -89,7 +87,6 @@ public sealed class CreateBookingCommandHandler(
                     rawPackage.MaxShooters,
                     rawPackage.Items);
 
-            // Load occupancy windows for the (range, date) pair.
             var occupancyWindows = await db.Bookings
                 .AsNoTracking()
                 .Where(b => b.ShootingRangeId == request.ShootingRangeId

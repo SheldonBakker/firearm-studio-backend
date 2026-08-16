@@ -12,7 +12,6 @@ public sealed class CreatePackageCommandHandler(IApplicationDbContext db)
     {
         var request = command.Request;
 
-        // The item graph needs the parent ID before saving.
         var packageId = Guid.CreateVersion7();
         var package = new Package
         {

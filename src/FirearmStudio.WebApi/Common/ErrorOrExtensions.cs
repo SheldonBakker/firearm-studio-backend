@@ -35,7 +35,6 @@ public static class ErrorOrExtensions
     private static int StatusCode<T>(ErrorOr<T> result)
     {
         var error = result.Errors.FirstOrDefault();
-        // Custom numeric type 100 = upstream/external service failure (502).
         if ((int)error.Type == UpstreamErrorTypes.UpstreamFailure)
         {
             return StatusCodes.Status502BadGateway;

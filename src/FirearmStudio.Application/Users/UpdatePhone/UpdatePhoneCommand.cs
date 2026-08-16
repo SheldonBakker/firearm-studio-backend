@@ -3,6 +3,7 @@ using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
 using FirearmStudio.Application.Auth;
 using FirearmStudio.Application.Common;
+using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
@@ -18,8 +19,6 @@ public sealed class UpdatePhoneCommandHandler(
     ILogger<UpdatePhoneCommandHandler> logger)
     : ICommandHandler<UpdatePhoneCommand, ErrorOr<Success>>
 {
-    private const int CodeLifetimeMinutes = 15;
-
     public async Task<ErrorOr<Success>> Handle(UpdatePhoneCommand command, CancellationToken ct)
     {
         var userId = currentUser.User.Id;
@@ -52,7 +51,7 @@ public sealed class UpdatePhoneCommandHandler(
                 new OtpRecipient(email, null, phone),
                 OtpPurpose.PhoneChange,
                 issued.Code!,
-                CodeLifetimeMinutes,
+                OtpConstants.CodeLifetimeMinutes,
                 ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

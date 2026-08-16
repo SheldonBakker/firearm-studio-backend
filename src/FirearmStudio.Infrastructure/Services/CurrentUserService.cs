@@ -7,7 +7,6 @@ namespace FirearmStudio.Infrastructure.Services;
 
 public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICurrentUserService
 {
-    // Cached per scoped instance - HttpContext.User claims do not change within a request.
     private CurrentUser? _cached;
 
     public CurrentUser User => _cached ??= Resolve();

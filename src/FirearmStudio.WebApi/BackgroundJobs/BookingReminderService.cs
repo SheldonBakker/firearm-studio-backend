@@ -14,7 +14,6 @@ public sealed class BookingReminderService(
 {
     private static readonly TimeSpan Interval = TimeSpan.FromHours(1);
 
-    // Set to true once the migration check passes; never checked again afterwards.
     private bool _migrationsVerified;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -175,12 +174,7 @@ public sealed class BookingReminderService(
 
         foreach (var booking in dueBookings)
         {
-            // A dangling ShootingRangeId FK is a data-quality problem, not a "nothing to send"
-            // outcome: leave ReminderSentAt unset so this booking is retried once the range is
-            // fixed, rather than stamping it and silently losing the reminder forever. Checked
-            // before stamping anything so one bad booking can never affect the others in this
-            // tenant's batch.
-            if (!rangeNames.TryGetValue(booking.ShootingRangeId, out var rangeName))
+            if (IsRangeMissing(rangeNames, booking.ShootingRangeId))
             {
                 skippedMissingRange++;
                 if (logger.IsEnabled(LogLevel.Warning))
@@ -194,8 +188,7 @@ public sealed class BookingReminderService(
                 continue;
             }
 
-            // Stamp unconditionally from here on, even when there is no email to send to, so a
-            // booking with no customer email is not re-evaluated on every future tick.
+            var rangeName = rangeNames[booking.ShootingRangeId];
             booking.ReminderSentAt = nowUtc;
 
             if (!customers.TryGetValue(booking.CustomerId, out var customer)
@@ -255,6 +248,9 @@ public sealed class BookingReminderService(
 
         return new BookingReminderRunResult(queued, skippedNoEmail, skippedMissingRange);
     }
+
+    private static bool IsRangeMissing(Dictionary<Guid, string> rangeNames, Guid shootingRangeId)
+        => !rangeNames.ContainsKey(shootingRangeId);
 
     private sealed record BookingReminderRunResult(int Queued, int SkippedNoEmail, int SkippedMissingRange);
 }

@@ -9,21 +9,19 @@ public sealed class MonthlyInvoiceGenerationService(
     IServiceScopeFactory scopeFactory,
     ILogger<MonthlyInvoiceGenerationService> logger) : BackgroundService
 {
-    // Set to true once the migration check passes; never checked again afterwards.
+    private const int ScheduledHour = 2;
     private bool _migrationsVerified;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // No run on startup. Compute delay to next 02:00 UTC, wait, then run.
         while (!stoppingToken.IsCancellationRequested)
         {
             var now = DateTime.UtcNow;
-            var today2Am = now.Date.AddHours(2);
-            var next2Am = now < today2Am ? today2Am : today2Am.AddDays(1);
+            var next = NextScheduledRunUtc(now);
 
             try
             {
-                await Task.Delay(next2Am - now, stoppingToken);
+                await Task.Delay(next - now, stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -114,6 +112,12 @@ public sealed class MonthlyInvoiceGenerationService(
                 logger.LogError(ex, "Monthly invoice generation failed for company {CompanyId}.", company.Id);
             }
         }
+    }
+
+    private static DateTime NextScheduledRunUtc(DateTime nowUtc)
+    {
+        var todayScheduled = nowUtc.Date.AddHours(ScheduledHour);
+        return nowUtc < todayScheduled ? todayScheduled : todayScheduled.AddDays(1);
     }
 
     private sealed record CompanyBilling(Guid Id, string? VatNumber, int DueDays);

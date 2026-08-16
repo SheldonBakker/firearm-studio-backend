@@ -15,7 +15,6 @@ public static class AuthErrorCodes
     public const string PurposeNotResendable = "Auth.PurposeNotResendable";
     public const string ChallengeUnavailable = "Auth.ChallengeUnavailable";
     public const string PreAuthInvalid = "Auth.PreAuthInvalid";
-    public const string TwoFactorNotEnabled = "Auth.TwoFactorNotEnabled";
     public const string PhoneMissing = "Auth.PhoneMissing";
     public const string NoPendingPhoneChange = "Auth.NoPendingPhoneChange";
     public const string PhoneChannelUnavailable = "Auth.PhoneChannelUnavailable";

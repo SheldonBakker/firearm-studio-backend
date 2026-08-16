@@ -184,20 +184,8 @@ public sealed class BookingDepositExpiryService(
                 invoice.Status = InvoiceStatus.Cancelled;
             }
 
-            // A dangling ShootingRangeId FK is a data-quality problem, not a reason to abandon
-            // this booking's cancellation: log it and carry on with a null range name rather than
-            // letting one bad booking sink the rest of this tenant's batch.
-            if (!rangeNames.TryGetValue(booking.ShootingRangeId, out var rangeName))
-            {
-                rangeName = null;
-                if (logger.IsEnabled(LogLevel.Warning))
-                {
-                    logger.LogWarning(
-                        "BookingCancelled event for booking {BookingNumber} has no range name: shooting range " +
-                        "{ShootingRangeId} not found.",
-                        booking.BookingNumber, booking.ShootingRangeId);
-                }
-            }
+            var rangeName = ResolveRangeNameOrNullForCancellation(
+                booking.ShootingRangeId, rangeNames, booking.BookingNumber);
 
             if (!customers.TryGetValue(booking.CustomerId, out var customer)
                 || string.IsNullOrWhiteSpace(customer.Email))
@@ -230,6 +218,27 @@ public sealed class BookingDepositExpiryService(
         await db.SaveChangesAsync(cancellationToken);
 
         return new BookingDepositExpiryRunResult(cancelled, skippedNoEmail, invoicesLeftOpen);
+    }
+
+    private string? ResolveRangeNameOrNullForCancellation(
+        Guid rangeId,
+        Dictionary<Guid, string> rangeNames,
+        string bookingNumber)
+    {
+        if (rangeNames.TryGetValue(rangeId, out var name))
+        {
+            return name;
+        }
+
+        if (logger.IsEnabled(LogLevel.Warning))
+        {
+            logger.LogWarning(
+                "BookingCancelled event for booking {BookingNumber} has no range name: shooting range " +
+                "{ShootingRangeId} not found.",
+                bookingNumber, rangeId);
+        }
+
+        return null;
     }
 
     private sealed record BookingDepositExpiryRunResult(int Cancelled, int SkippedNoEmail, int InvoicesLeftOpen);

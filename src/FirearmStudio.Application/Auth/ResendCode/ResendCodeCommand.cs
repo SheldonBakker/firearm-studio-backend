@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Auth.ResendCode;
@@ -13,8 +14,6 @@ public sealed class ResendCodeCommandHandler(
     IOtpDispatcher dispatcher)
     : ICommandHandler<ResendCodeCommand, ErrorOr<Success>>
 {
-    private const int CodeLifetimeMinutes = 15;
-
     public async Task<ErrorOr<Success>> Handle(
         ResendCodeCommand command,
         CancellationToken cancellationToken)
@@ -66,7 +65,7 @@ public sealed class ResendCodeCommandHandler(
                 new OtpRecipient(address, null, destinationPhone),
                 purpose,
                 issued.Code!,
-                CodeLifetimeMinutes,
+                OtpConstants.CodeLifetimeMinutes,
                 cancellationToken);
         }
 

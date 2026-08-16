@@ -3,10 +3,6 @@ using FirearmStudio.Application.Common;
 
 namespace FirearmStudio.Application.Registers;
 
-/// <summary>
-/// Pure builder for the Safe Custody Register (FCA Regulation 37 inventory-book style,
-/// Regulation 86 safe custody). No database or file I/O; callers pre-load and pre-decrypt rows.
-/// </summary>
 public static class SafeCustodyRegisterCsvBuilder
 {
     public static readonly string[] Headers =

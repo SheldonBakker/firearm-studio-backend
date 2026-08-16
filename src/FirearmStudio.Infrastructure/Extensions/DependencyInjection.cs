@@ -47,16 +47,11 @@ public static class DependencyInjection
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
-        // Auth state, same database and data source, different schema. Deliberately without
-        // TenantAndAuditInterceptor: identity records are not tenant-scoped.
         services.AddDbContext<AuthDbContext>(options =>
             options
                 .UseNpgsql(dataSource, npgsql =>
                 {
                     NpgsqlDataSourceFactory.MapAuthEnums(npgsql);
-
-                    // Its own history table, so the two contexts cannot misread each
-                    // other's applied migrations.
                     npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "identity");
                 })
                 .UseSnakeCaseNamingConvention());
@@ -76,8 +71,6 @@ public static class DependencyInjection
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
                 options.Lockout.AllowedForNewUsers = true;
 
-                // Confirmation is enforced at the login endpoint, using our own one-time
-                // codes rather than Identity's token providers.
                 options.SignIn.RequireConfirmedEmail = true;
             })
             .AddEntityFrameworkStores<AuthDbContext>();
@@ -88,7 +81,6 @@ public static class DependencyInjection
         services.AddScoped<IOtpService, OtpService>();
         services.AddScoped<ITokenService, TokenService>();
 
-        // Capability-named seam. Klaviyo is one adapter behind it, not the interface.
         services.AddScoped<IEmailSender, KlaviyoEmailSender>();
         services.AddScoped<IOtpDispatcher, OtpDispatcher>();
 
@@ -169,7 +161,6 @@ public static class DependencyInjection
 
         if (!complete)
         {
-            // Dev/CI and any misconfigured-but-non-prod case: no-op adapter.
             services.AddSingleton<IWhatsAppSender, NullWhatsAppSender>();
             return;
         }

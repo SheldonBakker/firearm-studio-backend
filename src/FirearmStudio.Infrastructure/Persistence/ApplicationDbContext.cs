@@ -60,12 +60,6 @@ public sealed class ApplicationDbContext(
                 $"""SELECT nextval('booking_number_seq') AS "Value" FROM generate_series(1, {count}) """)
             .ToListAsync(cancellationToken);
 
-    /// <summary>
-    /// Claims up to <paramref name="batchSize"/> pending outbox messages with <c>FOR UPDATE SKIP LOCKED</c>
-    /// so that concurrent instances each receive a distinct batch.
-    /// <c>attempts &lt; <see cref="OutboxMessageTypes.MaxAttempts"/></c> is inlined as a literal
-    /// because it is a compile-time constant and Npgsql treats it as a safe literal, not user input.
-    /// </summary>
     public async Task<List<OutboxMessageBatchRow>> ClaimOutboxBatchAsync(
         int batchSize, CancellationToken cancellationToken = default)
     {
@@ -114,8 +108,7 @@ public sealed class ApplicationDbContext(
 
     public Task MarkOutboxFailedAsync(Guid id, string error, CancellationToken cancellationToken = default)
     {
-        // Truncated here - single point - to match HasMaxLength(4000) in OutboxMessageConfiguration.
-        var truncatedError = error.Length > 4000 ? error[..4000] : error;
+        var truncatedError = error.Length > OutboxConstants.ErrorMaxLength ? error[..OutboxConstants.ErrorMaxLength] : error;
         return Database.ExecuteSqlAsync(
             $"""UPDATE outbox_messages SET attempts = attempts + 1, error = {truncatedError}, locked_until = NULL WHERE id = {id}""",
             cancellationToken);

@@ -3,10 +3,6 @@ using FirearmStudio.Application.Common;
 
 namespace FirearmStudio.Application.Registers;
 
-/// <summary>
-/// Pure builder for the Firearms Register (FCA Regulation 37 stock-register style). No database
-/// or file I/O; callers pre-load and pre-decrypt the rows.
-/// </summary>
 public static class FirearmsRegisterCsvBuilder
 {
     public static readonly string[] Headers =

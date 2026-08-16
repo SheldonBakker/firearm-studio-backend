@@ -11,7 +11,6 @@ public sealed class OutboxProcessorService(
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(30);
     private const int BatchSize = 20;
 
-    // Set to true once the migration check passes; never checked again afterwards.
     private bool _migrationsVerified;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

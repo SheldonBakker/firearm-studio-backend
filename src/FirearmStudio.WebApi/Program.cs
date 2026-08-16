@@ -13,8 +13,6 @@ using Serilog;
 
 try
 {
-    // NoClobber: an explicitly-set environment variable (e.g. a connection string override
-    // passed inline) must win over .env - .env should only fill in variables that are unset.
     DotNetEnv.Env
         .NoClobber()
         .TraversePath()
@@ -37,13 +35,8 @@ var fhSettings = builder.Configuration
     .GetSection(ForwardedHeadersSettings.SectionName)
     .Get<ForwardedHeadersSettings>() ?? new ForwardedHeadersSettings();
 
-// Parse eagerly so a bad CIDR or IP fails at startup, not on the first request.
-var knownNetworks = fhSettings.KnownNetworks
-    .Select(cidr => System.Net.IPNetwork.Parse(cidr))
-    .ToList();
-var knownProxies = fhSettings.KnownProxies
-    .Select(ip => System.Net.IPAddress.Parse(ip))
-    .ToList();
+var knownNetworks = ParseKnownNetworksOrThrow(fhSettings.KnownNetworks);
+var knownProxies = ParseKnownProxiesOrThrow(fhSettings.KnownProxies);
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -122,7 +115,6 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-// Only GET requests returning 200 OK are cached (framework default).
 builder.Services.AddOutputCache(options =>
 {
     options.AddPolicy("public-options", policy =>
@@ -178,5 +170,11 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 
 app.Run();
+
+static List<System.Net.IPNetwork> ParseKnownNetworksOrThrow(List<string> cidrs)
+    => cidrs.Select(System.Net.IPNetwork.Parse).ToList();
+
+static List<System.Net.IPAddress> ParseKnownProxiesOrThrow(List<string> ips)
+    => ips.Select(System.Net.IPAddress.Parse).ToList();
 
 public partial class Program;

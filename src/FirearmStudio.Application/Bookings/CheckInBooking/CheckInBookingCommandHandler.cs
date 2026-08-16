@@ -24,7 +24,7 @@ public sealed class CheckInBookingCommandHandler(IApplicationDbContext db)
             return Error.Conflict(ErrorCodes.NotConfirmed, "Only confirmed bookings can be checked in.");
         }
 
-        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, SouthAfricaTimeZone.Instance));
+        var today = BusinessDate.Today();
         if (booking.BookingDate != today)
         {
             return Error.Conflict(ErrorCodes.WrongDay, "A booking can only be checked in on its booking date.");

@@ -1605,7 +1605,7 @@ namespace FirearmStudio.Infrastructure.Migrations
             modelBuilder.Entity("FirearmStudio.Domain.Entities.AppUser", b =>
                 {
                     b.HasOne("FirearmStudio.Domain.Entities.Company", "Company")
-                        .WithMany("Users")
+                        .WithMany()
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
@@ -1642,7 +1642,7 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasConstraintName("fk_bookings_companies_company_id");
 
                     b.HasOne("FirearmStudio.Domain.Entities.Customer", "Customer")
-                        .WithMany("Bookings")
+                        .WithMany()
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
@@ -1655,14 +1655,14 @@ namespace FirearmStudio.Infrastructure.Migrations
                         .HasConstraintName("fk_bookings_invoices_invoice_id");
 
                     b.HasOne("FirearmStudio.Domain.Entities.Package", "Package")
-                        .WithMany("Bookings")
+                        .WithMany()
                         .HasForeignKey("PackageId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_bookings_packages_package_id");
 
                     b.HasOne("FirearmStudio.Domain.Entities.ShootingRange", "ShootingRange")
-                        .WithMany("Bookings")
+                        .WithMany()
                         .HasForeignKey("ShootingRangeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
@@ -1915,15 +1915,8 @@ namespace FirearmStudio.Infrastructure.Migrations
                     b.Navigation("Firearm");
                 });
 
-            modelBuilder.Entity("FirearmStudio.Domain.Entities.Company", b =>
-                {
-                    b.Navigation("Users");
-                });
-
             modelBuilder.Entity("FirearmStudio.Domain.Entities.Customer", b =>
                 {
-                    b.Navigation("Bookings");
-
                     b.Navigation("Firearms");
 
                     b.Navigation("Invoices");
@@ -1945,15 +1938,11 @@ namespace FirearmStudio.Infrastructure.Migrations
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.Package", b =>
                 {
-                    b.Navigation("Bookings");
-
                     b.Navigation("Items");
                 });
 
             modelBuilder.Entity("FirearmStudio.Domain.Entities.ShootingRange", b =>
                 {
-                    b.Navigation("Bookings");
-
                     b.Navigation("OperatingHours");
                 });
 #pragma warning restore 612, 618

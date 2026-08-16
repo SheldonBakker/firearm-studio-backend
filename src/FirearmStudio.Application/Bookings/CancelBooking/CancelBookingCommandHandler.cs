@@ -91,7 +91,6 @@ public sealed class CancelBookingCommandHandler(
         }
         else
         {
-            // The event is added to a calendar; a cancelled booking has nothing to add.
             lifecycleOutbox.Add(
                 OutboxMessageTypes.BookingCancelled,
                 company,

@@ -9,21 +9,19 @@ public sealed class LicenceReminderService(
     IServiceScopeFactory scopeFactory,
     ILogger<LicenceReminderService> logger) : BackgroundService
 {
-    // Set to true once the migration check passes; never checked again afterwards.
+    private const int ScheduledHour = 3;
     private bool _migrationsVerified;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // No run on startup. Compute delay to next 03:00 UTC, wait, then run.
         while (!stoppingToken.IsCancellationRequested)
         {
             var now = DateTime.UtcNow;
-            var today3Am = now.Date.AddHours(3);
-            var next3Am = now < today3Am ? today3Am : today3Am.AddDays(1);
+            var next = NextScheduledRunUtc(now);
 
             try
             {
-                await Task.Delay(next3Am - now, stoppingToken);
+                await Task.Delay(next - now, stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -108,5 +106,11 @@ public sealed class LicenceReminderService(
                 logger.LogError(ex, "Licence reminder generation failed for company {CompanyId}.", company.Id);
             }
         }
+    }
+
+    private static DateTime NextScheduledRunUtc(DateTime nowUtc)
+    {
+        var todayScheduled = nowUtc.Date.AddHours(ScheduledHour);
+        return nowUtc < todayScheduled ? todayScheduled : todayScheduled.AddDays(1);
     }
 }

@@ -3,23 +3,12 @@ using FirearmStudio.Application.Common;
 
 namespace FirearmStudio.Application.Bookings;
 
-/// <summary>
-/// Builds the "add to calendar" links attached to booking lifecycle notifications: the public
-/// .ics download URL (served by the public calendar endpoint) and a prefilled Google Calendar
-/// event URL. Both derive from the same booking/company data as <see cref="BookingIcsBuilder"/>,
-/// converting the booking's Africa/Johannesburg local start/end into UTC via the shared
-/// <see cref="SouthAfricaTimeZone"/>, so the two links stay in sync.
-/// </summary>
 public static class BookingCalendarLinkBuilder
 {
     private const string GoogleCalendarDateFormat = "yyyyMMddTHHmmss";
 
     public sealed record Links(string? IcsUrl, string? GoogleCalendarUrl);
 
-    /// <summary>
-    /// Returns null links when <paramref name="publicBaseUrl"/> is empty, rather than emitting
-    /// broken relative URLs.
-    /// </summary>
     public static Links Build(
         string publicBaseUrl,
         string calendarToken,

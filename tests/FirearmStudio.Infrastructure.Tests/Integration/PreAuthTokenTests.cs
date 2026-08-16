@@ -27,9 +27,7 @@ public sealed class PreAuthTokenTests(TestDatabaseFixture fixture)
         return new TokenService(auth, app, Settings, new TestTimeProvider(start));
     }
 
-    // Mirrors the JwtBearer options configured in AuthenticationExtensions.AddWebAuthentication
-    // for the ordinary api audience, so this test proves what the real middleware would do.
-    private static TokenValidationParameters BuildAccessTokenValidationParameters()
+    private static TokenValidationParameters BuildValidationParametersMirroringWebAuthentication()
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Settings.SigningKey));
 
@@ -99,7 +97,6 @@ public sealed class PreAuthTokenTests(TestDatabaseFixture fixture)
 
         var pair = await service.IssueAsync(userId, email, default);
 
-        // Wrong audience (api audience, not "<audience>:pre-auth") and no purpose claim.
         Assert.Null(service.ValidatePreAuthToken(pair.AccessToken));
     }
 
@@ -111,11 +108,8 @@ public sealed class PreAuthTokenTests(TestDatabaseFixture fixture)
         var preAuthToken = service.IssuePreAuthToken(Guid.NewGuid(), "user@example.com");
 
         var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
-        var parameters = BuildAccessTokenValidationParameters();
+        var parameters = BuildValidationParametersMirroringWebAuthentication();
 
-        // This asserts against the same TokenValidationParameters shape the JwtBearer
-        // middleware in AuthenticationExtensions uses, proving the pre-auth token would be
-        // rejected (401) on ordinary API endpoints because its audience does not match.
         Assert.Throws<SecurityTokenInvalidAudienceException>(
             () => handler.ValidateToken(preAuthToken, parameters, out _));
     }
@@ -123,8 +117,8 @@ public sealed class PreAuthTokenTests(TestDatabaseFixture fixture)
     [Fact]
     public async Task Expired_pre_auth_token_is_rejected()
     {
-        // Issued 10 minutes in the past so its 5-minute lifetime is already over by wall-clock now.
-        var service = await BuildAsync(DateTimeOffset.UtcNow.AddMinutes(-10));
+        var issuedTenMinutesAgo = DateTimeOffset.UtcNow.AddMinutes(-10);
+        var service = await BuildAsync(issuedTenMinutesAgo);
 
         var token = service.IssuePreAuthToken(Guid.NewGuid(), "user@example.com");
 
@@ -140,7 +134,6 @@ public sealed class PreAuthTokenTests(TestDatabaseFixture fixture)
         var parts = token.Split('.');
         Assert.Equal(3, parts.Length);
 
-        // Flip the last character of the signature segment so validation fails.
         var lastChar = parts[2][^1];
         var replacement = lastChar == 'A' ? 'B' : 'A';
         var tamperedSignature = parts[2][..^1] + replacement;

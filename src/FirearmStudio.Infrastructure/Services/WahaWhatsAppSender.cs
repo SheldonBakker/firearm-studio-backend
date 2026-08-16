@@ -23,16 +23,18 @@ public sealed class WahaWhatsAppSender(HttpClient httpClient, WahaSettings setti
         var path = $"api/sessions/{settings.SessionId}/messages/send-text";
 
         using var response = await httpClient.PostAsJsonAsync(path, payload, ct);
+        ThrowSafeOnFailure(response);
+    }
+
+    private static void ThrowSafeOnFailure(HttpResponseMessage response)
+    {
         if (!response.IsSuccessStatusCode)
         {
-            // Never include the response body or session id in this message: WAHA echoes the
-            // recipient back in error bodies, and Task 5's dispatcher logs this exception.
             throw new HttpRequestException(
                 $"WAHA send-text failed with status {(int)response.StatusCode}.");
         }
     }
 
-    // "+27821234567" -> "27821234567@c.us"
     private static string ToChatId(string phoneE164) => phoneE164.TrimStart('+') + "@c.us";
 
     private static string BuildMessage(OtpPurpose purpose, string code, int expiresInMinutes) => purpose switch

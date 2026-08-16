@@ -54,11 +54,7 @@ public sealed record FirearmLicenceListItemDto(
     DateOnly? IssuedOn,
     DateOnly ExpiresOn,
     DateOnly RenewalDueOn,
-    LicenceStatus Status)
-{
-    public static Expression<Func<FirearmLicence, FirearmLicenceListItemDto>> QueryProjection => l => new FirearmLicenceListItemDto(
-        l.Id, l.LicenceNumber, l.IssuedOn, l.ExpiresOn, l.RenewalDueOn, l.Status);
-}
+    LicenceStatus Status);
 
 public sealed record CreateFirearmRequest(
     Guid CustomerId, string Make, string? Model, string? Calibre, string? FirearmType,

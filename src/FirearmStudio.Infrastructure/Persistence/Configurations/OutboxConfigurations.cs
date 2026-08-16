@@ -1,3 +1,4 @@
+using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -10,8 +11,7 @@ internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outb
     {
         builder.Property(x => x.Type).IsRequired().HasMaxLength(100);
         builder.Property(x => x.Payload).IsRequired().HasColumnType("jsonb");
-        builder.Property(x => x.Error).HasMaxLength(4000);
-        builder.Property(x => x.LockedUntil);
+        builder.Property(x => x.Error).HasMaxLength(OutboxConstants.ErrorMaxLength);
 
         builder.HasIndex(x => x.CreatedAt)
             .HasFilter("processed_at IS NULL")

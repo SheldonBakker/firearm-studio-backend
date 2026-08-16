@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +27,7 @@ public sealed class InviteUserCommandHandler(
         }
 
         var email = request.Email.Trim().ToLowerInvariant();
-        var newCompanyId = tenant.CompanyId!.Value; // endpoint is [Authorize(Roles = Admin)] → always set
+        var newCompanyId = tenant.CompanyId!.Value;
 
         using (tenant.BeginBypass())
         {
@@ -36,40 +37,27 @@ public sealed class InviteUserCommandHandler(
 
             if (existing is not null)
             {
-                // Don't orphan the source company of its last admin (skip when staying in same company).
-                if (existing.CompanyId != newCompanyId
-                    && existing.Role == AppRole.Admin
-                    && existing.IsActive)
+                if (await IsLastActiveAdminAtSourceCompanyAsync(existing, newCompanyId, cancellationToken))
                 {
-                    var sourceActiveAdmins = await db.AppUsers
-                        .IgnoreQueryFilters()
-                        .CountAsync(
-                            user => user.CompanyId == existing.CompanyId && user.Role == AppRole.Admin && user.IsActive,
-                            cancellationToken);
-                    if (sourceActiveAdmins <= 1)
-                    {
-                        return Error.Conflict(
-                            ErrorCodes.SourceLastActiveAdmin,
-                            "That user is the last active admin of their current company and cannot be reassigned.");
-                    }
+                    return Error.Conflict(
+                        ErrorCodes.SourceLastActiveAdmin,
+                        "That user is the last active admin of their current company and cannot be reassigned.");
                 }
 
                 existing.CompanyId = newCompanyId;
                 existing.Role = request.Role;
                 existing.IsActive = true;
                 existing.InvitedAt = DateTime.UtcNow;
-                // auth_user_id, linked_at, full_name left intact so the user stays linked.
 
                 if (!string.IsNullOrEmpty(request.PhoneNumber))
                 {
                     existing.PhoneNumber = request.PhoneNumber;
                 }
 
-                await db.SaveChangesAsync(cancellationToken); // inside bypass → guard permits the move
+                await db.SaveChangesAsync(cancellationToken);
 
-                // Already linked means they have working credentials; moving them between
-                // companies does not require proving the mailbox again.
-                if (existing.AuthUserId is null)
+                var userAlreadyHasVerifiedCredentials = existing.AuthUserId is not null;
+                if (!userAlreadyHasVerifiedCredentials)
                 {
                     await ProvisionAndInviteAsync(email, existing.PhoneNumber, cancellationToken);
                 }
@@ -104,11 +92,6 @@ public sealed class InviteUserCommandHandler(
         return AppUserResponse.FromEntity(user);
     }
 
-    /// <summary>
-    /// Creates the login account for an invited address and emails a one-time code. The
-    /// account has no password until the invitee sets one via accept-invite, so an invite
-    /// alone never yields a usable credential.
-    /// </summary>
     private async Task ProvisionAndInviteAsync(string address, string? phone, CancellationToken ct)
     {
         var account = await accounts.FindByEmailAsync(address, ct);
@@ -117,15 +100,11 @@ public sealed class InviteUserCommandHandler(
 
         if (account is null)
         {
-            // A random password the invitee never learns. Identity requires one at
-            // creation; accept-invite replaces it.
-            var placeholder = Guid.NewGuid().ToString("N") + "Aa1!";
+            var invitePlaceholderPassword = Guid.NewGuid().ToString("N") + "Aa1!";
 
-            var (created, _) = await accounts.CreateAsync(address, placeholder, ct);
+            var (created, _) = await accounts.CreateAsync(address, invitePlaceholderPassword, ct);
             if (created is null)
             {
-                // The invite row is already saved and an admin can resend. Failing the
-                // whole command here would leave the caller unable to retry cleanly.
                 return;
             }
 
@@ -140,12 +119,25 @@ public sealed class InviteUserCommandHandler(
                 new OtpRecipient(address, null, deliverToMailboxOnly ? null : phone),
                 OtpPurpose.Invite,
                 issued.Code!,
-                InviteCodeLifetimeMinutes,
+                OtpConstants.CodeLifetimeMinutes,
                 ct);
         }
     }
 
-    private const int InviteCodeLifetimeMinutes = 15;
+    private async Task<bool> IsLastActiveAdminAtSourceCompanyAsync(
+        AppUser user, Guid newCompanyId, CancellationToken ct)
+    {
+        if (user.CompanyId == newCompanyId || user.Role != AppRole.Admin || !user.IsActive)
+        {
+            return false;
+        }
+
+        var sourceActiveAdmins = await db.AppUsers
+            .IgnoreQueryFilters()
+            .CountAsync(u => u.CompanyId == user.CompanyId && u.Role == AppRole.Admin && u.IsActive, ct);
+
+        return sourceActiveAdmins <= 1;
+    }
 
     public static class ErrorCodes
     {

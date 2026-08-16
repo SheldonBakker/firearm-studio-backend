@@ -2,6 +2,7 @@ using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
 using FirearmStudio.Application.Common;
+using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Auth.Login;
@@ -19,7 +20,6 @@ public sealed class LoginCommandHandler(
     IOtpDispatcher dispatcher)
     : ICommandHandler<LoginCommand, ErrorOr<LoginOutcome>>
 {
-    private const int CodeLifetimeMinutes = 15;
 
     public async Task<ErrorOr<LoginOutcome>> Handle(
         LoginCommand command,
@@ -74,7 +74,7 @@ public sealed class LoginCommandHandler(
                     account.PhoneNumberConfirmed ? account.PhoneNumber : null),
                 OtpPurpose.TwoFactor,
                 issued.Code!,
-                CodeLifetimeMinutes,
+                OtpConstants.CodeLifetimeMinutes,
                 cancellationToken);
 
             var preAuth = tokens.IssuePreAuthToken(account.Id, account.Email);

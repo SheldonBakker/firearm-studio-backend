@@ -1,5 +1,6 @@
 using System.Globalization;
 using ErrorOr;
+using FirearmStudio.Application.Common;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 
@@ -17,20 +18,14 @@ internal static class BookingCreation
         string? Notes,
         BookingSource Source);
 
-    /// <summary>Operating hours for a single day of week, pre-loaded with the range.</summary>
     internal sealed record OperatingHoursEntry(DayOfWeek Day, TimeOnly OpenTime, TimeOnly CloseTime);
 
-    /// <summary>
-    /// Preloaded shooting range data used by <see cref="CreateBooking"/>. All operating-hours
-    /// rows for the range are included so that callers can batch-load ranges for multiple sessions.
-    /// </summary>
     internal sealed record RangeData(
         string Name,
         int LaneCount,
         int SlotIntervalMinutes,
         IReadOnlyList<OperatingHoursEntry> OperatingHours);
 
-    /// <summary>Preloaded package data used by <see cref="CreateBooking"/>.</summary>
     internal sealed record PackageData(
         string Name,
         decimal Price,
@@ -38,27 +33,12 @@ internal static class BookingCreation
         int MaxShooters,
         IReadOnlyList<BookingInvoiceFactory.IncludedItem> Items);
 
-    /// <summary>
-    /// A booked window from the database, used for in-memory lane-occupancy counting.
-    /// Includes <see cref="ShootingRangeId"/> and <see cref="BookingDate"/> so that a single
-    /// pre-loaded collection can cover multiple (range, date) combinations.
-    /// </summary>
     internal sealed record OccupancyWindow(
         Guid ShootingRangeId,
         DateOnly BookingDate,
         TimeOnly StartTime,
         TimeOnly EndTime);
 
-    /// <summary>
-    /// Pure in-memory validation and booking construction. No database I/O. Callers are
-    /// responsible for pre-loading <paramref name="range"/> and <paramref name="package"/>
-    /// (pass <c>null</c> if not found) and for adding the resulting booking to the change tracker.
-    /// <para>
-    /// <paramref name="occupancyWindows"/> must cover at minimum the (rangeId, date) pair in
-    /// <paramref name="request"/>. <paramref name="pendingBookings"/> are same-transaction bookings
-    /// not yet saved; they count toward lane occupancy so multi-session carts need no intermediate saves.
-    /// </para>
-    /// </summary>
     internal static ErrorOr<BookingInvoiceFactory.BookingLine> CreateBooking(
         SlotRequest request,
         RangeData? range,
@@ -67,7 +47,7 @@ internal static class BookingCreation
         IReadOnlyCollection<Booking> pendingBookings,
         long bookingNumber)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var today = BusinessDate.Today();
         if (request.BookingDate < today)
         {
             return Error.Validation(ErrorCodes.DateInPast, "Booking date may not be in the past.");

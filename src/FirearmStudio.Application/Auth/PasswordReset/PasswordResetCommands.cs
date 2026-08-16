@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Auth.PasswordReset;
@@ -14,8 +15,6 @@ public sealed class ForgotPasswordCommandHandler(
     IOtpDispatcher dispatcher)
     : ICommandHandler<ForgotPasswordCommand, ErrorOr<Success>>
 {
-    private const int CodeLifetimeMinutes = 15;
-
     public async Task<ErrorOr<Success>> Handle(
         ForgotPasswordCommand command,
         CancellationToken cancellationToken)
@@ -38,7 +37,7 @@ public sealed class ForgotPasswordCommandHandler(
                         account.PhoneNumberConfirmed ? account.PhoneNumber : null),
                     OtpPurpose.PasswordReset,
                     issued.Code!,
-                    CodeLifetimeMinutes,
+                    OtpConstants.CodeLifetimeMinutes,
                     cancellationToken);
             }
         }

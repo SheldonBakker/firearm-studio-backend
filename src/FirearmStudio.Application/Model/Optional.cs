@@ -31,8 +31,23 @@ public sealed class OptionalJsonConverterFactory : JsonConverterFactory
 
     private sealed class OptionalJsonConverter<T> : JsonConverter<Optional<T>>
     {
-        public override Optional<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
-            new(JsonSerializer.Deserialize<T>(ref reader, options)!);
+        private static readonly bool IsNullableT =
+            !typeof(T).IsValueType || Nullable.GetUnderlyingType(typeof(T)) != null;
+
+        public override Optional<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.Null)
+            {
+                if (IsNullableT)
+                {
+                    return new(default!);
+                }
+
+                throw new JsonException($"null is not a valid value for {typeToConvert}.");
+            }
+
+            return new(JsonSerializer.Deserialize<T>(ref reader, options)!);
+        }
 
         public override void Write(Utf8JsonWriter writer, Optional<T> value, JsonSerializerOptions options) =>
             JsonSerializer.Serialize(writer, value.Value, options);

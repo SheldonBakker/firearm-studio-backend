@@ -12,16 +12,13 @@ public sealed class ApiKeyMiddleware(ApiKeySettings settings) : IMiddleware
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        // Pass through non-API paths (health, swagger, etc.)
-        if (!context.Request.Path.StartsWithSegments("/api"))
+        if (IsNonApiPath(context))
         {
             await next(context);
             return;
         }
 
-        // Pass through endpoints marked [AllowAnonymous]
-        var ep = context.GetEndpoint();
-        if (ep?.Metadata.GetMetadata<IAllowAnonymous>() is not null)
+        if (AllowsAnonymous(context))
         {
             await next(context);
             return;
@@ -37,6 +34,12 @@ public sealed class ApiKeyMiddleware(ApiKeySettings settings) : IMiddleware
 
         await next(context);
     }
+
+    private static bool IsNonApiPath(HttpContext context)
+        => !context.Request.Path.StartsWithSegments("/api");
+
+    private static bool AllowsAnonymous(HttpContext context)
+        => context.GetEndpoint()?.Metadata.GetMetadata<IAllowAnonymous>() is not null;
 
     private bool IsValid(StringValues provided)
     {

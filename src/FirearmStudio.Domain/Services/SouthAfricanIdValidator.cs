@@ -1,11 +1,5 @@
 namespace FirearmStudio.Domain.Services;
 
-/// <summary>
-/// Pure validation for the attendee ID number field. A value that is exactly 13 digits is
-/// treated as a South African ID number and must pass the standard Luhn checksum (the
-/// algorithm the Department of Home Affairs uses to derive the 13th check digit). Any other
-/// value is accepted as a passport number, bounded only by length.
-/// </summary>
 public static class SouthAfricanIdValidator
 {
     private const int SouthAfricanIdLength = 13;

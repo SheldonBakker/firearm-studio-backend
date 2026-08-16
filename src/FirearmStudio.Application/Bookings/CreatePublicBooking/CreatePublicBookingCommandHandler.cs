@@ -66,79 +66,16 @@ public sealed class CreatePublicBookingCommandHandler(
                 customer.Phone ??= request.Phone;
             }
 
-            // --- Batch data loading (all inside the serializable transaction so retries re-read) ---
-
-            // 1. Distinct range IDs -> one query loading ranges with all operating hours.
             var rangeIds = request.Sessions.Select(s => s.ShootingRangeId).Distinct().ToList();
-            var rawRanges = await db.ShootingRanges
-                .AsNoTracking()
-                .Where(r => rangeIds.Contains(r.Id) && r.IsActive)
-                .Select(r => new
-                {
-                    r.Id,
-                    r.Name,
-                    r.LaneCount,
-                    r.SlotIntervalMinutes,
-                    Hours = r.OperatingHours
-                        .Select(h => new { h.Day, h.OpenTime, h.CloseTime })
-                        .ToList(),
-                })
-                .ToListAsync(ct);
+            var rangesDict = await LoadRangesAsync(db, rangeIds, ct);
 
-            var rangesDict = rawRanges.ToDictionary(
-                r => r.Id,
-                r => new BookingCreation.RangeData(
-                    r.Name,
-                    r.LaneCount,
-                    r.SlotIntervalMinutes,
-                    r.Hours
-                        .Select(h => new BookingCreation.OperatingHoursEntry(h.Day, h.OpenTime, h.CloseTime))
-                        .ToList()));
-
-            // 2. Distinct package IDs -> one query loading packages with items.
             var packageIds = request.Sessions.Select(s => s.PackageId).Distinct().ToList();
-            var rawPackages = await db.Packages
-                .AsNoTracking()
-                .Where(p => packageIds.Contains(p.Id) && p.IsActive)
-                .Select(p => new
-                {
-                    p.Id,
-                    p.Name,
-                    p.Price,
-                    p.DurationMinutes,
-                    p.MaxShooters,
-                    Items = p.Items
-                        .OrderBy(i => i.SortOrder)
-                        .ThenBy(i => i.Id)
-                        .Select(i => new BookingInvoiceFactory.IncludedItem(i.Description, i.Quantity))
-                        .ToList(),
-                })
-                .ToListAsync(ct);
+            var packagesDict = await LoadPackagesAsync(db, packageIds, ct);
 
-            var packagesDict = rawPackages.ToDictionary(
-                p => p.Id,
-                p => new BookingCreation.PackageData(
-                    p.Name,
-                    p.Price,
-                    p.DurationMinutes,
-                    p.MaxShooters,
-                    p.Items));
-
-            // 3. One grouped query for existing occupancy windows over involved (rangeId, date) pairs.
             var sessionDates = request.Sessions.Select(s => s.BookingDate).Distinct().ToList();
-            var occupancyWindows = await db.Bookings
-                .AsNoTracking()
-                .Where(b => rangeIds.Contains(b.ShootingRangeId)
-                            && sessionDates.Contains(b.BookingDate)
-                            && (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed))
-                .Select(b => new BookingCreation.OccupancyWindow(
-                    b.ShootingRangeId, b.BookingDate, b.StartTime, b.EndTime))
-                .ToListAsync(ct);
+            var occupancyWindows = await LoadOccupancyWindowsAsync(db, rangeIds, sessionDates, ct);
 
-            // 4. One batched booking-number fetch; numbers are pre-assigned to sessions by index.
             var bookingNumbers = await db.NextBookingNumbersAsync(request.Sessions.Count, ct);
-
-            // ---
 
             var invoiceLines = new List<BookingInvoiceFactory.BookingLine>(request.Sessions.Count);
             var pendingBookings = new List<Booking>(request.Sessions.Count);
@@ -242,6 +179,79 @@ public sealed class CreatePublicBookingCommandHandler(
         }
 
         return outcome;
+    }
+
+    private static async Task<Dictionary<Guid, BookingCreation.RangeData>> LoadRangesAsync(
+        IApplicationDbContext db, List<Guid> rangeIds, CancellationToken ct)
+    {
+        var rawRanges = await db.ShootingRanges
+            .AsNoTracking()
+            .Where(r => rangeIds.Contains(r.Id) && r.IsActive)
+            .Select(r => new
+            {
+                r.Id,
+                r.Name,
+                r.LaneCount,
+                r.SlotIntervalMinutes,
+                Hours = r.OperatingHours
+                    .Select(h => new { h.Day, h.OpenTime, h.CloseTime })
+                    .ToList(),
+            })
+            .ToListAsync(ct);
+
+        return rawRanges.ToDictionary(
+            r => r.Id,
+            r => new BookingCreation.RangeData(
+                r.Name,
+                r.LaneCount,
+                r.SlotIntervalMinutes,
+                r.Hours
+                    .Select(h => new BookingCreation.OperatingHoursEntry(h.Day, h.OpenTime, h.CloseTime))
+                    .ToList()));
+    }
+
+    private static async Task<Dictionary<Guid, BookingCreation.PackageData>> LoadPackagesAsync(
+        IApplicationDbContext db, List<Guid> packageIds, CancellationToken ct)
+    {
+        var rawPackages = await db.Packages
+            .AsNoTracking()
+            .Where(p => packageIds.Contains(p.Id) && p.IsActive)
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                p.Price,
+                p.DurationMinutes,
+                p.MaxShooters,
+                Items = p.Items
+                    .OrderBy(i => i.SortOrder)
+                    .ThenBy(i => i.Id)
+                    .Select(i => new BookingInvoiceFactory.IncludedItem(i.Description, i.Quantity))
+                    .ToList(),
+            })
+            .ToListAsync(ct);
+
+        return rawPackages.ToDictionary(
+            p => p.Id,
+            p => new BookingCreation.PackageData(
+                p.Name,
+                p.Price,
+                p.DurationMinutes,
+                p.MaxShooters,
+                p.Items));
+    }
+
+    private static async Task<List<BookingCreation.OccupancyWindow>> LoadOccupancyWindowsAsync(
+        IApplicationDbContext db, List<Guid> rangeIds, List<DateOnly> sessionDates, CancellationToken ct)
+    {
+        return await db.Bookings
+            .AsNoTracking()
+            .Where(b => rangeIds.Contains(b.ShootingRangeId)
+                        && sessionDates.Contains(b.BookingDate)
+                        && (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed))
+            .Select(b => new BookingCreation.OccupancyWindow(
+                b.ShootingRangeId, b.BookingDate, b.StartTime, b.EndTime))
+            .ToListAsync(ct);
     }
 
     public static class ErrorCodes

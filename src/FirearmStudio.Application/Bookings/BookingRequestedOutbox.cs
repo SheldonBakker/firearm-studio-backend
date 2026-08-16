@@ -23,9 +23,12 @@ internal sealed class BookingRequestedOutbox(IApplicationDbContext db, Notificat
         var bookingDetails = response.Bookings
             .Select(line =>
             {
+                var combinedDepositAmount = response.DepositAmount;
+                var combinedDepositDueAt = response.DepositDueAt;
+
                 if (!bookingsById.TryGetValue(line.Id, out var booking))
                 {
-                    return new BookingRequestedBookingDetail(line.Id, null, null, response.DepositAmount, response.DepositDueAt);
+                    return new BookingRequestedBookingDetail(line.Id, null, null, combinedDepositAmount, combinedDepositDueAt);
                 }
 
                 var links = BookingCalendarLinkBuilder.Build(
@@ -42,10 +45,8 @@ internal sealed class BookingRequestedOutbox(IApplicationDbContext db, Notificat
                         booking.ShooterCount),
                     companyIcsData);
 
-                // The deposit applies to the combined invoice, so every booking on it shares the
-                // same deposit terms.
                 return new BookingRequestedBookingDetail(
-                    line.Id, links.IcsUrl, links.GoogleCalendarUrl, response.DepositAmount, response.DepositDueAt);
+                    line.Id, links.IcsUrl, links.GoogleCalendarUrl, combinedDepositAmount, combinedDepositDueAt);
             })
             .ToList();
 

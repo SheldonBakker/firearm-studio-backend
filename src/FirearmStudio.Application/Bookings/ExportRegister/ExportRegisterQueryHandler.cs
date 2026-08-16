@@ -43,6 +43,7 @@ public sealed class ExportRegisterQueryHandler(IApplicationDbContext db)
             .ThenBy(a => a.Booking!.StartTime)
             .ThenBy(a => a.Booking!.BookingNumber)
             .ThenBy(a => a.FullName)
+            .ThenBy(a => a.Id)
             .Select(RegisterRowDto.QueryProjection)
             .ToListAsync(cancellationToken);
 

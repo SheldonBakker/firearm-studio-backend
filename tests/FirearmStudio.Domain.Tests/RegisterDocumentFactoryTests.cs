@@ -76,7 +76,6 @@ public class RegisterDocumentFactoryTests
     {
         var document = Create(RegisterKind.Firearms);
 
-        // 10:00 UTC is 12:00 SAST (UTC+2, no DST).
         Assert.Equal(new DateTime(2026, 7, 29, 12, 0, 0), document.GeneratedAt);
     }
 

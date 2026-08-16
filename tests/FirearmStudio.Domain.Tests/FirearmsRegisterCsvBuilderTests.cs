@@ -65,7 +65,7 @@ public class FirearmsRegisterCsvBuilderTests
         Assert.Equal("2022-03-01", fields[10]);
         Assert.Equal("2027-03-01", fields[11]);
         Assert.Equal("2026-02-01", fields[12]);
-        Assert.Equal(string.Empty, fields[13]); // still in custody
+        Assert.Equal(string.Empty, fields[13]);
         Assert.Equal("InStorage", fields[14]);
     }
 

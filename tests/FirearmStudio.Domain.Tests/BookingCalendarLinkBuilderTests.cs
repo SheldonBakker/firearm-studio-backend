@@ -77,7 +77,6 @@ public class BookingCalendarLinkBuilderTests
         var links = BookingCalendarLinkBuilder.Build(
             "https://app.example.com", CalendarToken, DefaultBooking(), DefaultCompany());
 
-        // Africa/Johannesburg is UTC+2 with no DST: 09:00/10:00 local becomes 07:00/08:00 UTC.
         Assert.Contains("dates=20260801T070000Z/20260801T080000Z", links.GoogleCalendarUrl);
     }
 

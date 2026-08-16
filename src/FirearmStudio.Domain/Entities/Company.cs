@@ -35,5 +35,4 @@ public sealed class Company : BaseEntity
     public decimal DepositValue { get; set; }
     public int DepositWindowHours { get; set; } = 48;
 
-    public ICollection<AppUser> Users { get; set; } = [];
 }

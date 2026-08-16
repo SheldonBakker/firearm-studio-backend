@@ -131,7 +131,6 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
                 "status between 0 and 4");
         });
 
-        // Drives every availability/overlap query.
         builder.HasIndex(x => new { x.CompanyId, x.ShootingRangeId, x.BookingDate });
         builder.HasIndex(x => new { x.CompanyId, x.BookingDate });
         builder.HasIndex(x => new { x.CompanyId, x.Status });
@@ -147,17 +146,17 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .IsConcurrencyToken();
 
         builder.HasOne(b => b.ShootingRange)
-            .WithMany(r => r.Bookings)
+            .WithMany()
             .HasForeignKey(b => b.ShootingRangeId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(b => b.Package)
-            .WithMany(p => p.Bookings)
+            .WithMany()
             .HasForeignKey(b => b.PackageId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(b => b.Customer)
-            .WithMany(c => c.Bookings)
+            .WithMany()
             .HasForeignKey(b => b.CustomerId)
             .OnDelete(DeleteBehavior.Restrict);
 

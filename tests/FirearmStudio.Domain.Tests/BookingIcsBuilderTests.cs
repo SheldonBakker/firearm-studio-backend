@@ -45,9 +45,8 @@ public class BookingIcsBuilderTests
         var text = BuildText();
 
         Assert.Contains("\r\n", text);
-        Assert.DoesNotContain("\r\n\r\n", text); // no bare LF anywhere producing a doubled CRLF
+        Assert.DoesNotContain("\r\n\r\n", text);
 
-        // Every line break in the document must be CRLF, never a bare LF.
         for (var i = 0; i < text.Length; i++)
         {
             if (text[i] != '\n')

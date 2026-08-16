@@ -85,7 +85,7 @@ internal sealed class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
         builder.HasIndex(x => x.FullName).HasMethod("gin").HasOperators("gin_trgm_ops");
 
         builder.HasOne(u => u.Company)
-            .WithMany(c => c.Users)
+            .WithMany()
             .HasForeignKey(u => u.CompanyId)
             .OnDelete(DeleteBehavior.Restrict);
     }

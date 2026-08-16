@@ -5,9 +5,8 @@ namespace FirearmStudio.Domain.Tests;
 
 public class BookingReminderPlannerTests
 {
-    // 2026-08-01 09:00 Africa/Johannesburg (UTC+2, no DST) is 2026-08-01 07:00 UTC.
     private static readonly DateOnly BookingDate = new(2026, 8, 1);
-    private static readonly TimeOnly StartTime = new(9, 0);
+    private static readonly TimeOnly StartTimeSast = new(9, 0);
     private static readonly DateTime SessionStartUtc = new(2026, 8, 1, 7, 0, 0, DateTimeKind.Utc);
 
     [Fact]
@@ -15,7 +14,7 @@ public class BookingReminderPlannerTests
     {
         var nowUtc = SessionStartUtc.AddHours(-24);
 
-        Assert.True(BookingReminderPlanner.IsReminderDue(nowUtc, BookingDate, StartTime));
+        Assert.True(BookingReminderPlanner.IsReminderDue(nowUtc, BookingDate, StartTimeSast));
     }
 
     [Fact]
@@ -23,13 +22,13 @@ public class BookingReminderPlannerTests
     {
         var nowUtc = SessionStartUtc.AddHours(-24).AddSeconds(-1);
 
-        Assert.False(BookingReminderPlanner.IsReminderDue(nowUtc, BookingDate, StartTime));
+        Assert.False(BookingReminderPlanner.IsReminderDue(nowUtc, BookingDate, StartTimeSast));
     }
 
     [Fact]
     public void IsReminderDue_returns_false_exactly_at_session_start()
     {
-        Assert.False(BookingReminderPlanner.IsReminderDue(SessionStartUtc, BookingDate, StartTime));
+        Assert.False(BookingReminderPlanner.IsReminderDue(SessionStartUtc, BookingDate, StartTimeSast));
     }
 
     [Fact]
@@ -37,7 +36,7 @@ public class BookingReminderPlannerTests
     {
         var nowUtc = SessionStartUtc.AddMinutes(1);
 
-        Assert.False(BookingReminderPlanner.IsReminderDue(nowUtc, BookingDate, StartTime));
+        Assert.False(BookingReminderPlanner.IsReminderDue(nowUtc, BookingDate, StartTimeSast));
     }
 
     [Fact]
@@ -45,14 +44,12 @@ public class BookingReminderPlannerTests
     {
         var nowUtc = SessionStartUtc.AddHours(-12);
 
-        Assert.True(BookingReminderPlanner.IsReminderDue(nowUtc, BookingDate, StartTime));
+        Assert.True(BookingReminderPlanner.IsReminderDue(nowUtc, BookingDate, StartTimeSast));
     }
 
     [Fact]
     public void IsReminderDue_handles_local_midnight_crossing_into_the_previous_utc_day()
     {
-        // 2026-08-01 00:30 Africa/Johannesburg (local booking date) is 2026-07-31 22:30 UTC:
-        // the UTC day is one behind the local booking date.
         var bookingDate = new DateOnly(2026, 8, 1);
         var startTime = new TimeOnly(0, 30);
         var sessionStartUtc = new DateTime(2026, 7, 31, 22, 30, 0, DateTimeKind.Utc);

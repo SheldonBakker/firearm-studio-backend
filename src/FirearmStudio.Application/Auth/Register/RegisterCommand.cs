@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Domain.Common;
 using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Auth.Register;
@@ -13,8 +14,6 @@ public sealed class RegisterCommandHandler(
     IOtpDispatcher dispatcher)
     : ICommandHandler<RegisterCommand, ErrorOr<Success>>
 {
-    private const int CodeLifetimeMinutes = 15;
-
     public async Task<ErrorOr<Success>> Handle(
         RegisterCommand command,
         CancellationToken cancellationToken)
@@ -66,7 +65,7 @@ public sealed class RegisterCommandHandler(
                 new OtpRecipient(address, null, phone),
                 OtpPurpose.EmailConfirmation,
                 issued.Code!,
-                CodeLifetimeMinutes,
+                OtpConstants.CodeLifetimeMinutes,
                 ct);
         }
     }

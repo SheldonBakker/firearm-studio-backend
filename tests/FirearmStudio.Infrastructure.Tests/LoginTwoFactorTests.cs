@@ -279,7 +279,6 @@ public sealed class LoginTwoFactorTests
 
         Assert.False(first.IsError);
 
-        // Mirrors OtpService.VerifyAsync: a consumed code is gone on replay, not merely wrong.
         otp.VerifyResult = OtpVerifyResult.NotFound;
 
         var second = await BuildVerify(tokens, otp).Handle(
