@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace FirearmStudio.WebApi.Controllers;
 
 [Route("api/v{version:apiVersion}/sage")]
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Roles = AppRoles.Policy.AdminOnly)]
 public sealed class SageController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet("connections")]
@@ -31,6 +31,8 @@ public sealed class SageController(IMediator mediator) : ApiControllerBase
         CancellationToken ct)
     {
         var result = await mediator.Send(new RegisterSageConnectionCommand(request), ct);
-        return result.ToActionResult();
+        return result.IsError
+            ? result.ToActionResult()
+            : Created(VersionedUrl("sage/connections"), result.Value);
     }
 }

@@ -21,7 +21,7 @@ public sealed class CompanyController(IMediator mediator) : ApiControllerBase
     }
 
     [HttpPatch]
-    [Authorize(Roles = AppRoles.Admin)]
+    [Authorize(Roles = AppRoles.Policy.AdminOnly)]
     public async Task<ActionResult> Update(UpdateCompanyRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new UpdateCompanyCommand(request), ct);

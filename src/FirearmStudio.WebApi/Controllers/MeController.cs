@@ -21,7 +21,7 @@ public sealed class MeController(IMediator mediator) : ApiControllerBase
     }
 
     [HttpGet("admin-check")]
-    [Authorize(Roles = AppRoles.Admin)]
+    [Authorize(Roles = AppRoles.Policy.AdminOnly)]
     public async Task<ActionResult<AdminCheckResponse>> AdminCheck(CancellationToken ct)
     {
         var result = await mediator.Send(new GetAdminCheckQuery(), ct);

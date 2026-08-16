@@ -118,7 +118,7 @@ public sealed class BookingsController(IMediator mediator) : ApiControllerBase
         var result = await mediator.Send(new AddAttendeeCommand(id, request), ct);
         return result.IsError
             ? result.ToActionResult()
-            : Created(VersionedUrl($"bookings/{id}/attendees"), new { Id = result.Value });
+            : Created(VersionedUrl($"bookings/{id}/attendees"), new CreateAttendeeResponse(result.Value));
     }
 
     [HttpGet("{id:guid}/attendees")]

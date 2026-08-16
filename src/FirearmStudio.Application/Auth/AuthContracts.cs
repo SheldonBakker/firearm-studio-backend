@@ -22,6 +22,10 @@ public sealed record LoginVerifyRequest(string PreAuthToken, string Code);
 
 public sealed record DisableTwoFactorRequest(string Password);
 
+public sealed record RegisterResponse(string Message = "If that address can be registered, a verification code is on its way.");
+
+public sealed record ResendCodeResponse(string Message = "If that address can receive a code, one is on its way.");
+
 public sealed record TwoFactorChallengeResponse(bool RequiresTwoFactor, string PreAuthToken);
 
 public sealed record AuthTokensResponse(

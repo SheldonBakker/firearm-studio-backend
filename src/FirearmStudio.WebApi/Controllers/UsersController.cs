@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace FirearmStudio.WebApi.Controllers;
 
 [Route("api/v{version:apiVersion}/users")]
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Roles = AppRoles.Policy.AdminOnly)]
 public sealed class UsersController(IMediator mediator) : ApiControllerBase
 {
     [HttpGet]

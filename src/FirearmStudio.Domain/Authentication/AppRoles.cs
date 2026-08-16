@@ -11,6 +11,7 @@ public static class AppRoles
 
     public static class Policy
     {
+        public const string AdminOnly = Admin;
         public const string ManagerOrAbove = $"{Admin},{Manager}";
         public const string StaffOrAbove = $"{Admin},{Manager},{Staff}";
         public const string AnyAuthenticatedRole = $"{Admin},{Manager},{Staff},{Viewer}";

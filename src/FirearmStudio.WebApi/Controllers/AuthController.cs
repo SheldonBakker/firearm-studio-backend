@@ -27,7 +27,7 @@ public sealed class AuthController(IMediator mediator) : ApiControllerBase
 
         return result.IsError
             ? result.ToActionResult()
-            : Accepted(new { message = "If that address can be registered, a verification code is on its way." });
+            : Accepted(new RegisterResponse());
     }
 
     [AllowAnonymous]
@@ -49,7 +49,7 @@ public sealed class AuthController(IMediator mediator) : ApiControllerBase
 
         return result.IsError
             ? result.ToActionResult()
-            : Accepted(new { message = "If that address can receive a code, one is on its way." });
+            : Accepted(new ResendCodeResponse());
     }
 
     [AllowAnonymous]

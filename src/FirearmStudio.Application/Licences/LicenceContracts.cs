@@ -40,6 +40,8 @@ public sealed record LicenceCustomerDto(
 
 public sealed record CreateLicenceRequest(string LicenceNumber, DateOnly? IssuedOn, DateOnly ExpiresOn, string? DocumentUrl);
 
+public sealed record CreateLicenceResponse(Guid Id);
+
 public sealed record UpdateLicenceRequest(
     Optional<string> LicenceNumber,
     Optional<DateOnly?> IssuedOn,

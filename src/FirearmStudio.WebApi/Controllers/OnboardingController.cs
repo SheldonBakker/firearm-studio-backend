@@ -20,11 +20,6 @@ public sealed class OnboardingController(IMediator mediator) : ApiControllerBase
             return result.ToActionResult();
         }
 
-        return Created(VersionedUrl("company"), new
-        {
-            company = result.Value,
-            message = "Company created and you are its admin. Call /auth/refresh to receive your " +
-                      "company_id and admin role in a new access token.",
-        });
+        return Created(VersionedUrl("company"), new CreateCompanyOnboardingResponse(result.Value));
     }
 }

@@ -44,7 +44,7 @@ public sealed class LicencesController(IMediator mediator) : ApiControllerBase
         var result = await mediator.Send(new CreateLicenceCommand(firearmId, request), ct);
         return result.IsError
             ? result.ToActionResult()
-            : Created(VersionedUrl($"firearms/{firearmId}/licences"), new { Id = result.Value });
+            : CreatedAtAction(nameof(Get), new { id = result.Value, version = CurrentApiVersion }, new CreateLicenceResponse(result.Value));
     }
 
     [HttpPatch("licences/{id:guid}")]

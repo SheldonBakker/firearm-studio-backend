@@ -19,7 +19,7 @@ public sealed class UsersMeController(IMediator mediator) : ApiControllerBase
         var result = await mediator.Send(new UpdatePhoneCommand(request), ct);
         return result.IsError
             ? result.ToActionResult()
-            : Accepted(new { message = "A verification code is on its way to that number." });
+            : Accepted(new UpdatePhoneResponse());
     }
 
     [HttpPost("phone/verify")]
