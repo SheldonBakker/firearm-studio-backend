@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Common;
 using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -68,6 +69,12 @@ public sealed class GetDayAvailabilityQueryHandler(IApplicationDbContext db, ITe
                 return new DayAvailabilityResponse(query.Date, []);
             }
 
+            var earliestStart = BookingCutoff.EarliestStart(query.Date, BusinessDate.Now());
+            if (earliestStart is null)
+            {
+                return new DayAvailabilityResponse(query.Date, []);
+            }
+
             var bookings = await db.Bookings
                 .AsNoTracking()
                 .Where(b => b.ShootingRangeId == query.ShootingRangeId
@@ -82,6 +89,7 @@ public sealed class GetDayAvailabilityQueryHandler(IApplicationDbContext db, ITe
                 range.SlotIntervalMinutes,
                 durationMinutes.Value,
                 range.LaneCount,
+                earliestStart.Value,
                 bookings);
 
             return new DayAvailabilityResponse(query.Date, slots);

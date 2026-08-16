@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Common;
 using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -86,6 +87,7 @@ public sealed class GetMonthAvailabilityQueryHandler(IApplicationDbContext db, I
                         .ToList());
 
             var hoursByDay = range.Hours.ToDictionary(h => h.Day);
+            var nowSast = BusinessDate.Now();
 
             var days = new List<MonthAvailabilityDayDto>();
             for (var date = monthStart; date < nextMonthStart; date = date.AddDays(1))
@@ -93,14 +95,23 @@ public sealed class GetMonthAvailabilityQueryHandler(IApplicationDbContext db, I
                 var hasAvailability = false;
                 if (hoursByDay.TryGetValue(date.DayOfWeek, out var hours))
                 {
-                    var bookings = bookingsByDate.GetValueOrDefault(date, []);
-                    hasAvailability = AvailabilityCalculator.HasAnySlot(
-                        hours.OpenTime,
-                        hours.CloseTime,
-                        range.SlotIntervalMinutes,
-                        durationMinutes.Value,
-                        range.LaneCount,
-                        bookings);
+                    var cutoff = BookingCutoff.EarliestStart(date, nowSast);
+                    if (cutoff is null)
+                    {
+                        hasAvailability = false;
+                    }
+                    else
+                    {
+                        var bookings = bookingsByDate.GetValueOrDefault(date, []);
+                        hasAvailability = AvailabilityCalculator.HasAnySlot(
+                            hours.OpenTime,
+                            hours.CloseTime,
+                            range.SlotIntervalMinutes,
+                            durationMinutes.Value,
+                            range.LaneCount,
+                            cutoff.Value,
+                            bookings);
+                    }
                 }
 
                 days.Add(new MonthAvailabilityDayDto(date, hasAvailability));

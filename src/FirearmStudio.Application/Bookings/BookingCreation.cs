@@ -45,10 +45,11 @@ internal static class BookingCreation
         PackageData? package,
         IReadOnlyCollection<OccupancyWindow> occupancyWindows,
         IReadOnlyCollection<Booking> pendingBookings,
-        long bookingNumber)
+        long bookingNumber,
+        DateTime nowSast)
     {
-        var today = BusinessDate.Today();
-        if (request.BookingDate < today)
+        var earliestStart = BookingCutoff.EarliestStart(request.BookingDate, nowSast);
+        if (earliestStart is null)
         {
             return Error.Validation(ErrorCodes.DateInPast, "Booking date may not be in the past.");
         }
@@ -92,6 +93,13 @@ internal static class BookingCreation
             return Error.Validation(
                 ErrorCodes.OutsideOperatingHours,
                 "The requested time window falls outside the range's operating hours.");
+        }
+
+        if (request.StartTime < earliestStart.Value)
+        {
+            return Error.Validation(
+                ErrorCodes.StartTimeTooSoon,
+                $"Bookings must be made at least {BookingCutoff.LeadTimeMinutes} minutes in advance.");
         }
 
         var overlapping = occupancyWindows.Count(w =>
@@ -144,5 +152,6 @@ internal static class BookingCreation
         public const string InvalidStartTime = "CreateBooking.InvalidStartTime";
         public const string SlotUnavailable = "CreateBooking.SlotUnavailable";
         public const string SlotContention = "CreateBooking.SlotContention";
+        public const string StartTimeTooSoon = "CreateBooking.StartTimeTooSoon";
     }
 }

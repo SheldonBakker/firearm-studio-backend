@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Common;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -79,6 +80,7 @@ public sealed class CreatePublicBookingCommandHandler(
 
             var invoiceLines = new List<BookingInvoiceFactory.BookingLine>(request.Sessions.Count);
             var pendingBookings = new List<Booking>(request.Sessions.Count);
+            var nowSast = BusinessDate.Now();
 
             for (var i = 0; i < request.Sessions.Count; i++)
             {
@@ -101,7 +103,8 @@ public sealed class CreatePublicBookingCommandHandler(
                     packageData,
                     occupancyWindows,
                     pendingBookings,
-                    bookingNumbers[i]);
+                    bookingNumbers[i],
+                    nowSast);
 
                 if (result.IsError)
                 {

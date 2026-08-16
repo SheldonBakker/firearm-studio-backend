@@ -10,12 +10,18 @@ public static class AvailabilityCalculator
         int slotIntervalMinutes,
         int durationMinutes,
         int laneCount,
+        TimeOnly earliestStart,
         IReadOnlyList<BookedWindow> bookings)
     {
         var slots = new List<AvailabilitySlotDto>();
 
         foreach (var start in CandidateStarts(openTime, closeTime, slotIntervalMinutes, durationMinutes))
         {
+            if (start < earliestStart)
+            {
+                continue;
+            }
+
             var end = start.AddMinutes(durationMinutes);
             var overlapping = bookings.Count(b => b.Start < end && b.End > start);
             if (overlapping < laneCount)
@@ -33,10 +39,16 @@ public static class AvailabilityCalculator
         int slotIntervalMinutes,
         int durationMinutes,
         int laneCount,
+        TimeOnly earliestStart,
         IReadOnlyList<BookedWindow> bookings)
     {
         foreach (var start in CandidateStarts(openTime, closeTime, slotIntervalMinutes, durationMinutes))
         {
+            if (start < earliestStart)
+            {
+                continue;
+            }
+
             var end = start.AddMinutes(durationMinutes);
             if (bookings.Count(b => b.Start < end && b.End > start) < laneCount)
             {

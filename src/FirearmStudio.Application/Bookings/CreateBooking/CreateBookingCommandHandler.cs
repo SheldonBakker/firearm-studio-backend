@@ -1,6 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Common;
 using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
@@ -112,7 +113,8 @@ public sealed class CreateBookingCommandHandler(
                 packageData,
                 occupancyWindows,
                 pendingBookings: [],
-                bookingNumber);
+                bookingNumber,
+                BusinessDate.Now());
 
             if (result.IsError)
             {
