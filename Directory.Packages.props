@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <!-- Authentication: validate API-issued HS256 JWTs -->
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
 
     <!-- Identity: user store, password hashing, lockout -->
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.11" />
