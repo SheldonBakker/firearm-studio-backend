@@ -10,7 +10,7 @@ public sealed record ResendCodeCommand(ResendCodeRequest Request) : ICommand<Err
 public sealed class ResendCodeCommandHandler(
     IUserAccountService accounts,
     IOtpService otp,
-    IEmailSender email)
+    IOtpDispatcher dispatcher)
     : ICommandHandler<ResendCodeCommand, ErrorOr<Success>>
 {
     private const int CodeLifetimeMinutes = 15;
@@ -26,20 +26,53 @@ public sealed class ResendCodeCommandHandler(
                 "Unknown code purpose.");
         }
 
+        if (!IsResendableAnonymously(purpose))
+        {
+            return Error.Validation(
+                AuthErrorCodes.PurposeNotResendable,
+                "Codes for that purpose cannot be resent from here.");
+        }
+
         var address = command.Request.Email.Trim().ToLowerInvariant();
         var account = await accounts.FindByEmailAsync(address, cancellationToken);
 
-        if (account is not null)
+        if (account is null)
         {
-            var issued = await otp.IssueAsync(account.Id, purpose, cancellationToken);
+            return Result.Success;
+        }
 
-            if (issued.Status == OtpIssueStatus.Issued)
+        string? destinationPhone;
+        if (purpose == OtpPurpose.PhoneChange)
+        {
+            if (string.IsNullOrEmpty(account.PendingPhoneNumber))
             {
-                await email.SendOtpAsync(
-                    address, null, purpose, issued.Code!, CodeLifetimeMinutes, cancellationToken);
+                return Error.Validation(
+                    AuthErrorCodes.PhoneMissing,
+                    "There is no phone change in progress to resend a code for.");
             }
+
+            destinationPhone = account.PendingPhoneNumber;
+        }
+        else
+        {
+            destinationPhone = account.PhoneNumber;
+        }
+
+        var issued = await otp.IssueAsync(account.Id, purpose, cancellationToken);
+
+        if (issued.Status == OtpIssueStatus.Issued)
+        {
+            await dispatcher.SendAsync(
+                new OtpRecipient(address, null, destinationPhone),
+                purpose,
+                issued.Code!,
+                CodeLifetimeMinutes,
+                cancellationToken);
         }
 
         return Result.Success;
     }
+
+    private static bool IsResendableAnonymously(OtpPurpose purpose) =>
+        purpose is not (OtpPurpose.TwoFactor or OtpPurpose.PhoneChange);
 }

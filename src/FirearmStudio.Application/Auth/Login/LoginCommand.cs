@@ -1,17 +1,27 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
+using FirearmStudio.Application.Common;
+using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Auth.Login;
 
-public sealed record LoginCommand(LoginRequest Request) : ICommand<ErrorOr<AuthTokensResponse>>;
+public sealed record LoginOutcome(
+    AuthTokensResponse? Tokens,
+    TwoFactorChallengeResponse? Challenge);
+
+public sealed record LoginCommand(LoginRequest Request) : ICommand<ErrorOr<LoginOutcome>>;
 
 public sealed class LoginCommandHandler(
     IUserAccountService accounts,
-    ITokenService tokens)
-    : ICommandHandler<LoginCommand, ErrorOr<AuthTokensResponse>>
+    ITokenService tokens,
+    IOtpService otp,
+    IOtpDispatcher dispatcher)
+    : ICommandHandler<LoginCommand, ErrorOr<LoginOutcome>>
 {
-    public async Task<ErrorOr<AuthTokensResponse>> Handle(
+    private const int CodeLifetimeMinutes = 15;
+
+    public async Task<ErrorOr<LoginOutcome>> Handle(
         LoginCommand command,
         CancellationToken cancellationToken)
     {
@@ -45,9 +55,35 @@ public sealed class LoginCommandHandler(
                 "Confirm your email address first. Request a new code if yours has expired.");
         }
 
-        var pair = await tokens.IssueAsync(account.Id, account.Email, cancellationToken);
+        if (account.TwoFactorEnabled)
+        {
+            var issued = await otp.IssueAsync(account.Id, OtpPurpose.TwoFactor, cancellationToken);
 
-        return new AuthTokensResponse(pair.AccessToken, pair.RefreshToken, pair.AccessExpiresAt);
+            if (issued.Status != OtpIssueStatus.Issued)
+            {
+                return Error.Custom(
+                    ThrottleErrorTypes.Throttled,
+                    AuthErrorCodes.ChallengeUnavailable,
+                    "Too many codes have been requested recently. Try again later.");
+            }
+
+            await dispatcher.SendAsync(
+                new OtpRecipient(account.Email, null, account.PhoneNumber),
+                OtpPurpose.TwoFactor,
+                issued.Code!,
+                CodeLifetimeMinutes,
+                cancellationToken);
+
+            var preAuth = tokens.IssuePreAuthToken(account.Id, account.Email);
+            return new LoginOutcome(
+                Tokens: null,
+                Challenge: new TwoFactorChallengeResponse(RequiresTwoFactor: true, PreAuthToken: preAuth));
+        }
+
+        var pair = await tokens.IssueAsync(account.Id, account.Email, cancellationToken);
+        return new LoginOutcome(
+            Tokens: new AuthTokensResponse(pair.AccessToken, pair.RefreshToken, pair.AccessExpiresAt),
+            Challenge: null);
     }
 
     private static Error InvalidCredentials => Error.Unauthorized(

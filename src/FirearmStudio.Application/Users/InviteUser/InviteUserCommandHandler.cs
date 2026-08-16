@@ -12,7 +12,7 @@ public sealed class InviteUserCommandHandler(
     ITenantContext tenant,
     IUserAccountService accounts,
     IOtpService otp,
-    IEmailSender emailSender)
+    IOtpDispatcher dispatcher)
     : ICommandHandler<InviteUserCommand, ErrorOr<AppUserResponse>>
 {
     public async Task<ErrorOr<AppUserResponse>> Handle(
@@ -60,13 +60,18 @@ public sealed class InviteUserCommandHandler(
                 existing.InvitedAt = DateTime.UtcNow;
                 // auth_user_id, linked_at, full_name left intact so the user stays linked.
 
+                if (!string.IsNullOrEmpty(request.PhoneNumber))
+                {
+                    existing.PhoneNumber = request.PhoneNumber;
+                }
+
                 await db.SaveChangesAsync(cancellationToken); // inside bypass → guard permits the move
 
                 // Already linked means they have working credentials; moving them between
                 // companies does not require proving the mailbox again.
                 if (existing.AuthUserId is null)
                 {
-                    await ProvisionAndInviteAsync(email, cancellationToken);
+                    await ProvisionAndInviteAsync(email, existing.PhoneNumber, cancellationToken);
                 }
 
                 return AppUserResponse.FromEntity(existing);
@@ -80,6 +85,7 @@ public sealed class InviteUserCommandHandler(
             Role = request.Role,
             IsActive = true,
             InvitedAt = DateTime.UtcNow,
+            PhoneNumber = request.PhoneNumber,
         };
 
         await db.AppUsers.AddAsync(user, cancellationToken);
@@ -93,7 +99,7 @@ public sealed class InviteUserCommandHandler(
             return Error.Conflict(ErrorCodes.EmailAlreadyExists, "A user with this email already belongs to a company or has a pending invite.");
         }
 
-        await ProvisionAndInviteAsync(email, cancellationToken);
+        await ProvisionAndInviteAsync(email, request.PhoneNumber, cancellationToken);
 
         return AppUserResponse.FromEntity(user);
     }
@@ -103,9 +109,11 @@ public sealed class InviteUserCommandHandler(
     /// account has no password until the invitee sets one via accept-invite, so an invite
     /// alone never yields a usable credential.
     /// </summary>
-    private async Task ProvisionAndInviteAsync(string address, CancellationToken ct)
+    private async Task ProvisionAndInviteAsync(string address, string? phone, CancellationToken ct)
     {
         var account = await accounts.FindByEmailAsync(address, ct);
+
+        var deliverToMailboxOnly = account is not null;
 
         if (account is null)
         {
@@ -128,8 +136,12 @@ public sealed class InviteUserCommandHandler(
 
         if (issued.Status == OtpIssueStatus.Issued)
         {
-            await emailSender.SendOtpAsync(
-                address, null, OtpPurpose.Invite, issued.Code!, InviteCodeLifetimeMinutes, ct);
+            await dispatcher.SendAsync(
+                new OtpRecipient(address, null, deliverToMailboxOnly ? null : phone),
+                OtpPurpose.Invite,
+                issued.Code!,
+                InviteCodeLifetimeMinutes,
+                ct);
         }
     }
 

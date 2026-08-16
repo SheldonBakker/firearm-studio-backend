@@ -18,7 +18,7 @@ namespace FirearmStudio.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.9")
+                .HasAnnotation("ProductVersion", "10.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "customer_type", new[] { "company", "individual" });
@@ -79,6 +79,11 @@ namespace FirearmStudio.Infrastructure.Migrations
                     b.Property<DateTime?>("LinkedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("linked_at");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone_number");
 
                     b.Property<int>("Role")
                         .HasColumnType("integer")

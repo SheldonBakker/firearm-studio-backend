@@ -22,7 +22,7 @@ namespace FirearmStudio.Infrastructure.Identity.Migrations
                 .HasAnnotation("ProductVersion", "10.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "otp_purpose", new[] { "email_confirmation", "invite", "password_reset" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "otp_purpose", new[] { "email_confirmation", "invite", "password_reset", "phone_change", "two_factor" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("FirearmStudio.Infrastructure.Identity.AppIdentityUser", b =>
@@ -73,6 +73,11 @@ namespace FirearmStudio.Infrastructure.Identity.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
+
+                    b.Property<string>("PendingPhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("pending_phone_number");
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("text")

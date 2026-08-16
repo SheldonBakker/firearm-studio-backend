@@ -7,6 +7,7 @@ using FirearmStudio.Application.Auth.Login;
 using FirearmStudio.Application.Auth.PasswordReset;
 using FirearmStudio.Application.Auth.Register;
 using FirearmStudio.Application.Auth.Tokens;
+using FirearmStudio.Application.Auth.TwoFactor;
 using FirearmStudio.Application.Auth.VerifyEmail;
 using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Application.Users;
@@ -16,6 +17,7 @@ using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 using FirearmStudio.Infrastructure.Identity;
 using FirearmStudio.Infrastructure.Persistence;
+using FirearmStudio.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +50,11 @@ public sealed class CapturingEmailSender : IEmailSender
 public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
     : IClassFixture<TestDatabaseFixture>
 {
+    private sealed class FixedUser(Guid id) : ICurrentUserService
+    {
+        public CurrentUser User { get; } = new() { Id = id, IsAuthenticated = true };
+    }
+
     private static readonly JwtSettings Settings = new()
     {
         Issuer = "https://api.test.local",
@@ -70,7 +77,9 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
         AcceptInviteCommandHandler AcceptInvite,
         InviteUserCommandHandler Invite,
         ApplicationDbContext App,
-        BypassTenantContext Tenant);
+        BypassTenantContext Tenant,
+        AuthDbContext Auth,
+        IdentityUserAccountService Accounts);
 
     private async Task<Harness> CreateAsync()
     {
@@ -86,21 +95,24 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
         var otp = new OtpService(auth, new PasswordHasher<AppIdentityUser>(), clock);
         var tokens = new TokenService(auth, app, Settings, clock);
         var email = new CapturingEmailSender();
+        var dispatcher = new OtpDispatcher(email, new NullWhatsAppSender(), NullLogger<OtpDispatcher>.Instance);
 
         return new Harness(
-            new RegisterCommandHandler(accounts, otp, email),
+            new RegisterCommandHandler(accounts, otp, dispatcher),
             new VerifyEmailCommandHandler(accounts, otp, tokens, app, tenant),
-            new LoginCommandHandler(accounts, tokens),
+            new LoginCommandHandler(accounts, tokens, otp, dispatcher),
             new RefreshCommandHandler(tokens),
             new LogoutCommandHandler(tokens),
-            new ForgotPasswordCommandHandler(accounts, otp, email),
+            new ForgotPasswordCommandHandler(accounts, otp, dispatcher),
             new ResetPasswordCommandHandler(accounts, otp, tokens),
             email,
             clock,
             new AcceptInviteCommandHandler(accounts, otp, tokens, app, tenant),
-            new InviteUserCommandHandler(app, tenant, accounts, otp, email),
+            new InviteUserCommandHandler(app, tenant, accounts, otp, dispatcher),
             app,
-            tenant);
+            tenant,
+            auth,
+            accounts);
     }
 
     private static UserManager<AppIdentityUser> BuildUserManager(AuthDbContext auth)
@@ -144,9 +156,9 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
         Assert.False(loggedIn.IsError);
 
         var refreshed = await h.Refresh.Handle(
-            new RefreshCommand(new RefreshRequest(loggedIn.Value.RefreshToken)), default);
+            new RefreshCommand(new RefreshRequest(loggedIn.Value.Tokens!.RefreshToken)), default);
         Assert.False(refreshed.IsError);
-        Assert.NotEqual(loggedIn.Value.RefreshToken, refreshed.Value.RefreshToken);
+        Assert.NotEqual(loggedIn.Value.Tokens!.RefreshToken, refreshed.Value.RefreshToken);
 
         var loggedOut = await h.Logout.Handle(
             new LogoutCommand(new LogoutRequest(refreshed.Value.RefreshToken)), default);
@@ -299,6 +311,73 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task Accepting_an_invite_leaves_an_already_confirmed_phone_untouched()
+    {
+        var h = await CreateAsync();
+        var companyId = Guid.NewGuid();
+        var invitee = NewEmail();
+
+        h.App.Companies.Add(new Company { Id = companyId, Name = "Inviting Co" });
+        await h.App.SaveChangesAsync();
+        h.Tenant.CompanyId = companyId;
+
+        await h.Invite.Handle(
+            new InviteUserCommand(new InviteUserRequest(invitee, "New Staffer", AppRole.Staff)), default);
+
+        var seeded = await h.Auth.Users.SingleAsync(u => u.Email == invitee);
+        seeded.PhoneNumber = "+27820000001";
+        seeded.PhoneNumberConfirmed = true;
+        await h.Auth.SaveChangesAsync();
+
+        var code = h.Email.LastCodeFor(invitee, OtpPurpose.Invite);
+
+        var accepted = await h.AcceptInvite.Handle(
+            new AcceptInviteCommand(new AcceptInviteRequest(invitee, code, "InviteeSecret789", "+27829999999")),
+            default);
+        Assert.False(accepted.IsError);
+
+        await using var authAfter = fixture.CreateAuthDbContext();
+        var after = await authAfter.Users.SingleAsync(u => u.Email == invitee);
+        Assert.Equal("+27820000001", after.PhoneNumber);
+        Assert.True(after.PhoneNumberConfirmed);
+
+        await using var appAfter = fixture.CreateDbContext(companyId);
+        var appUser = await appAfter.AppUsers.SingleAsync(u => u.Email == invitee);
+        Assert.NotEqual("+27829999999", appUser.PhoneNumber);
+    }
+
+    [Fact]
+    public async Task Accepting_an_invite_seeds_an_unconfirmed_phone_when_none_is_proven()
+    {
+        var h = await CreateAsync();
+        var companyId = Guid.NewGuid();
+        var invitee = NewEmail();
+
+        h.App.Companies.Add(new Company { Id = companyId, Name = "Inviting Co" });
+        await h.App.SaveChangesAsync();
+        h.Tenant.CompanyId = companyId;
+
+        await h.Invite.Handle(
+            new InviteUserCommand(new InviteUserRequest(invitee, "New Staffer", AppRole.Staff)), default);
+
+        var code = h.Email.LastCodeFor(invitee, OtpPurpose.Invite);
+
+        var accepted = await h.AcceptInvite.Handle(
+            new AcceptInviteCommand(new AcceptInviteRequest(invitee, code, "InviteeSecret789", "+27829999999")),
+            default);
+        Assert.False(accepted.IsError);
+
+        await using var authAfter = fixture.CreateAuthDbContext();
+        var after = await authAfter.Users.SingleAsync(u => u.Email == invitee);
+        Assert.Equal("+27829999999", after.PhoneNumber);
+        Assert.False(after.PhoneNumberConfirmed);
+
+        await using var appAfter = fixture.CreateDbContext(companyId);
+        var appUser = await appAfter.AppUsers.SingleAsync(u => u.Email == invitee);
+        Assert.Equal("+27829999999", appUser.PhoneNumber);
+    }
+
+    [Fact]
     public async Task Invite_alone_does_not_yield_a_usable_login()
     {
         var h = await CreateAsync();
@@ -350,6 +429,38 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
         Assert.Equal(
             companyId.ToString(),
             token.Claims.First(c => c.Type == AppClaimTypes.CompanyId).Value);
+    }
+
+    [Fact]
+    public async Task Disabling_two_factor_requires_the_account_password()
+    {
+        var h = await CreateAsync();
+        var email = NewEmail();
+
+        await h.Register.Handle(new RegisterCommand(new RegisterRequest(email, Password)), default);
+        var code = h.Email.LastCodeFor(email, OtpPurpose.EmailConfirmation);
+        await h.Verify.Handle(new VerifyEmailCommand(new VerifyEmailRequest(email, code)), default);
+
+        var account = await h.Accounts.FindByEmailAsync(email, default);
+        var currentUser = new FixedUser(account!.Id);
+
+        var enable = new EnableTwoFactorCommandHandler(currentUser, h.Accounts);
+        Assert.False((await enable.Handle(new EnableTwoFactorCommand(), default)).IsError);
+
+        var disable = new DisableTwoFactorCommandHandler(currentUser, h.Accounts);
+
+        var refused = await disable.Handle(
+            new DisableTwoFactorCommand(new DisableTwoFactorRequest("NotThePassword1")), default);
+
+        Assert.True(refused.IsError);
+        Assert.Equal(AuthErrorCodes.InvalidCredentials, refused.FirstError.Code);
+        Assert.True((await h.Accounts.FindByEmailAsync(email, default))!.TwoFactorEnabled);
+
+        var accepted = await disable.Handle(
+            new DisableTwoFactorCommand(new DisableTwoFactorRequest(Password)), default);
+
+        Assert.False(accepted.IsError);
+        Assert.False((await h.Accounts.FindByEmailAsync(email, default))!.TwoFactorEnabled);
     }
 
     [Fact]

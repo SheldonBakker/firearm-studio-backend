@@ -3,7 +3,7 @@ using FirearmStudio.Application.Abstractions;
 
 namespace FirearmStudio.Application.Auth;
 
-internal static class AuthResults
+public static class AuthResults
 {
     public static Error? ToError(OtpVerifyResult result) => result switch
     {

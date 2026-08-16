@@ -10,7 +10,7 @@ public sealed record RegisterCommand(RegisterRequest Request) : ICommand<ErrorOr
 public sealed class RegisterCommandHandler(
     IUserAccountService accounts,
     IOtpService otp,
-    IEmailSender email)
+    IOtpDispatcher dispatcher)
     : ICommandHandler<RegisterCommand, ErrorOr<Success>>
 {
     private const int CodeLifetimeMinutes = 15;
@@ -20,6 +20,9 @@ public sealed class RegisterCommandHandler(
         CancellationToken cancellationToken)
     {
         var address = command.Request.Email.Trim().ToLowerInvariant();
+        var phone = string.IsNullOrEmpty(command.Request.PhoneNumber)
+            ? null
+            : command.Request.PhoneNumber.Trim();
 
         var existing = await accounts.FindByEmailAsync(address, cancellationToken);
 
@@ -27,7 +30,7 @@ public sealed class RegisterCommandHandler(
         {
             if (!existing.EmailConfirmed)
             {
-                await IssueAndSendAsync(existing.Id, address, cancellationToken);
+                await IssueAndSendAsync(existing.Id, address, existing.PhoneNumber, cancellationToken);
             }
 
             return Result.Success;
@@ -43,19 +46,28 @@ public sealed class RegisterCommandHandler(
                 string.Join(" ", errors));
         }
 
-        await IssueAndSendAsync(account.Id, address, cancellationToken);
+        if (phone is not null)
+        {
+            await accounts.SetPhoneNumberAsync(account.Id, phone, confirmed: false, cancellationToken);
+        }
+
+        await IssueAndSendAsync(account.Id, address, phone, cancellationToken);
 
         return Result.Success;
     }
 
-    private async Task IssueAndSendAsync(Guid userId, string address, CancellationToken ct)
+    private async Task IssueAndSendAsync(Guid userId, string address, string? phone, CancellationToken ct)
     {
         var issued = await otp.IssueAsync(userId, OtpPurpose.EmailConfirmation, ct);
 
         if (issued.Status == OtpIssueStatus.Issued)
         {
-            await email.SendOtpAsync(
-                address, null, OtpPurpose.EmailConfirmation, issued.Code!, CodeLifetimeMinutes, ct);
+            await dispatcher.SendAsync(
+                new OtpRecipient(address, null, phone),
+                OtpPurpose.EmailConfirmation,
+                issued.Code!,
+                CodeLifetimeMinutes,
+                ct);
         }
     }
 }

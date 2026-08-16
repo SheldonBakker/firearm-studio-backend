@@ -82,6 +82,27 @@ public sealed class OtpService(
         return new OtpIssueResult(OtpIssueStatus.Issued, plaintext, RetryAfter: null);
     }
 
+    public async Task InvalidateAsync(Guid userId, OtpPurpose purpose, CancellationToken ct)
+    {
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+
+        var outstanding = await db.OtpCodes
+            .Where(c => c.UserId == userId && c.Purpose == purpose && c.ConsumedAt == null)
+            .ToListAsync(ct);
+
+        if (outstanding.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var code in outstanding)
+        {
+            code.ConsumedAt = now;
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task<OtpVerifyResult> VerifyAsync(
         Guid userId,
         OtpPurpose purpose,

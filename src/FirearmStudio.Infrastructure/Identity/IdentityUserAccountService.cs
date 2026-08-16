@@ -98,6 +98,78 @@ public sealed class IdentityUserAccountService(UserManager<AppIdentityUser> user
         return [];
     }
 
+    public async Task SetTwoFactorEnabledAsync(Guid userId, bool enabled, CancellationToken ct)
+    {
+        var user = await users.FindByIdAsync(userId.ToString());
+        if (user is null)
+        {
+            return;
+        }
+
+        user.TwoFactorEnabled = enabled;
+        await users.UpdateAsync(user);
+    }
+
+    public async Task SetPhoneNumberAsync(Guid userId, string? phoneE164, bool confirmed, CancellationToken ct)
+    {
+        var user = await users.FindByIdAsync(userId.ToString());
+        if (user is null)
+        {
+            return;
+        }
+
+        user.PhoneNumber = phoneE164;
+        user.PhoneNumberConfirmed = confirmed && phoneE164 is not null;
+        await users.UpdateAsync(user);
+    }
+
+    public async Task SetPendingPhoneNumberAsync(Guid userId, string phoneE164, CancellationToken ct)
+    {
+        var user = await users.FindByIdAsync(userId.ToString());
+        if (user is null)
+        {
+            return;
+        }
+
+        user.PendingPhoneNumber = phoneE164;
+        await users.UpdateAsync(user);
+    }
+
+    public async Task ClearPendingPhoneNumberAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await users.FindByIdAsync(userId.ToString());
+        if (user is null || user.PendingPhoneNumber is null)
+        {
+            return;
+        }
+
+        user.PendingPhoneNumber = null;
+        await users.UpdateAsync(user);
+    }
+
+    public async Task<string?> ConfirmPhoneChangeAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await users.FindByIdAsync(userId.ToString());
+        if (user is null || string.IsNullOrEmpty(user.PendingPhoneNumber))
+        {
+            return null;
+        }
+
+        var promoted = user.PendingPhoneNumber;
+        user.PhoneNumber = promoted;
+        user.PhoneNumberConfirmed = true;
+        user.PendingPhoneNumber = null;
+        await users.UpdateAsync(user);
+        return promoted;
+    }
+
     private static UserAccount Map(AppIdentityUser user) =>
-        new(user.Id, user.Email!, user.EmailConfirmed);
+        new(
+            user.Id,
+            user.Email!,
+            user.EmailConfirmed,
+            user.TwoFactorEnabled,
+            user.PhoneNumber,
+            user.PhoneNumberConfirmed,
+            user.PendingPhoneNumber);
 }
