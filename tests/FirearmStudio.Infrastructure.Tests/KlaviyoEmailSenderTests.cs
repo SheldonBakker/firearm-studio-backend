@@ -7,7 +7,7 @@ namespace FirearmStudio.Infrastructure.Tests;
 
 public sealed class KlaviyoEmailSenderTests
 {
-    private sealed class FakeKlaviyoClient : IKlaviyoClient
+    private sealed class FakeKlaviyoClient : ICustomerEngagementClient
     {
         public string? Metric { get; private set; }
         public string? Email { get; private set; }

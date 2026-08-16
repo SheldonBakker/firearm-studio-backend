@@ -2,7 +2,7 @@ using FirearmStudio.Domain.Common;
 
 namespace FirearmStudio.Domain.Entities;
 
-public sealed class SageConnection : BaseEntity, ITenantEntity
+public sealed class AccountingConnection : BaseEntity, ITenantEntity
 {
     public Guid CompanyId { get; set; }
 

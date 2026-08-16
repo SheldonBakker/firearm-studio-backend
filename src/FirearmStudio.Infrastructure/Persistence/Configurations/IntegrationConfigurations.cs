@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FirearmStudio.Infrastructure.Persistence.Configurations;
 
-internal sealed class SageConnectionConfiguration : IEntityTypeConfiguration<SageConnection>
+internal sealed class AccountingConnectionConfiguration : IEntityTypeConfiguration<AccountingConnection>
 {
-    public void Configure(EntityTypeBuilder<SageConnection> builder)
+    public void Configure(EntityTypeBuilder<AccountingConnection> builder)
     {
         builder.ConfigureTenant();
 
@@ -18,7 +18,7 @@ internal sealed class SageConnectionConfiguration : IEntityTypeConfiguration<Sag
         builder.HasIndex(x => x.CompanyId).IsUnique();
 
         builder.ToTable(table => table.HasCheckConstraint(
-            "ck_sage_connections_sage_company_id",
+            "ck_accounting_connections_sage_company_id",
             "sage_company_id > 0"));
     }
 }

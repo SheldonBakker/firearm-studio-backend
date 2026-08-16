@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
-using FirearmStudio.Application.Abstractions;
-using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Enums;
+using FirearmStudio.Infrastructure.Options;
 
 namespace FirearmStudio.Infrastructure.Services;
 

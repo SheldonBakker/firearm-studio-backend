@@ -7,8 +7,8 @@ using Microsoft.Extensions.Logging;
 namespace FirearmStudio.Application.Contact.SubmitContactForm;
 
 public sealed class SubmitContactFormCommandHandler(
-    IKlaviyoClient klaviyo,
-    KlaviyoSettings settings,
+    ICustomerEngagementClient engagement,
+    CustomerEngagementSettings settings,
     ILogger<SubmitContactFormCommandHandler> logger)
     : ICommandHandler<SubmitContactFormCommand, ErrorOr<Success>>
 {
@@ -26,17 +26,17 @@ public sealed class SubmitContactFormCommandHandler(
         {
             try
             {
-                await klaviyo.SubscribeProfileAsync(settings.ContactListId, request.Email, cancellationToken);
+                await engagement.SubscribeProfileAsync(settings.ContactListId, request.Email, cancellationToken);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to subscribe contact {Email} to the Klaviyo list.", request.Email);
+                logger.LogError(ex, "Failed to subscribe contact {Email} to the engagement list.", request.Email);
             }
         }
 
         try
         {
-            await klaviyo.TrackEventAsync(
+            await engagement.TrackEventAsync(
                 settings.ContactMetricName,
                 request.Email,
                 request.FullName,
@@ -45,7 +45,7 @@ public sealed class SubmitContactFormCommandHandler(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to send contact form submission to Klaviyo for {Email}.", request.Email);
+            logger.LogError(ex, "Failed to send the contact-form engagement event for {Email}.", request.Email);
         }
 
         return Result.Success;

@@ -1,6 +1,6 @@
 namespace FirearmStudio.Application.Abstractions;
 
-public interface IKlaviyoClient
+public interface ICustomerEngagementClient
 {
     Task TrackEventAsync(
         string metricName,

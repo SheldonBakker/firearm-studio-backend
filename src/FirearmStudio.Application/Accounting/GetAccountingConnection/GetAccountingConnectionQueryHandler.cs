@@ -3,15 +3,15 @@ using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
 using Microsoft.EntityFrameworkCore;
 
-namespace FirearmStudio.Application.Sage.GetSageConnection;
+namespace FirearmStudio.Application.Accounting.GetAccountingConnection;
 
-public sealed class GetSageConnectionQueryHandler(
+public sealed class GetAccountingConnectionQueryHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUserService)
-    : IQueryHandler<GetSageConnectionQuery, ErrorOr<SageConnectionDetailsResponse?>>
+    : IQueryHandler<GetAccountingConnectionQuery, ErrorOr<AccountingConnectionDetailsResponse?>>
 {
-    public async Task<ErrorOr<SageConnectionDetailsResponse?>> Handle(
-        GetSageConnectionQuery query,
+    public async Task<ErrorOr<AccountingConnectionDetailsResponse?>> Handle(
+        GetAccountingConnectionQuery query,
         CancellationToken cancellationToken)
     {
         if (currentUserService.User.CompanyId is not { } companyId)
@@ -21,7 +21,7 @@ public sealed class GetSageConnectionQueryHandler(
                 "The authenticated session is not associated with a company.");
         }
 
-        var connection = await db.SageConnections
+        var connection = await db.AccountingConnections
             .AsNoTracking()
             .Where(x => x.CompanyId == companyId)
             .Select(x => new
@@ -41,8 +41,8 @@ public sealed class GetSageConnectionQueryHandler(
             .FirstOrDefaultAsync(cancellationToken);
 
         return connection is null
-            ? (SageConnectionDetailsResponse?)null
-            : new SageConnectionDetailsResponse(
+            ? (AccountingConnectionDetailsResponse?)null
+            : new AccountingConnectionDetailsResponse(
                 connection.Id,
                 connection.CompanyId,
                 connection.ApiKeyCiphertext is not null,
@@ -58,6 +58,6 @@ public sealed class GetSageConnectionQueryHandler(
 
     public static class ErrorCodes
     {
-        public const string CompanyContextRequired = "GetSageConnectionQuery.CompanyContextRequired";
+        public const string CompanyContextRequired = "GetAccountingConnectionQuery.CompanyContextRequired";
     }
 }

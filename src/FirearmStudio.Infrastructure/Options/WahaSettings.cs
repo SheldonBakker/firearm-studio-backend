@@ -1,4 +1,4 @@
-namespace FirearmStudio.Application.Model.Options;
+namespace FirearmStudio.Infrastructure.Options;
 
 public sealed class WahaSettings
 {

@@ -102,7 +102,7 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
             }));
 
-    options.AddPolicy("sage-register", context =>
+    options.AddPolicy("accounting-register", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.User.FindFirst(AppClaimTypes.CompanyId)?.Value
             ?? context.User.FindFirst(AppClaimTypes.Subject)?.Value

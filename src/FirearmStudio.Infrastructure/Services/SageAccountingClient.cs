@@ -13,15 +13,15 @@ namespace FirearmStudio.Infrastructure.Services;
 
 public sealed class SageAccountingClient(
     HttpClient httpClient,
-    ILogger<SageAccountingClient> logger) : ISageAccountingClient
+    ILogger<SageAccountingClient> logger) : IAccountingConnectionValidator
 {
     private static readonly JsonSerializerOptions SageJsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = null,
     };
 
-    public async Task<ErrorOr<SageCompanySummary>> ValidateConnectionAsync(
-        SageCredentials credentials,
+    public async Task<ErrorOr<AccountingCompanySummary>> ValidateConnectionAsync(
+        AccountingCredentials credentials,
         CancellationToken cancellationToken)
     {
         try
@@ -46,7 +46,7 @@ public sealed class SageAccountingClient(
     }
 
     private async Task<ErrorOr<Success>> ValidateLoginAsync(
-        SageCredentials credentials,
+        AccountingCredentials credentials,
         CancellationToken cancellationToken)
     {
         var path = QueryHelpers.AddQueryString(
@@ -71,8 +71,8 @@ public sealed class SageAccountingClient(
             : Error.Validation(ErrorCodes.InvalidCredentials, "Sage rejected the supplied username or password.");
     }
 
-    private async Task<ErrorOr<SageCompanySummary>> ValidateCompanyAsync(
-        SageCredentials credentials,
+    private async Task<ErrorOr<AccountingCompanySummary>> ValidateCompanyAsync(
+        AccountingCredentials credentials,
         CancellationToken cancellationToken)
     {
         var path = QueryHelpers.AddQueryString(
@@ -110,10 +110,10 @@ public sealed class SageAccountingClient(
                 "Sage returned the company without a valid name.");
         }
 
-        return new SageCompanySummary(company.ID, company.Name);
+        return new AccountingCompanySummary(company.ID, company.Name);
     }
 
-    private static AuthenticationHeaderValue BuildBasicAuthorizationHeader(SageCredentials credentials)
+    private static AuthenticationHeaderValue BuildBasicAuthorizationHeader(AccountingCredentials credentials)
     {
         var rawCredentials = $"{credentials.Username}:{credentials.Password}";
         var encodedCredentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(rawCredentials));

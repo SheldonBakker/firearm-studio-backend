@@ -4,17 +4,17 @@ using FirearmStudio.Application.Abstractions.Messaging;
 using FirearmStudio.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace FirearmStudio.Application.Sage.RegisterSageConnection;
+namespace FirearmStudio.Application.Accounting.RegisterAccountingConnection;
 
-public sealed class RegisterSageConnectionCommandHandler(
+public sealed class RegisterAccountingConnectionCommandHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUserService,
-    ISageAccountingClient sageAccountingClient,
+    IAccountingConnectionValidator accountingConnectionValidator,
     ICredentialProtector credentialProtector)
-    : ICommandHandler<RegisterSageConnectionCommand, ErrorOr<SageConnectionResponse>>
+    : ICommandHandler<RegisterAccountingConnectionCommand, ErrorOr<AccountingConnectionResponse>>
 {
-    public async Task<ErrorOr<SageConnectionResponse>> Handle(
-        RegisterSageConnectionCommand command,
+    public async Task<ErrorOr<AccountingConnectionResponse>> Handle(
+        RegisterAccountingConnectionCommand command,
         CancellationToken cancellationToken)
     {
         if (!currentUserService.User.IsAuthenticated)
@@ -28,56 +28,56 @@ public sealed class RegisterSageConnectionCommandHandler(
         }
 
         var request = command.Request;
-        var credentials = new SageCredentials(
+        var credentials = new AccountingCredentials(
             request.ApiKey,
             request.Username,
             request.Password,
             request.SageCompanyId);
 
-        var sageCompanyResult = await sageAccountingClient.ValidateConnectionAsync(credentials, cancellationToken);
-        if (sageCompanyResult.IsError)
+        var accountingCompanyResult = await accountingConnectionValidator.ValidateConnectionAsync(credentials, cancellationToken);
+        if (accountingCompanyResult.IsError)
         {
-            return sageCompanyResult.Errors;
+            return accountingCompanyResult.Errors;
         }
 
-        var sageCompany = sageCompanyResult.Value;
+        var accountingCompany = accountingCompanyResult.Value;
         var validatedAt = DateTime.UtcNow;
         var apiKeyCiphertext = credentialProtector.Protect(request.ApiKey);
         var usernameCiphertext = credentialProtector.Protect(request.Username);
         var passwordCiphertext = credentialProtector.Protect(request.Password);
 
-        var connection = await db.SageConnections
+        var connection = await db.AccountingConnections
             .FirstOrDefaultAsync(x => x.CompanyId == companyId, cancellationToken);
 
         if (connection is null)
         {
-            connection = new SageConnection
+            connection = new AccountingConnection
             {
                 ApiKeyCiphertext = apiKeyCiphertext,
                 UsernameCiphertext = usernameCiphertext,
                 PasswordCiphertext = passwordCiphertext,
-                SageCompanyId = sageCompany.Id,
-                SageCompanyName = sageCompany.Name,
+                SageCompanyId = accountingCompany.Id,
+                SageCompanyName = accountingCompany.Name,
                 LastValidatedAt = validatedAt,
                 LastRegisteredByAuthUserId = currentUserService.User.Id,
             };
 
-            db.SageConnections.Add(connection);
+            db.AccountingConnections.Add(connection);
         }
         else
         {
             connection.ApiKeyCiphertext = apiKeyCiphertext;
             connection.UsernameCiphertext = usernameCiphertext;
             connection.PasswordCiphertext = passwordCiphertext;
-            connection.SageCompanyId = sageCompany.Id;
-            connection.SageCompanyName = sageCompany.Name;
+            connection.SageCompanyId = accountingCompany.Id;
+            connection.SageCompanyName = accountingCompany.Name;
             connection.LastValidatedAt = validatedAt;
             connection.LastRegisteredByAuthUserId = currentUserService.User.Id;
         }
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return new SageConnectionResponse(
+        return new AccountingConnectionResponse(
             Connected: true,
             SageCompanyId: connection.SageCompanyId,
             SageCompanyName: connection.SageCompanyName,
@@ -86,7 +86,7 @@ public sealed class RegisterSageConnectionCommandHandler(
 
     public static class ErrorCodes
     {
-        public const string Unauthorized = "RegisterSageConnectionCommand.Unauthorized";
-        public const string CompanyNotFound = "RegisterSageConnectionCommand.CompanyNotFound";
+        public const string Unauthorized = "RegisterAccountingConnectionCommand.Unauthorized";
+        public const string CompanyNotFound = "RegisterAccountingConnectionCommand.CompanyNotFound";
     }
 }

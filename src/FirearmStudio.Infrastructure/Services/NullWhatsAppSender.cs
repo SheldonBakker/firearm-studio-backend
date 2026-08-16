@@ -1,4 +1,3 @@
-using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Infrastructure.Services;

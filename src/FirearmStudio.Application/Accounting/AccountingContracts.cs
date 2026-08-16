@@ -1,18 +1,18 @@
-namespace FirearmStudio.Application.Sage;
+namespace FirearmStudio.Application.Accounting;
 
-public sealed record RegisterSageConnectionRequest(
+public sealed record RegisterAccountingConnectionRequest(
     string ApiKey,
     string Username,
     string Password,
     int SageCompanyId);
 
-public sealed record SageConnectionResponse(
+public sealed record AccountingConnectionResponse(
     bool Connected,
     int SageCompanyId,
     string SageCompanyName,
     DateTime LastValidatedAt);
 
-public sealed record SageConnectionDetailsResponse(
+public sealed record AccountingConnectionDetailsResponse(
     Guid Id,
     Guid CompanyId,
     bool ApiKey,

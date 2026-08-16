@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Infrastructure.Identity;
+using FirearmStudio.Infrastructure.Options;
 using FirearmStudio.Infrastructure.Persistence;
 using FirearmStudio.Infrastructure.Persistence.Interceptors;
 using FirearmStudio.Infrastructure.Services;
@@ -84,7 +85,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailSender, KlaviyoEmailSender>();
         services.AddScoped<IOtpDispatcher, OtpDispatcher>();
 
-        AddKlaviyo(services, configuration);
+        AddCustomerEngagement(services, configuration);
         AddWhatsApp(services, configuration);
         AddNotificationSettings(services, configuration);
         AddSageAccounting(services);
@@ -92,7 +93,7 @@ public static class DependencyInjection
         return services;
     }
 
-    private static void AddKlaviyo(IServiceCollection services, IConfiguration configuration)
+    private static void AddCustomerEngagement(IServiceCollection services, IConfiguration configuration)
     {
         var settings = configuration.GetSection(KlaviyoSettings.SectionName).Get<KlaviyoSettings>()
             ?? new KlaviyoSettings();
@@ -117,7 +118,14 @@ public static class DependencyInjection
 
         services.AddSingleton(settings);
 
-        services.AddHttpClient<IKlaviyoClient, KlaviyoClient>(client =>
+        var engagementSettings = configuration
+            .GetSection(CustomerEngagementSettings.SectionName)
+            .Get<CustomerEngagementSettings>()
+            ?? new CustomerEngagementSettings();
+
+        services.AddSingleton(engagementSettings);
+
+        services.AddHttpClient<ICustomerEngagementClient, KlaviyoClient>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(10);
             client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
@@ -215,7 +223,7 @@ public static class DependencyInjection
 
     private static void AddSageAccounting(IServiceCollection services)
     {
-        services.AddHttpClient<ISageAccountingClient, SageAccountingClient>(client =>
+        services.AddHttpClient<IAccountingConnectionValidator, SageAccountingClient>(client =>
         {
             client.Timeout = SageAccountingTimeout;
             client.BaseAddress = new Uri(SageAccountingBaseUrl + "/");

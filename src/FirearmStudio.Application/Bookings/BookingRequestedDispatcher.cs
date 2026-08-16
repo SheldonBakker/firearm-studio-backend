@@ -6,8 +6,8 @@ using Microsoft.Extensions.Logging;
 namespace FirearmStudio.Application.Bookings;
 
 internal sealed class BookingRequestedDispatcher(
-    IKlaviyoClient klaviyo,
-    KlaviyoSettings settings,
+    ICustomerEngagementClient engagement,
+    CustomerEngagementSettings settings,
     ILogger<BookingRequestedDispatcher> logger) : IBookingRequestedDispatcher
 {
     public async Task DispatchAsync(string payloadJson, CancellationToken cancellationToken)
@@ -18,7 +18,7 @@ internal sealed class BookingRequestedDispatcher(
         var properties = BookingRequestedNotifier.BuildProperties(payload);
 
         await BookingRequestedNotifier.SendAsync(
-            klaviyo,
+            engagement,
             settings,
             logger,
             payload.Email,

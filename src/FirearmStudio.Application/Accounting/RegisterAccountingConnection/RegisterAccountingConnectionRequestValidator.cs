@@ -1,10 +1,10 @@
 using FluentValidation;
 
-namespace FirearmStudio.Application.Sage.RegisterSageConnection;
+namespace FirearmStudio.Application.Accounting.RegisterAccountingConnection;
 
-public sealed class RegisterSageConnectionRequestValidator : AbstractValidator<RegisterSageConnectionRequest>
+public sealed class RegisterAccountingConnectionRequestValidator : AbstractValidator<RegisterAccountingConnectionRequest>
 {
-    public RegisterSageConnectionRequestValidator()
+    public RegisterAccountingConnectionRequestValidator()
     {
         RuleFor(request => request.ApiKey)
             .NotEmpty()

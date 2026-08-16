@@ -3,7 +3,7 @@ using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Infrastructure.Services;
 
-public sealed class KlaviyoEmailSender(IKlaviyoClient klaviyo) : IEmailSender
+public sealed class KlaviyoEmailSender(ICustomerEngagementClient klaviyo) : IEmailSender
 {
     public Task SendOtpAsync(
         string email,

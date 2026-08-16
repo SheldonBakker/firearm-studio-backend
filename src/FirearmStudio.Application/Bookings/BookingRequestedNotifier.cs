@@ -7,8 +7,8 @@ namespace FirearmStudio.Application.Bookings;
 internal static class BookingRequestedNotifier
 {
     internal static async Task SendAsync(
-        IKlaviyoClient klaviyo,
-        KlaviyoSettings settings,
+        ICustomerEngagementClient engagement,
+        CustomerEngagementSettings settings,
         ILogger logger,
         string email,
         string? name,
@@ -19,12 +19,12 @@ internal static class BookingRequestedNotifier
         if (string.IsNullOrWhiteSpace(email))
         {
             logger.LogWarning(
-                "Skipped Klaviyo booking-requested event ({LogContext}): customer has no email.",
+                "Skipped booking-requested engagement event ({LogContext}): customer has no email.",
                 logContext);
             return;
         }
 
-        await klaviyo.TrackEventAsync(
+        await engagement.TrackEventAsync(
             settings.BookingRequestedMetricName,
             email,
             name,

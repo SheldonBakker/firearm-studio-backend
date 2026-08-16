@@ -1,12 +1,11 @@
 using FirearmStudio.Domain.Enums;
 
-namespace FirearmStudio.Application.Abstractions;
+namespace FirearmStudio.Infrastructure.Services;
 
-public interface IEmailSender
+public interface IWhatsAppSender
 {
     Task SendOtpAsync(
-        string email,
-        string? name,
+        string phoneE164,
         OtpPurpose purpose,
         string code,
         int expiresInMinutes,

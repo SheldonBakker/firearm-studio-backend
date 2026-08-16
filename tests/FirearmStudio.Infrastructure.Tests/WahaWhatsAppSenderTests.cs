@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text.Json;
-using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Enums;
+using FirearmStudio.Infrastructure.Options;
 using FirearmStudio.Infrastructure.Services;
 using Xunit;
 

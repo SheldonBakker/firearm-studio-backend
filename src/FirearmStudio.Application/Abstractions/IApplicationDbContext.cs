@@ -23,7 +23,7 @@ public interface IApplicationDbContext
     DbSet<PackageItem> PackageItems { get; }
     DbSet<Booking> Bookings { get; }
     DbSet<BookingAttendee> BookingAttendees { get; }
-    DbSet<SageConnection> SageConnections { get; }
+    DbSet<AccountingConnection> AccountingConnections { get; }
     DbSet<OutboxMessage> OutboxMessages { get; }
 
     DbSet<TEntity> Set<TEntity>() where TEntity : class;
