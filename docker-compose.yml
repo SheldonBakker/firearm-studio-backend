@@ -13,5 +13,11 @@ services:
       KlaviyoSettings__ApiKey: ${KlaviyoSettings__ApiKey}
       CredentialProtectionSettings__Key: ${CredentialProtectionSettings__Key}
       NotificationSettings__PublicBaseUrl: ${NotificationSettings__PublicBaseUrl}
+
+      WahaSettings__Enabled: ${WahaSettings__Enabled:-false}
+      WahaSettings__BaseUrl: ${WahaSettings__BaseUrl:-}
+      WahaSettings__SessionId: ${WahaSettings__SessionId:-}
+      WahaSettings__ApiKey: ${WahaSettings__ApiKey:-}
+      WahaSettings__TimeoutSeconds: ${WahaSettings__TimeoutSeconds:-10}
     ports:
       - "5146:5146"
