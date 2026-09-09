@@ -56,7 +56,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     }
 });
 
-builder.Services.AddHealthChecks();
+builder.Services.AddAppHealthChecks();
 
 builder.Services
     .AddWebApi()
@@ -167,7 +167,7 @@ app.UseOutputCache();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthEndpoints();
 
 app.Run();
 
