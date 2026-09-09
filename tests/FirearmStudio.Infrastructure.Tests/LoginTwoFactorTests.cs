@@ -30,10 +30,7 @@ public sealed class LoginTwoFactorTests
             TwoFactorCall = (userId, enabled);
             return Task.CompletedTask;
         }
-        public Task SetPhoneNumberAsync(Guid userId, string? phoneE164, bool confirmed, CancellationToken ct) => Task.CompletedTask;
-        public Task SetPendingPhoneNumberAsync(Guid userId, string phoneE164, CancellationToken ct) => Task.CompletedTask;
-        public Task ClearPendingPhoneNumberAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
-        public Task<string?> ConfirmPhoneChangeAsync(Guid userId, CancellationToken ct) => Task.FromResult<string?>(null);
+        public Task SetPhoneNumberAsync(Guid userId, string? phoneE164, CancellationToken ct) => Task.CompletedTask;
     }
 
     internal sealed class FakeTokens : ITokenService
@@ -101,8 +98,8 @@ public sealed class LoginTwoFactorTests
         }
     }
 
-    private static UserAccount Account(bool twoFactor, bool emailConfirmed = true, bool phoneConfirmed = true) =>
-        new(Guid.NewGuid(), "user@example.com", emailConfirmed, twoFactor, "+27820000001", phoneConfirmed, null);
+    private static UserAccount Account(bool twoFactor, bool emailConfirmed = true) =>
+        new(Guid.NewGuid(), "user@example.com", emailConfirmed, twoFactor, "+27820000001");
 
     private static LoginCommandHandler Build(FakeAccounts accounts, FakeTokens tokens, FakeOtp otp, RecordingDispatcher dispatcher) =>
         new(accounts, tokens, otp, dispatcher);
@@ -143,24 +140,7 @@ public sealed class LoginTwoFactorTests
         Assert.Equal(1, otp.IssueCalls);
         Assert.Equal(1, dispatcher.Calls);
         Assert.Equal(OtpPurpose.TwoFactor, dispatcher.Purpose);
-        Assert.Equal("+27820000001", dispatcher.Recipient!.PhoneNumber);
-    }
-
-    [Fact]
-    public async Task Two_factor_on_with_an_unconfirmed_phone_dispatches_a_null_phone()
-    {
-        var accounts = new FakeAccounts { Account = Account(twoFactor: true, phoneConfirmed: false) };
-        var tokens = new FakeTokens { PreAuthToken = "the-pre-auth" };
-        var otp = new FakeOtp();
-        var dispatcher = new RecordingDispatcher();
-
-        var result = await Build(accounts, tokens, otp, dispatcher).Handle(
-            new LoginCommand(new LoginRequest("user@example.com", "pw")), default);
-
-        Assert.False(result.IsError);
-        Assert.Equal(1, dispatcher.Calls);
-        Assert.Null(dispatcher.Recipient!.PhoneNumber);
-        Assert.Equal("user@example.com", dispatcher.Recipient.Email);
+        Assert.Equal("user@example.com", dispatcher.Recipient!.Email);
     }
 
     [Fact]

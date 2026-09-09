@@ -17,10 +17,7 @@ public sealed class ForgotPasswordPhoneConfirmationTests
         public Task ConfirmEmailAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
         public Task<IReadOnlyList<string>> SetPasswordAsync(Guid userId, string newPassword, CancellationToken ct) => throw new NotSupportedException();
         public Task SetTwoFactorEnabledAsync(Guid userId, bool enabled, CancellationToken ct) => Task.CompletedTask;
-        public Task SetPhoneNumberAsync(Guid userId, string? phoneE164, bool confirmed, CancellationToken ct) => Task.CompletedTask;
-        public Task SetPendingPhoneNumberAsync(Guid userId, string phoneE164, CancellationToken ct) => Task.CompletedTask;
-        public Task ClearPendingPhoneNumberAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
-        public Task<string?> ConfirmPhoneChangeAsync(Guid userId, CancellationToken ct) => Task.FromResult<string?>(null);
+        public Task SetPhoneNumberAsync(Guid userId, string? phoneE164, CancellationToken ct) => Task.CompletedTask;
     }
 
     private sealed class FakeOtp : IOtpService
@@ -43,37 +40,21 @@ public sealed class ForgotPasswordPhoneConfirmationTests
         }
     }
 
-    private static UserAccount Account(bool phoneConfirmed) =>
-        new(Guid.NewGuid(), "user@example.com", true, false, "+27820000001", phoneConfirmed, null);
+    private static UserAccount Account() =>
+        new(Guid.NewGuid(), "user@example.com", true, false, "+27820000001");
 
     [Fact]
-    public async Task Confirmed_phone_receives_the_password_reset_code()
+    public async Task Known_account_receives_the_password_reset_code_by_email()
     {
         var dispatcher = new RecordingDispatcher();
         var handler = new ForgotPasswordCommandHandler(
-            new FakeAccounts(Account(phoneConfirmed: true)), new FakeOtp(), dispatcher);
+            new FakeAccounts(Account()), new FakeOtp(), dispatcher);
 
         var result = await handler.Handle(
             new ForgotPasswordCommand(new ForgotPasswordRequest("user@example.com")), default);
 
         Assert.False(result.IsError);
         Assert.Equal(1, dispatcher.Calls);
-        Assert.Equal("+27820000001", dispatcher.Recipient!.PhoneNumber);
-    }
-
-    [Fact]
-    public async Task Unconfirmed_phone_dispatches_a_null_phone_but_still_sends_the_email()
-    {
-        var dispatcher = new RecordingDispatcher();
-        var handler = new ForgotPasswordCommandHandler(
-            new FakeAccounts(Account(phoneConfirmed: false)), new FakeOtp(), dispatcher);
-
-        var result = await handler.Handle(
-            new ForgotPasswordCommand(new ForgotPasswordRequest("user@example.com")), default);
-
-        Assert.False(result.IsError);
-        Assert.Equal(1, dispatcher.Calls);
-        Assert.Null(dispatcher.Recipient!.PhoneNumber);
-        Assert.Equal("user@example.com", dispatcher.Recipient.Email);
+        Assert.Equal("user@example.com", dispatcher.Recipient!.Email);
     }
 }

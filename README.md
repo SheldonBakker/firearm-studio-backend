@@ -12,7 +12,7 @@ and assigns `manager` / `staff` / `viewer` roles. One company can never see anot
 
 .NET 10, ASP.NET Core, EF Core 10 with Npgsql, ASP.NET Core Identity, FluentValidation, ErrorOr,
 Serilog. Auth is HS256 access tokens plus rotating refresh tokens, with one-time codes delivered by
-email (Klaviyo) and, where a verified number exists, WhatsApp.
+email (Klaviyo).
 
 ## Architecture
 
@@ -57,7 +57,6 @@ the `Section__Key` double-underscore convention.
 | `ApiKeySettings__Key` | Shared secret required on every `/api/*` request. |
 | `CredentialProtectionSettings__Key` | Base64 32-byte key encrypting stored external credentials. |
 | `KlaviyoSettings__ApiKey`, `KlaviyoSettings__ContactListId` | Transactional email. |
-| `WahaSettings__*` | WhatsApp OTP delivery via a self-hosted WAHA instance. Set `Enabled=false` to disable. |
 | `ForwardedHeaders__KnownNetworks__0` | Reverse-proxy or tunnel network to trust. Required for per-IP rate limiting to work. |
 | `NotificationSettings__PublicBaseUrl` | Public origin for absolute links in notification emails. |
 
@@ -76,9 +75,6 @@ created after it started.
 ```bash
 dotnet ef database update -p src/FirearmStudio.Infrastructure -s src/FirearmStudio.WebApi
 ```
-
-If `WahaSettings__Enabled` is true, all of `BaseUrl`, `SessionId` and `ApiKey` must be set or the
-application refuses to start outside Development.
 
 ## Tests
 

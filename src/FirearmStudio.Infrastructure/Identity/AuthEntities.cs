@@ -5,7 +5,6 @@ namespace FirearmStudio.Infrastructure.Identity;
 
 public sealed class AppIdentityUser : IdentityUser<Guid>
 {
-    public string? PendingPhoneNumber { get; set; }
 }
 
 public sealed class RefreshToken

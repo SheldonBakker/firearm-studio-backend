@@ -8,11 +8,10 @@ namespace FirearmStudio.Infrastructure.Tests;
 public sealed class DataModelAdditionsTests
 {
     [Fact]
-    public void OtpPurpose_has_the_two_new_purposes_appended()
+    public void OtpPurpose_has_four_values_and_TwoFactor_is_last()
     {
         Assert.Equal(3, (int)OtpPurpose.TwoFactor);
-        Assert.Equal(4, (int)OtpPurpose.PhoneChange);
-        Assert.Equal(5, Enum.GetValues<OtpPurpose>().Length);
+        Assert.Equal(4, Enum.GetValues<OtpPurpose>().Length);
     }
 
     [Fact]

@@ -28,7 +28,6 @@ public sealed class AuthDbContext(DbContextOptions<AuthDbContext> options)
             entity.Property(u => u.NormalizedEmail).HasMaxLength(320).IsRequired();
             entity.Property(u => u.UserName).HasMaxLength(320);
             entity.Property(u => u.NormalizedUserName).HasMaxLength(320);
-            entity.Property(u => u.PendingPhoneNumber).HasMaxLength(20);
         });
 
         builder.Entity<RefreshToken>(entity =>

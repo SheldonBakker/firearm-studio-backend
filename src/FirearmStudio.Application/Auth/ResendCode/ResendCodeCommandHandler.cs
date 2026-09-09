@@ -38,29 +38,12 @@ public sealed class ResendCodeCommandHandler(
             return Result.Success;
         }
 
-        string? destinationPhone;
-        if (purpose == OtpPurpose.PhoneChange)
-        {
-            if (string.IsNullOrEmpty(account.PendingPhoneNumber))
-            {
-                return Error.Validation(
-                    AuthErrorCodes.PhoneMissing,
-                    "There is no phone change in progress to resend a code for.");
-            }
-
-            destinationPhone = account.PendingPhoneNumber;
-        }
-        else
-        {
-            destinationPhone = account.PhoneNumberConfirmed ? account.PhoneNumber : null;
-        }
-
         var issued = await otp.IssueAsync(account.Id, purpose, cancellationToken);
 
         if (issued.Status == OtpIssueStatus.Issued)
         {
             await dispatcher.SendAsync(
-                new OtpRecipient(address, null, destinationPhone),
+                new OtpRecipient(address, null),
                 purpose,
                 issued.Code!,
                 OtpConstants.CodeLifetimeMinutes,
@@ -71,5 +54,5 @@ public sealed class ResendCodeCommandHandler(
     }
 
     private static bool IsResendableAnonymously(OtpPurpose purpose) =>
-        purpose is not (OtpPurpose.TwoFactor or OtpPurpose.PhoneChange);
+        purpose is not OtpPurpose.TwoFactor;
 }

@@ -15,10 +15,7 @@ public sealed class GetCurrentUserTests
         public Task ConfirmEmailAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
         public Task<IReadOnlyList<string>> SetPasswordAsync(Guid userId, string newPassword, CancellationToken ct) => throw new NotSupportedException();
         public Task SetTwoFactorEnabledAsync(Guid userId, bool enabled, CancellationToken ct) => Task.CompletedTask;
-        public Task SetPhoneNumberAsync(Guid userId, string? phoneE164, bool confirmed, CancellationToken ct) => Task.CompletedTask;
-        public Task SetPendingPhoneNumberAsync(Guid userId, string phoneE164, CancellationToken ct) => Task.CompletedTask;
-        public Task ClearPendingPhoneNumberAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
-        public Task<string?> ConfirmPhoneChangeAsync(Guid userId, CancellationToken ct) => Task.FromResult<string?>(null);
+        public Task SetPhoneNumberAsync(Guid userId, string? phoneE164, CancellationToken ct) => Task.CompletedTask;
     }
 
     private sealed class FakeCurrentUser(CurrentUser user) : ICurrentUserService
@@ -35,10 +32,10 @@ public sealed class GetCurrentUserTests
     };
 
     [Fact]
-    public async Task Two_factor_enabled_with_confirmed_phone_and_no_pending_change_reports_all_fields()
+    public async Task Two_factor_enabled_with_phone_number_reports_all_fields()
     {
         var userId = Guid.NewGuid();
-        var account = new UserAccount(userId, "user@example.com", true, true, "+27820000001", true, null);
+        var account = new UserAccount(userId, "user@example.com", true, true, "+27820000001");
         var handler = new GetCurrentUserQueryHandler(
             new FakeCurrentUser(Principal(userId, "user@example.com", "Admin")),
             new FakeAccounts(account));
@@ -48,32 +45,13 @@ public sealed class GetCurrentUserTests
         Assert.False(result.IsError);
         Assert.True(result.Value.TwoFactorEnabled);
         Assert.Equal("+27820000001", result.Value.PhoneNumber);
-        Assert.True(result.Value.PhoneNumberConfirmed);
-        Assert.Null(result.Value.PendingPhoneNumber);
     }
 
     [Fact]
-    public async Task Mid_phone_change_reports_the_pending_number_alongside_the_still_current_confirmed_number()
+    public async Task No_phone_on_file_reports_null()
     {
         var userId = Guid.NewGuid();
-        var account = new UserAccount(userId, "user@example.com", true, false, "+27820000001", true, "+27820000002");
-        var handler = new GetCurrentUserQueryHandler(
-            new FakeCurrentUser(Principal(userId, "user@example.com")),
-            new FakeAccounts(account));
-
-        var result = await handler.Handle(new GetCurrentUserQuery(), default);
-
-        Assert.False(result.IsError);
-        Assert.Equal("+27820000001", result.Value.PhoneNumber);
-        Assert.True(result.Value.PhoneNumberConfirmed);
-        Assert.Equal("+27820000002", result.Value.PendingPhoneNumber);
-    }
-
-    [Fact]
-    public async Task No_phone_on_file_reports_nulls_and_false_not_empty_strings()
-    {
-        var userId = Guid.NewGuid();
-        var account = new UserAccount(userId, "user@example.com", true, false, null, false, null);
+        var account = new UserAccount(userId, "user@example.com", true, false, null);
         var handler = new GetCurrentUserQueryHandler(
             new FakeCurrentUser(Principal(userId, "user@example.com")),
             new FakeAccounts(account));
@@ -83,15 +61,13 @@ public sealed class GetCurrentUserTests
         Assert.False(result.IsError);
         Assert.False(result.Value.TwoFactorEnabled);
         Assert.Null(result.Value.PhoneNumber);
-        Assert.False(result.Value.PhoneNumberConfirmed);
-        Assert.Null(result.Value.PendingPhoneNumber);
     }
 
     [Fact]
     public async Task Existing_consumers_still_see_id_email_and_roles_unchanged()
     {
         var userId = Guid.NewGuid();
-        var account = new UserAccount(userId, "user@example.com", true, true, "+27820000001", true, null);
+        var account = new UserAccount(userId, "user@example.com", true, true, "+27820000001");
         var handler = new GetCurrentUserQueryHandler(
             new FakeCurrentUser(Principal(userId, "user@example.com", "Admin", "Owner")),
             new FakeAccounts(account));

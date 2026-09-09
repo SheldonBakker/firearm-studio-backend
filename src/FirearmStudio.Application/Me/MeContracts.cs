@@ -5,8 +5,6 @@ public sealed record CurrentUserResponse(
     string? Email,
     IReadOnlyList<string> Roles,
     bool TwoFactorEnabled,
-    string? PhoneNumber,
-    bool PhoneNumberConfirmed,
-    string? PendingPhoneNumber);
+    string? PhoneNumber);
 
 public sealed record AdminCheckResponse(bool IsAdmin, Guid Id);

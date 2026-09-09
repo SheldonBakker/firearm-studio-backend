@@ -28,7 +28,6 @@ public sealed class KlaviyoEmailSender(ICustomerEngagementClient klaviyo) : IEma
         OtpPurpose.PasswordReset => "Password Reset Code",
         OtpPurpose.Invite => "Team Invite Code",
         OtpPurpose.TwoFactor => "Login Verification Code",
-        OtpPurpose.PhoneChange => "Phone Verification Code",
         _ => throw new ArgumentOutOfRangeException(nameof(purpose), purpose, null),
     };
 }

@@ -21,9 +21,7 @@ public sealed class GetCurrentUserQueryHandler(
             user.Email,
             user.Roles,
             account?.TwoFactorEnabled ?? false,
-            account?.PhoneNumber,
-            account?.PhoneNumberConfirmed ?? false,
-            account?.PendingPhoneNumber);
+            account?.PhoneNumber);
         return response;
     }
 }
