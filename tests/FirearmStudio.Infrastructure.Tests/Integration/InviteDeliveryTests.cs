@@ -82,7 +82,7 @@ public sealed class InviteDeliveryTests(TestDatabaseFixture fixture)
     private static string NewEmail() => $"{Guid.NewGuid():N}@example.com";
 
     [Fact]
-    public async Task Invite_for_a_brand_new_account_uses_the_supplied_phone()
+    public async Task Invite_for_a_brand_new_account_dispatches_to_the_invitee_email()
     {
         var h = await CreateAsync();
         var invitee = NewEmail();
@@ -94,12 +94,11 @@ public sealed class InviteDeliveryTests(TestDatabaseFixture fixture)
         Assert.False(result.IsError);
         Assert.Equal(1, h.Dispatcher.Calls);
         Assert.Equal(OtpPurpose.Invite, h.Dispatcher.LastPurpose);
-        Assert.Equal("+27821234567", h.Dispatcher.LastRecipient!.PhoneNumber);
-        Assert.Equal(invitee, h.Dispatcher.LastRecipient.Email);
+        Assert.Equal(invitee, h.Dispatcher.LastRecipient!.Email);
     }
 
     [Fact]
-    public async Task Invite_for_an_existing_account_never_uses_the_supplied_phone()
+    public async Task Invite_for_an_existing_account_dispatches_to_the_invitee_email()
     {
         var h = await CreateAsync();
         var victim = NewEmail();
@@ -115,12 +114,11 @@ public sealed class InviteDeliveryTests(TestDatabaseFixture fixture)
         Assert.False(result.IsError);
         Assert.Equal(1, h.Dispatcher.Calls);
         Assert.Equal(OtpPurpose.Invite, h.Dispatcher.LastPurpose);
-        Assert.Null(h.Dispatcher.LastRecipient!.PhoneNumber);
-        Assert.Equal(victim, h.Dispatcher.LastRecipient.Email);
+        Assert.Equal(victim, h.Dispatcher.LastRecipient!.Email);
     }
 
     [Fact]
-    public async Task Reinvite_of_an_unlinked_app_user_still_uses_the_phone()
+    public async Task Reinvite_of_an_unlinked_app_user_seeds_the_phone_on_the_domain_user()
     {
         var h = await CreateAsync();
         var invitee = NewEmail();
@@ -141,7 +139,6 @@ public sealed class InviteDeliveryTests(TestDatabaseFixture fixture)
 
         Assert.False(result.IsError);
         Assert.Equal(1, h.Dispatcher.Calls);
-        Assert.Equal("+27821112222", h.Dispatcher.LastRecipient!.PhoneNumber);
 
         await using var appAfter = fixture.CreateDbContext(h.CompanyId);
         var appUser = await appAfter.AppUsers.SingleAsync(u => u.Email == invitee);

@@ -6,5 +6,4 @@ public enum OtpPurpose
     PasswordReset,
     Invite,
     TwoFactor,
-    PhoneChange,
 }

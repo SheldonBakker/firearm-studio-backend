@@ -24,7 +24,6 @@ using FirearmStudio.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -98,7 +97,7 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
         var otp = new OtpService(auth, new PasswordHasher<AppIdentityUser>(), clock);
         var tokens = new TokenService(auth, app, Settings, clock);
         var email = new CapturingEmailSender();
-        var dispatcher = new OtpDispatcher(email, new NullWhatsAppSender(), NullLogger<OtpDispatcher>.Instance);
+        var dispatcher = new OtpDispatcher(email);
 
         return new Harness(
             new RegisterCommandHandler(accounts, otp, dispatcher),
@@ -314,43 +313,7 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
     }
 
     [Fact]
-    public async Task Accepting_an_invite_leaves_an_already_confirmed_phone_untouched()
-    {
-        var h = await CreateAsync();
-        var companyId = Guid.NewGuid();
-        var invitee = NewEmail();
-
-        h.App.Companies.Add(new Company { Id = companyId, Name = "Inviting Co" });
-        await h.App.SaveChangesAsync();
-        h.Tenant.CompanyId = companyId;
-
-        await h.Invite.Handle(
-            new InviteUserCommand(new InviteUserRequest(invitee, "New Staffer", AppRole.Staff)), default);
-
-        var seeded = await h.Auth.Users.SingleAsync(u => u.Email == invitee);
-        seeded.PhoneNumber = "+27820000001";
-        seeded.PhoneNumberConfirmed = true;
-        await h.Auth.SaveChangesAsync();
-
-        var code = h.Email.LastCodeFor(invitee, OtpPurpose.Invite);
-
-        var accepted = await h.AcceptInvite.Handle(
-            new AcceptInviteCommand(new AcceptInviteRequest(invitee, code, "InviteeSecret789", "+27829999999")),
-            default);
-        Assert.False(accepted.IsError);
-
-        await using var authAfter = fixture.CreateAuthDbContext();
-        var after = await authAfter.Users.SingleAsync(u => u.Email == invitee);
-        Assert.Equal("+27820000001", after.PhoneNumber);
-        Assert.True(after.PhoneNumberConfirmed);
-
-        await using var appAfter = fixture.CreateDbContext(companyId);
-        var appUser = await appAfter.AppUsers.SingleAsync(u => u.Email == invitee);
-        Assert.NotEqual("+27829999999", appUser.PhoneNumber);
-    }
-
-    [Fact]
-    public async Task Accepting_an_invite_seeds_an_unconfirmed_phone_when_none_is_proven()
+    public async Task Accepting_an_invite_seeds_the_phone_number_from_the_request()
     {
         var h = await CreateAsync();
         var companyId = Guid.NewGuid();
@@ -373,7 +336,6 @@ public sealed class AuthJourneyTests(TestDatabaseFixture fixture)
         await using var authAfter = fixture.CreateAuthDbContext();
         var after = await authAfter.Users.SingleAsync(u => u.Email == invitee);
         Assert.Equal("+27829999999", after.PhoneNumber);
-        Assert.False(after.PhoneNumberConfirmed);
 
         await using var appAfter = fixture.CreateDbContext(companyId);
         var appUser = await appAfter.AppUsers.SingleAsync(u => u.Email == invitee);

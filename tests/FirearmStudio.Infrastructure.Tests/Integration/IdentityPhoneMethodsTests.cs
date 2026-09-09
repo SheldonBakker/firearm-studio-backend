@@ -53,34 +53,6 @@ public sealed class IdentityPhoneMethodsTests(TestDatabaseFixture fixture)
     }
 
     [Fact]
-    public async Task Set_pending_then_confirm_promotes_and_clears()
-    {
-        var (accounts, _, userId) = await CreateAsync();
-
-        await accounts.SetPendingPhoneNumberAsync(userId, "+27821234567", default);
-        var promoted = await accounts.ConfirmPhoneChangeAsync(userId, default);
-
-        Assert.Equal("+27821234567", promoted);
-        var user = await ReloadAsync(fixture, userId);
-        Assert.Equal("+27821234567", user.PhoneNumber);
-        Assert.True(user.PhoneNumberConfirmed);
-        Assert.Null(user.PendingPhoneNumber);
-    }
-
-    [Fact]
-    public async Task Confirm_with_no_pending_returns_null_and_changes_nothing()
-    {
-        var (accounts, _, userId) = await CreateAsync();
-
-        var promoted = await accounts.ConfirmPhoneChangeAsync(userId, default);
-
-        Assert.Null(promoted);
-        var user = await ReloadAsync(fixture, userId);
-        Assert.Null(user.PhoneNumber);
-        Assert.False(user.PhoneNumberConfirmed);
-    }
-
-    [Fact]
     public async Task Set_two_factor_enabled_persists()
     {
         var (accounts, _, userId) = await CreateAsync();
@@ -92,17 +64,15 @@ public sealed class IdentityPhoneMethodsTests(TestDatabaseFixture fixture)
     }
 
     [Fact]
-    public async Task Find_by_email_exposes_two_factor_and_phone_fields()
+    public async Task Set_phone_number_persists_and_find_by_email_returns_it()
     {
         var (accounts, _, userId) = await CreateAsync();
-        await accounts.SetPhoneNumberAsync(userId, "+27829999999", confirmed: true, default);
-        await accounts.SetPendingPhoneNumberAsync(userId, "+27820000002", default);
+        await accounts.SetPhoneNumberAsync(userId, "+27829999999", default);
 
         var user = await ReloadAsync(fixture, userId);
         var account = await accounts.FindByEmailAsync(user.Email!, default);
 
         Assert.NotNull(account);
         Assert.Equal("+27829999999", account!.PhoneNumber);
-        Assert.Equal("+27820000002", account.PendingPhoneNumber);
     }
 }

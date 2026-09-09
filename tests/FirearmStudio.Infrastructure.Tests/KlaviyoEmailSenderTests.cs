@@ -42,7 +42,6 @@ public sealed class KlaviyoEmailSenderTests
     [InlineData(OtpPurpose.PasswordReset, "Password Reset Code")]
     [InlineData(OtpPurpose.Invite, "Team Invite Code")]
     [InlineData(OtpPurpose.TwoFactor, "Login Verification Code")]
-    [InlineData(OtpPurpose.PhoneChange, "Phone Verification Code")]
     public async Task Each_purpose_maps_to_its_own_metric(OtpPurpose purpose, string expected)
     {
         var klaviyo = new FakeKlaviyoClient();

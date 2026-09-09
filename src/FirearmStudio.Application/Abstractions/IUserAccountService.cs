@@ -5,9 +5,7 @@ public sealed record UserAccount(
     string Email,
     bool EmailConfirmed,
     bool TwoFactorEnabled,
-    string? PhoneNumber,
-    bool PhoneNumberConfirmed,
-    string? PendingPhoneNumber);
+    string? PhoneNumber);
 
 public enum PasswordCheckResult
 {
@@ -39,11 +37,5 @@ public interface IUserAccountService
 
     Task SetTwoFactorEnabledAsync(Guid userId, bool enabled, CancellationToken ct);
 
-    Task SetPhoneNumberAsync(Guid userId, string? phoneE164, bool confirmed, CancellationToken ct);
-
-    Task SetPendingPhoneNumberAsync(Guid userId, string phoneE164, CancellationToken ct);
-
-    Task ClearPendingPhoneNumberAsync(Guid userId, CancellationToken ct);
-
-    Task<string?> ConfirmPhoneChangeAsync(Guid userId, CancellationToken ct);
+    Task SetPhoneNumberAsync(Guid userId, string? phoneE164, CancellationToken ct);
 }

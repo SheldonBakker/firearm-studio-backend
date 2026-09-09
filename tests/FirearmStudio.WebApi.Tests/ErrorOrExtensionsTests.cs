@@ -34,15 +34,15 @@ public sealed class ErrorOrExtensionsTests
     }
 
     [Fact]
-    public void Unavailable_phone_channel_is_answered_with_502()
+    public void Upstream_failure_is_answered_with_502()
     {
         var mapped = Map(Error.Custom(
             UpstreamErrorTypes.UpstreamFailure,
-            AuthErrorCodes.PhoneChannelUnavailable,
-            "A verification code could not be sent to that number right now. Try again later."));
+            "Test.UpstreamError",
+            "An upstream service is temporarily unavailable."));
 
         Assert.Equal(StatusCodes.Status502BadGateway, mapped.StatusCode);
-        Assert.Equal(AuthErrorCodes.PhoneChannelUnavailable, mapped.Code);
+        Assert.Equal("Test.UpstreamError", mapped.Code);
     }
 
     [Fact]

@@ -116,7 +116,7 @@ public sealed class InviteUserCommandHandler(
         if (issued.Status == OtpIssueStatus.Issued)
         {
             await dispatcher.SendAsync(
-                new OtpRecipient(address, null, deliverToMailboxOnly ? null : phone),
+                new OtpRecipient(address, null),
                 OtpPurpose.Invite,
                 issued.Code!,
                 OtpConstants.CodeLifetimeMinutes,

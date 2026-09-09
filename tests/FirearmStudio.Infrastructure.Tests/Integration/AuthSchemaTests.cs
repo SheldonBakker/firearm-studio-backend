@@ -72,7 +72,7 @@ public sealed class AuthSchemaTests(TestDatabaseFixture fixture)
 
         var row = Assert.Single(rows);
         Assert.Equal("public", row.Schema);
-        Assert.Equal(5, row.Labels);
+        Assert.Equal(4, row.Labels);
     }
 
     [Fact]

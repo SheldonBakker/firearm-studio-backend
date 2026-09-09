@@ -27,7 +27,7 @@ public sealed class RegisterCommandHandler(
         {
             if (!existing.EmailConfirmed)
             {
-                await IssueAndSendAsync(existing.Id, address, existing.PhoneNumber, cancellationToken);
+                await IssueAndSendAsync(existing.Id, address, cancellationToken);
             }
 
             return Result.Success;
@@ -45,22 +45,22 @@ public sealed class RegisterCommandHandler(
 
         if (phone is not null)
         {
-            await accounts.SetPhoneNumberAsync(account.Id, phone, confirmed: false, cancellationToken);
+            await accounts.SetPhoneNumberAsync(account.Id, phone, cancellationToken);
         }
 
-        await IssueAndSendAsync(account.Id, address, phone, cancellationToken);
+        await IssueAndSendAsync(account.Id, address, cancellationToken);
 
         return Result.Success;
     }
 
-    private async Task IssueAndSendAsync(Guid userId, string address, string? phone, CancellationToken ct)
+    private async Task IssueAndSendAsync(Guid userId, string address, CancellationToken ct)
     {
         var issued = await otp.IssueAsync(userId, OtpPurpose.EmailConfirmation, ct);
 
         if (issued.Status == OtpIssueStatus.Issued)
         {
             await dispatcher.SendAsync(
-                new OtpRecipient(address, null, phone),
+                new OtpRecipient(address, null),
                 OtpPurpose.EmailConfirmation,
                 issued.Code!,
                 OtpConstants.CodeLifetimeMinutes,

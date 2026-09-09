@@ -2,7 +2,7 @@ using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Application.Abstractions;
 
-public sealed record OtpRecipient(string Email, string? Name, string? PhoneNumber);
+public sealed record OtpRecipient(string Email, string? Name);
 
 public interface IOtpDispatcher
 {
