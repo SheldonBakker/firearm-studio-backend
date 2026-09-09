@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -12,21 +11,23 @@ public sealed class HealthCheckFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.ConfigureAppConfiguration((_, config) =>
+        var settings = new Dictionary<string, string?>
         {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:DefaultConnection"] =
-                    "Host=127.0.0.1;Port=1;Database=fs_test;Username=test;Password=test",
-                ["ApiKeySettings:Key"] = "test-api-key",
-                ["JwtSettings:Issuer"] = "test-issuer",
-                ["JwtSettings:Audience"] = "test-audience",
-                ["JwtSettings:SigningKey"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-                ["CredentialProtectionSettings:Key"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-                ["KlaviyoSettings:ApiKey"] = "test-klaviyo-key",
-                ["NotificationSettings:PublicBaseUrl"] = "https://example.com",
-            });
-        });
+            ["ConnectionStrings:DefaultConnection"] =
+                "Host=127.0.0.1;Port=1;Database=fs_test;Username=test;Password=test",
+            ["ApiKeySettings:Key"] = "test-api-key",
+            ["JwtSettings:Issuer"] = "test-issuer",
+            ["JwtSettings:Audience"] = "test-audience",
+            ["JwtSettings:SigningKey"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            ["CredentialProtectionSettings:Key"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            ["KlaviyoSettings:ApiKey"] = "test-klaviyo-key",
+            ["NotificationSettings:PublicBaseUrl"] = "https://example.com",
+        };
+
+        foreach (var (key, value) in settings)
+        {
+            builder.UseSetting(key, value);
+        }
 
         builder.ConfigureTestServices(services =>
         {

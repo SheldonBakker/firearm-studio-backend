@@ -16,11 +16,11 @@
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
 
     <!-- API versioning -->
-    <PackageVersion Include="Asp.Versioning.Mvc" Version="10.2.1" />
-    <PackageVersion Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.2.1" />
+    <PackageVersion Include="Asp.Versioning.Mvc" Version="8.1.1" />
+    <PackageVersion Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.1" />
 
     <!-- OpenAPI / Swagger UI with Bearer security -->
-    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.2.0" />
 
     <!-- Logging -->
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
@@ -44,7 +44,7 @@
     <PackageVersion Include="PDFsharp-MigraDoc" Version="6.2.4" />
 
     <!-- CQRS mediator (12.x is the last MIT-licensed line; 13+ is commercial) -->
-    <PackageVersion Include="MediatR" Version="14.2.0" />
+    <PackageVersion Include="MediatR" Version="12.5.0" />
 
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.11" />
 
