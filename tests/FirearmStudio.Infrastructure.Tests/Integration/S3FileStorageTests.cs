@@ -34,6 +34,26 @@ public sealed class S3FileStorageTests
     }
 
     [Fact]
+    public async Task DeleteAsync_wraps_an_unreachable_endpoint_in_FileStorageException()
+    {
+        var settings = new FileStorageSettings
+        {
+            Provider = "s3",
+            BucketName = "product-images",
+            ServiceUrl = "http://127.0.0.1:1",
+            Region = "us-east-1",
+            AccessKeyId = "key",
+            SecretAccessKey = "secret",
+            ForcePathStyle = true,
+        };
+
+        var storage = new S3FileStorage(settings);
+
+        await Assert.ThrowsAsync<FileStorageException>(
+            () => storage.DeleteAsync("companies/a/products/b/x.jpg", CancellationToken.None));
+    }
+
+    [Fact]
     [Trait("Category", "Docker")]
     public async Task Upload_presign_read_and_delete_round_trip_against_minio()
     {

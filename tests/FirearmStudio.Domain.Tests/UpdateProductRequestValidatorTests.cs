@@ -45,4 +45,15 @@ public class UpdateProductRequestValidatorTests
         var request = Empty() with { Name = new Optional<string>("Updated") };
         Assert.True(Validator.Validate(request).IsValid);
     }
+
+    [Fact]
+    public void Set_price_and_cost_must_fit_numeric_12_2()
+    {
+        Assert.False(Validator.Validate(Empty() with { Price = new Optional<decimal>(10_000_000_000m) }).IsValid);
+        Assert.False(Validator.Validate(Empty() with { Price = new Optional<decimal>(1.999m) }).IsValid);
+        Assert.True(Validator.Validate(Empty() with { Price = new Optional<decimal>(9_999_999_999.99m) }).IsValid);
+        Assert.False(Validator.Validate(Empty() with { CostPrice = new Optional<decimal?>(10_000_000_000m) }).IsValid);
+        Assert.False(Validator.Validate(Empty() with { CostPrice = new Optional<decimal?>(1.999m) }).IsValid);
+        Assert.True(Validator.Validate(Empty() with { CostPrice = new Optional<decimal?>(9_999_999_999.99m) }).IsValid);
+    }
 }

@@ -29,7 +29,7 @@ public sealed class UpdateProductCommandHandler(IApplicationDbContext db, IFileS
 
         if (request.Sku.IsSet && product.Sku is not null)
         {
-            var normalized = product.Sku.ToLower();
+            var normalized = product.Sku.ToLowerInvariant();
             var conflict = await db.Products.AnyAsync(
                 p => p.Id != command.Id && p.Sku != null && p.Sku.ToLower() == normalized, cancellationToken);
             if (conflict)

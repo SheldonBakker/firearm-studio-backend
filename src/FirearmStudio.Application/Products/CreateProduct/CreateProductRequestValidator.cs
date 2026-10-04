@@ -1,3 +1,4 @@
+using FirearmStudio.Domain.Common;
 using FluentValidation;
 
 namespace FirearmStudio.Application.Products.CreateProduct;
@@ -21,10 +22,14 @@ public sealed class CreateProductRequestValidator : AbstractValidator<CreateProd
             .When(request => request.Sku is not null);
 
         RuleFor(request => request.Price)
-            .GreaterThanOrEqualTo(0);
+            .GreaterThanOrEqualTo(0)
+            .LessThanOrEqualTo(ProductConstants.MaxMoney)
+            .PrecisionScale(12, 2, true);
 
         RuleFor(request => request.CostPrice)
             .GreaterThanOrEqualTo(0)
+            .LessThanOrEqualTo(ProductConstants.MaxMoney)
+            .PrecisionScale(12, 2, true)
             .When(request => request.CostPrice.HasValue);
 
         RuleFor(request => request.Category)

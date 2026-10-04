@@ -27,7 +27,7 @@ public sealed class DeleteProductCommandHandler(
 
         if (imageKey is not null)
         {
-            await storage.TryDeleteAsync(imageKey, logger, cancellationToken);
+            await storage.TryDeleteAsync(imageKey, logger, CancellationToken.None);
         }
 
         return Result.Deleted;

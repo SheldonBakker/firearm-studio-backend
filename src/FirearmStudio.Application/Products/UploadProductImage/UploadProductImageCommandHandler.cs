@@ -1,3 +1,4 @@
+using System.Buffers;
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
 using FirearmStudio.Application.Abstractions.Messaging;
@@ -28,7 +29,7 @@ public sealed class UploadProductImageCommandHandler(
         }
 
         using var buffer = new MemoryStream(checked((int)command.Length));
-        await command.Content.CopyToAsync(buffer, cancellationToken);
+        await CopyBoundedAsync(command.Content, buffer, cancellationToken);
 
         if (buffer.Length > ProductImageConstants.MaxImageBytes)
         {
@@ -76,10 +77,34 @@ public sealed class UploadProductImageCommandHandler(
 
         if (oldKey is not null && oldKey != newKey)
         {
-            await storage.TryDeleteAsync(oldKey, logger, cancellationToken);
+            await storage.TryDeleteAsync(oldKey, logger, CancellationToken.None);
         }
 
         return ProductResponseMapper.Map(ProductRow.FromEntity(product), storage);
+    }
+
+    private static async Task CopyBoundedAsync(Stream source, MemoryStream destination, CancellationToken cancellationToken)
+    {
+        const long limit = ProductImageConstants.MaxImageBytes + 1;
+        var chunk = ArrayPool<byte>.Shared.Rent(81920);
+        try
+        {
+            while (destination.Length < limit)
+            {
+                var wanted = (int)Math.Min(chunk.Length, limit - destination.Length);
+                var read = await source.ReadAsync(chunk.AsMemory(0, wanted), cancellationToken);
+                if (read == 0)
+                {
+                    break;
+                }
+
+                destination.Write(chunk, 0, read);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(chunk);
+        }
     }
 
     private static string? NormalizeDeclaredContentType(string? contentType)

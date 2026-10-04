@@ -1,4 +1,5 @@
 using FirearmStudio.Application.Model;
+using FirearmStudio.Domain.Common;
 using FluentValidation;
 
 namespace FirearmStudio.Application.Products.UpdateProduct;
@@ -31,11 +32,15 @@ public sealed class UpdateProductRequestValidator : AbstractValidator<UpdateProd
 
         RuleFor(request => request.Price.Value)
             .GreaterThanOrEqualTo(0)
+            .LessThanOrEqualTo(ProductConstants.MaxMoney)
+            .PrecisionScale(12, 2, true)
             .OverridePropertyName(nameof(UpdateProductRequest.Price))
             .When(request => request.Price.IsSet);
 
         RuleFor(request => request.CostPrice.Value)
             .GreaterThanOrEqualTo(0)
+            .LessThanOrEqualTo(ProductConstants.MaxMoney)
+            .PrecisionScale(12, 2, true)
             .OverridePropertyName(nameof(UpdateProductRequest.CostPrice))
             .When(request => request.CostPrice.IsSet && request.CostPrice.Value is not null);
 

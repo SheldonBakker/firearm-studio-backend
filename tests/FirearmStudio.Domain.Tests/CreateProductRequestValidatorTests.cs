@@ -42,4 +42,15 @@ public class CreateProductRequestValidatorTests
         Assert.False(Validator.Validate(Valid() with { CostPrice = -1m }).IsValid);
         Assert.False(Validator.Validate(Valid() with { StockQuantity = -1 }).IsValid);
     }
+
+    [Fact]
+    public void Price_and_cost_must_fit_numeric_12_2()
+    {
+        Assert.False(Validator.Validate(Valid() with { Price = 10_000_000_000m }).IsValid);
+        Assert.False(Validator.Validate(Valid() with { Price = 1.999m }).IsValid);
+        Assert.True(Validator.Validate(Valid() with { Price = 9_999_999_999.99m }).IsValid);
+        Assert.False(Validator.Validate(Valid() with { CostPrice = 10_000_000_000m }).IsValid);
+        Assert.False(Validator.Validate(Valid() with { CostPrice = 1.999m }).IsValid);
+        Assert.True(Validator.Validate(Valid() with { CostPrice = 9_999_999_999.99m }).IsValid);
+    }
 }

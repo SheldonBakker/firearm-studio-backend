@@ -151,7 +151,7 @@ jobs:
               exit 1
             fi
             printf '%s\n' "$STACK_ENV" | sed '/^FIREARM_IMAGE=/d; /^FileStorageSettings__/d' > .env.new
-            printf '%s\n' "$FILE_STORAGE_ENV" >> .env.new
+            printf '%s\n' "$FILE_STORAGE_ENV" | tr -d '\r' >> .env.new
             printf 'FIREARM_IMAGE=%s\n' "$DEPLOY_IMAGE" >> .env.new
             chmod 640 .env.new
             mv .env.new .env

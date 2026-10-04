@@ -17,7 +17,7 @@ public sealed class CreateProductCommandHandler(IApplicationDbContext db, IFileS
         var sku = string.IsNullOrWhiteSpace(request.Sku) ? null : request.Sku.Trim();
         if (sku is not null)
         {
-            var normalized = sku.ToLower();
+            var normalized = sku.ToLowerInvariant();
             var exists = await db.Products.AnyAsync(
                 p => p.Sku != null && p.Sku.ToLower() == normalized, cancellationToken);
             if (exists)

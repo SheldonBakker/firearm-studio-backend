@@ -4,6 +4,8 @@ public static class ProductImageConstants
 {
     public const long MaxImageBytes = 5 * 1024 * 1024;
 
+    public const long MaxUploadRequestBytes = MaxImageBytes + 64 * 1024;
+
     public const int PresignLifetimeMinutes = 60;
 
     public static readonly TimeSpan PresignLifetime = TimeSpan.FromMinutes(PresignLifetimeMinutes);

@@ -16,6 +16,8 @@ public sealed class S3FileStorage(FileStorageSettings settings) : IFileStorage
             ForcePathStyle = settings.ForcePathStyle,
             AuthenticationRegion = settings.Region,
             Timeout = TimeSpan.FromSeconds(10),
+            RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+            ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED,
         });
 
     private readonly Protocol _protocol =
@@ -39,7 +41,8 @@ public sealed class S3FileStorage(FileStorageSettings settings) : IFileStorage
                 ct);
         }
         catch (Exception ex) when (
-            ex is AmazonS3Exception or HttpRequestException or TaskCanceledException or OperationCanceledException
+            ex is AmazonS3Exception or AmazonServiceException or AmazonClientException or HttpRequestException
+                or IOException or TaskCanceledException or OperationCanceledException
             && !ct.IsCancellationRequested)
         {
             throw new FileStorageException("Image upload failed.", ex);
@@ -59,7 +62,8 @@ public sealed class S3FileStorage(FileStorageSettings settings) : IFileStorage
                 ct);
         }
         catch (Exception ex) when (
-            ex is AmazonS3Exception or HttpRequestException or TaskCanceledException or OperationCanceledException
+            ex is AmazonS3Exception or AmazonServiceException or AmazonClientException or HttpRequestException
+                or IOException or TaskCanceledException or OperationCanceledException
             && !ct.IsCancellationRequested)
         {
             throw new FileStorageException("Image delete failed.", ex);

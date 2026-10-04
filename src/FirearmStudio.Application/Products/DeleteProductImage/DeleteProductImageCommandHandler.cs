@@ -29,7 +29,7 @@ public sealed class DeleteProductImageCommandHandler(
         product.ImageKey = null;
         await db.SaveChangesAsync(cancellationToken);
 
-        await storage.TryDeleteAsync(oldKey, logger, cancellationToken);
+        await storage.TryDeleteAsync(oldKey, logger, CancellationToken.None);
 
         return Result.Deleted;
     }

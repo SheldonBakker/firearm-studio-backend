@@ -79,8 +79,8 @@ public sealed class ProductsController(IMediator mediator) : ApiControllerBase
     [HttpPost("{id:guid}/image")]
     [Authorize(Roles = AppRoles.Policy.ManagerOrAbove)]
     [Consumes("multipart/form-data")]
-    [RequestSizeLimit(ProductImageConstants.MaxImageBytes)]
-    [RequestFormLimits(MultipartBodyLengthLimit = ProductImageConstants.MaxImageBytes)]
+    [RequestSizeLimit(ProductImageConstants.MaxUploadRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = ProductImageConstants.MaxUploadRequestBytes)]
     public async Task<ActionResult<ProductResponse>> UploadImage(Guid id, IFormFile file, CancellationToken ct)
     {
         await using var stream = file.OpenReadStream();
