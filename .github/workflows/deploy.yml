@@ -152,6 +152,7 @@ jobs:
             mv .env.new .env
             chgrp docker .env
             docker compose pull
+            docker compose run --rm --no-deps api dotnet FirearmStudio.WebApi.dll --migrate
             docker compose up -d
         env:
           STACK_ENV: ${{ secrets.STACK_ENV }}

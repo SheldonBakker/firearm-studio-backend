@@ -137,6 +137,11 @@ builder.Services.AddOutputCache(options =>
 
 var app = builder.Build();
 
+if (DatabaseMigrator.IsRequested(args))
+{
+    return await DatabaseMigrator.MigrateAsync(app.Services, CancellationToken.None);
+}
+
 var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
 if (startupLogger.IsEnabled(LogLevel.Information))
 {
@@ -170,6 +175,7 @@ app.MapControllers();
 app.MapHealthEndpoints();
 
 app.Run();
+return 0;
 
 static List<System.Net.IPNetwork> ParseKnownNetworksOrThrow(List<string> cidrs)
     => cidrs.Select(System.Net.IPNetwork.Parse).ToList();
