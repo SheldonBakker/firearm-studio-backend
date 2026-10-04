@@ -8,13 +8,18 @@ namespace FirearmStudio.Infrastructure.Tests;
 
 public class DependencyInjectionTests
 {
-    private static IConfiguration BuildConfiguration(string? credentialProtectionKey)
+    private static IConfiguration BuildConfiguration(string? credentialProtectionKey, string provider = "s3")
     {
         var values = new Dictionary<string, string?>
         {
             ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test;Username=test;Password=test",
             ["KlaviyoSettings:ApiKey"] = "test-api-key",
             ["NotificationSettings:PublicBaseUrl"] = "https://api.example.test",
+            ["FileStorageSettings:Provider"] = provider,
+            ["FileStorageSettings:BucketName"] = "test-bucket",
+            ["FileStorageSettings:ServiceUrl"] = "https://s3.example.test",
+            ["FileStorageSettings:AccessKeyId"] = "test-access-key",
+            ["FileStorageSettings:SecretAccessKey"] = "test-secret-key",
         };
 
         if (credentialProtectionKey is not null)
@@ -23,6 +28,15 @@ public class DependencyInjectionTests
         }
 
         return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+    }
+
+    [Fact]
+    public void AddInfrastructure_throws_when_the_file_storage_provider_is_not_s3()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => new ServiceCollection().AddInfrastructure(BuildConfiguration(null, provider: "azure")));
+
+        Assert.Contains("Provider", ex.Message);
     }
 
     [Fact]
