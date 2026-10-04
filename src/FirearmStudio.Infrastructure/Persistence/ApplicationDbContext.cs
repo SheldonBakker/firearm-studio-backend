@@ -43,6 +43,7 @@ public sealed class ApplicationDbContext(
     public DbSet<BookingAttendee> BookingAttendees => Set<BookingAttendee>();
     public DbSet<AccountingConnection> AccountingConnections => Set<AccountingConnection>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<Product> Products => Set<Product>();
 
     public void ClearChangeTracker() => ChangeTracker.Clear();
 
