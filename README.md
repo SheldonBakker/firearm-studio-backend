@@ -68,7 +68,7 @@ with PostgreSQL's own default `max_connections` once more than one instance conn
 
 ## Database
 
-Migrations are applied by the deploy: `docker compose run --rm --no-deps api dotnet FirearmStudio.WebApi.dll --migrate`
+Migrations are applied by the deploy: `docker compose run --rm --no-deps api --migrate`
 runs from the new image before the API is restarted. A failure aborts the deploy and leaves the
 previous version running. Normal API startup never migrates.
 
