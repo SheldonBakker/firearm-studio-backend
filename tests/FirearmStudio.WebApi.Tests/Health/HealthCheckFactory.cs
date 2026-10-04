@@ -22,6 +22,10 @@ public sealed class HealthCheckFactory : WebApplicationFactory<Program>
             ["CredentialProtectionSettings:Key"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             ["KlaviyoSettings:ApiKey"] = "test-klaviyo-key",
             ["NotificationSettings:PublicBaseUrl"] = "https://example.com",
+            ["FileStorageSettings:BucketName"] = "test-bucket",
+            ["FileStorageSettings:ServiceUrl"] = "https://s3.example.test",
+            ["FileStorageSettings:AccessKeyId"] = "test-access-key",
+            ["FileStorageSettings:SecretAccessKey"] = "test-secret-key",
         };
 
         foreach (var (key, value) in settings)

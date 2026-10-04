@@ -12,6 +12,7 @@
     <PackageReference Include="DotNetEnv" />
     <PackageReference Include="PDFsharp-MigraDoc" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+    <PackageReference Include="AWSSDK.S3" />
   </ItemGroup>
 
   <ItemGroup>

@@ -6,6 +6,8 @@ namespace FirearmStudio.Infrastructure.Tests;
 
 public class AuditExclusionTests
 {
+    private static readonly HashSet<(Type Entity, string Property)> ShadowProperties = [(typeof(Product), "SkuLower")];
+
     [Fact]
     public void Customer_id_numbers_are_excluded_from_audit_logs()
     {
@@ -22,6 +24,11 @@ public class AuditExclusionTests
         {
             foreach (var property in properties)
             {
+                if (ShadowProperties.Contains((type, property)))
+                {
+                    continue;
+                }
+
                 Assert.True(
                     type.GetProperty(property) is not null,
                     $"'{type.Name}.{property}' is excluded from audit logs but no longer exists.");

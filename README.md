@@ -68,12 +68,16 @@ with PostgreSQL's own default `max_connections` once more than one instance conn
 
 ## Database
 
-Migrations are never applied automatically. Apply them, then restart the API, in that order:
-PostgreSQL caches enum type catalogs per data source, so a running instance cannot see enum values
-created after it started.
+Migrations are applied by the deploy: `docker compose run --rm --no-deps api --migrate`
+runs from the new image before the API is restarted. A failure aborts the deploy and leaves the
+previous version running. Normal API startup never migrates.
+
+For a local or manual apply, run both contexts, then restart the API: PostgreSQL caches enum type
+catalogs per data source, so a running instance cannot see enum values created after it started.
 
 ```bash
-dotnet ef database update -p src/FirearmStudio.Infrastructure -s src/FirearmStudio.WebApi
+dotnet ef database update -p src/FirearmStudio.Infrastructure -s src/FirearmStudio.WebApi --context ApplicationDbContext
+dotnet ef database update -p src/FirearmStudio.Infrastructure -s src/FirearmStudio.WebApi --context AuthDbContext
 ```
 
 ## Tests

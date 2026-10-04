@@ -87,6 +87,7 @@ public static class DependencyInjection
 
         AddCustomerEngagement(services, configuration);
         AddNotificationSettings(services, configuration);
+        AddFileStorage(services, configuration);
         AddSageAccounting(services);
 
         return services;
@@ -160,6 +161,43 @@ public static class DependencyInjection
         }
 
         services.AddSingleton(settings);
+    }
+
+    private static void AddFileStorage(IServiceCollection services, IConfiguration configuration)
+    {
+        var settings = configuration.GetSection(FileStorageSettings.SectionName).Get<FileStorageSettings>()
+            ?? new FileStorageSettings();
+
+        if (!string.Equals(settings.Provider, "s3", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Unsupported '{FileStorageSettings.SectionName}:Provider' value '{settings.Provider}'. Only 's3' is supported.");
+        }
+
+        var missing = string.IsNullOrWhiteSpace(settings.BucketName)
+            || string.IsNullOrWhiteSpace(settings.ServiceUrl)
+            || string.IsNullOrWhiteSpace(settings.AccessKeyId)
+            || string.IsNullOrWhiteSpace(settings.SecretAccessKey);
+
+        if (missing)
+        {
+            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+                ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+                ?? string.Empty;
+
+            if (!string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Missing required '{FileStorageSettings.SectionName}' configuration " +
+                    "(BucketName, ServiceUrl, AccessKeyId, SecretAccessKey). Set FileStorageSettings__* in .env or user-secrets.");
+            }
+
+            Console.Error.WriteLine(
+                $"[WARNING] {FileStorageSettings.SectionName} is not fully configured. Product image storage will not function.");
+        }
+
+        services.AddSingleton(settings);
+        services.AddSingleton<IFileStorage, S3FileStorage>();
     }
 
     private static void AddCredentialProtection(IServiceCollection services, IConfiguration configuration)

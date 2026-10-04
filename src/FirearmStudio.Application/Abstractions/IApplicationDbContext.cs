@@ -25,6 +25,7 @@ public interface IApplicationDbContext
     DbSet<BookingAttendee> BookingAttendees { get; }
     DbSet<AccountingConnection> AccountingConnections { get; }
     DbSet<OutboxMessage> OutboxMessages { get; }
+    DbSet<Product> Products { get; }
 
     DbSet<TEntity> Set<TEntity>() where TEntity : class;
 

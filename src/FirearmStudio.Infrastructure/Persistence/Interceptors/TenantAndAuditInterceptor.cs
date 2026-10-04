@@ -23,6 +23,7 @@ public sealed class TenantAndAuditInterceptor(
         typeof(Package),
         typeof(Booking),
         typeof(BookingAttendee),
+        typeof(Product),
     ];
 
     internal static readonly Dictionary<Type, HashSet<string>> AuditExcludedProperties = new()
@@ -30,6 +31,7 @@ public sealed class TenantAndAuditInterceptor(
         [typeof(Booking)] = [nameof(Booking.CalendarToken)],
         [typeof(BookingAttendee)] = [nameof(BookingAttendee.IdNumber)],
         [typeof(Customer)] = [nameof(Customer.IdNumber)],
+        [typeof(Product)] = [nameof(Product.CostPrice), "SkuLower"],
     };
 
     public override InterceptionResult<int> SavingChanges(
