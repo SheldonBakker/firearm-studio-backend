@@ -138,7 +138,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          envs: STACK_ENV,DEPLOY_IMAGE
+          envs: STACK_ENV,FILE_STORAGE_ENV,DEPLOY_IMAGE
           script: |
             set -euo pipefail
             cd /opt/docker/${{ vars.VM_DOCKER_FOLDER }}
@@ -146,7 +146,12 @@ jobs:
               echo "STACK_ENV is empty; refusing to overwrite .env" >&2
               exit 1
             fi
-            printf '%s\n' "$STACK_ENV" | sed '/^FIREARM_IMAGE=/d' > .env.new
+            if [ -z "${FILE_STORAGE_ENV:-}" ]; then
+              echo "FILE_STORAGE_ENV is empty; the API refuses to start without file storage settings" >&2
+              exit 1
+            fi
+            printf '%s\n' "$STACK_ENV" | sed '/^FIREARM_IMAGE=/d; /^FileStorageSettings__/d' > .env.new
+            printf '%s\n' "$FILE_STORAGE_ENV" >> .env.new
             printf 'FIREARM_IMAGE=%s\n' "$DEPLOY_IMAGE" >> .env.new
             chmod 640 .env.new
             mv .env.new .env
@@ -155,4 +160,5 @@ jobs:
             docker compose up -d
         env:
           STACK_ENV: ${{ secrets.STACK_ENV }}
+          FILE_STORAGE_ENV: ${{ secrets.FILE_STORAGE_ENV }}
           DEPLOY_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
