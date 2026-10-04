@@ -27,14 +27,7 @@ public sealed class DeleteProductCommandHandler(
 
         if (imageKey is not null)
         {
-            try
-            {
-                await storage.DeleteAsync(imageKey, cancellationToken);
-            }
-            catch (FileStorageException ex)
-            {
-                logger.LogWarning(ex, "Failed to delete product image object {ImageKey} after product delete.", imageKey);
-            }
+            await storage.TryDeleteAsync(imageKey, logger, cancellationToken);
         }
 
         return Result.Deleted;

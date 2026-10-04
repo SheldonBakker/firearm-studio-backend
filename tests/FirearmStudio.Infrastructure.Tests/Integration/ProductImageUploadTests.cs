@@ -126,4 +126,45 @@ public sealed class ProductImageUploadTests(TestDatabaseFixture fixture)
         Assert.Equal(UpstreamErrorTypes.UpstreamFailure, (int)result.FirstError.Type);
         Assert.Equal(UploadProductImageCommandHandler.ErrorCodes.StorageUnavailable, result.FirstError.Code);
     }
+
+    [Fact]
+    public async Task Body_larger_than_declared_length_and_over_the_cap_returns_too_large()
+    {
+        var (company, productId) = await SeedProductAsync(fixture);
+        var storage = new FakeFileStorage();
+
+        await using var db = fixture.CreateDbContext(company);
+        var handler = new UploadProductImageCommandHandler(db, storage, NullLogger<UploadProductImageCommandHandler>.Instance);
+
+        var body = new byte[ProductImageConstants.MaxImageBytes + 1];
+        JpegBytes.CopyTo(body, 0);
+
+        var result = await handler.Handle(
+            new UploadProductImageCommand(productId, new MemoryStream(body), "image/jpeg", 10),
+            CancellationToken.None);
+
+        Assert.True(result.IsError);
+        Assert.Equal(UploadProductImageCommandHandler.ErrorCodes.TooLarge, result.FirstError.Code);
+        Assert.Empty(storage.Uploaded);
+    }
+
+    [Fact]
+    public async Task Body_exactly_at_the_cap_is_accepted()
+    {
+        var (company, productId) = await SeedProductAsync(fixture);
+        var storage = new FakeFileStorage();
+
+        await using var db = fixture.CreateDbContext(company);
+        var handler = new UploadProductImageCommandHandler(db, storage, NullLogger<UploadProductImageCommandHandler>.Instance);
+
+        var body = new byte[ProductImageConstants.MaxImageBytes];
+        JpegBytes.CopyTo(body, 0);
+
+        var result = await handler.Handle(
+            new UploadProductImageCommand(productId, new MemoryStream(body), "image/jpeg", ProductImageConstants.MaxImageBytes),
+            CancellationToken.None);
+
+        Assert.False(result.IsError);
+        Assert.Single(storage.Uploaded);
+    }
 }

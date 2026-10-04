@@ -29,14 +29,7 @@ public sealed class DeleteProductImageCommandHandler(
         product.ImageKey = null;
         await db.SaveChangesAsync(cancellationToken);
 
-        try
-        {
-            await storage.DeleteAsync(oldKey, cancellationToken);
-        }
-        catch (FileStorageException ex)
-        {
-            logger.LogWarning(ex, "Failed to delete product image object {OldKey}.", oldKey);
-        }
+        await storage.TryDeleteAsync(oldKey, logger, cancellationToken);
 
         return Result.Deleted;
     }

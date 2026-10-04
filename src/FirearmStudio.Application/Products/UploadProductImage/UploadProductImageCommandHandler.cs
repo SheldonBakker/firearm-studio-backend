@@ -30,6 +30,11 @@ public sealed class UploadProductImageCommandHandler(
         using var buffer = new MemoryStream(checked((int)command.Length));
         await command.Content.CopyToAsync(buffer, cancellationToken);
 
+        if (buffer.Length > ProductImageConstants.MaxImageBytes)
+        {
+            return Error.Validation(ErrorCodes.TooLarge, "Image must be between 1 byte and 5 MB.");
+        }
+
         var detected = ImageContentTypeDetector.Detect(buffer.GetBuffer().AsSpan(0, (int)buffer.Length));
         var declared = NormalizeDeclaredContentType(command.ContentType);
 
@@ -65,27 +70,13 @@ public sealed class UploadProductImageCommandHandler(
         }
         catch
         {
-            try
-            {
-                await storage.DeleteAsync(newKey, cancellationToken);
-            }
-            catch (FileStorageException)
-            {
-            }
-
+            await storage.TryDeleteAsync(newKey, logger, CancellationToken.None);
             throw;
         }
 
         if (oldKey is not null && oldKey != newKey)
         {
-            try
-            {
-                await storage.DeleteAsync(oldKey, cancellationToken);
-            }
-            catch (FileStorageException ex)
-            {
-                logger.LogWarning(ex, "Failed to delete superseded product image object {OldKey}.", oldKey);
-            }
+            await storage.TryDeleteAsync(oldKey, logger, cancellationToken);
         }
 
         return ProductResponseMapper.Map(ProductRow.FromEntity(product), storage);
