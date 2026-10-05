@@ -1,0 +1,18 @@
+Hi {{{CUSTOMER_NAME}}},
+
+This is a reminder about your upcoming booking {{{BOOKING_NUMBER}}}. Please arrive a few minutes early and bring a valid ID.
+
+Date:         {{{BOOKING_DATE}}}
+Time:         {{{START_TIME}}} - {{{END_TIME}}}
+Range:        {{{RANGE_NAME}}}
+Package:      {{{PACKAGE_NAME}}} - {{{PACKAGE_PRICE}}}
+Shooters:     {{{SHOOTER_COUNT}}}
+Deposit due:  {{{DEPOSIT_AMOUNT}}} by {{{DEPOSIT_DUE}}}
+Invoice:      {{{INVOICE_NUMBER}}}
+
+{{{CALENDAR_TEXT}}}
+
+Questions? Contact {{{COMPANY_NAME}}} at {{{COMPANY_EMAIL}}} or {{{COMPANY_PHONE}}}.
+
+--
+sent via Firearm Studio

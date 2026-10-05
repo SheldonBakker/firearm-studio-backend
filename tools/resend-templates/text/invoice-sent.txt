@@ -1,0 +1,24 @@
+Hi {{{CUSTOMER_NAME}}},
+
+Please find your invoice {{{INVOICE_NUMBER}}} for {{{INVOICE_MONTH}}} below.
+
+{{{LINES_TEXT}}}
+
+Subtotal: {{{SUBTOTAL}}}
+VAT:      {{{VAT_AMOUNT}}}
+Total:    {{{TOTAL}}}
+
+Payment due: {{{DUE_ON}}}
+
+EFT banking details
+-------------------
+Bank:           {{{BANK_NAME}}}
+Account holder: {{{BANK_ACCOUNT_HOLDER}}}
+Account number: {{{BANK_ACCOUNT_NUMBER}}}
+Branch code:    {{{BANK_BRANCH_CODE}}}
+Account type:   {{{BANK_ACCOUNT_TYPE}}}
+
+Questions? Contact {{{COMPANY_NAME}}} at {{{COMPANY_EMAIL}}} or {{{COMPANY_PHONE}}}.
+
+--
+sent via Firearm Studio

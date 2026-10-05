@@ -1,9 +1,10 @@
 using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Application.Abstractions.Email;
 using FirearmStudio.Domain.Enums;
 
 namespace FirearmStudio.Infrastructure.Services;
 
-public sealed class OtpDispatcher(IEmailSender email) : IOtpDispatcher
+public sealed class OtpDispatcher(ITransactionalEmailSender sender) : IOtpDispatcher
 {
     public Task SendAsync(
         OtpRecipient recipient,
@@ -11,5 +12,7 @@ public sealed class OtpDispatcher(IEmailSender email) : IOtpDispatcher
         string code,
         int expiresInMinutes,
         CancellationToken ct) =>
-        email.SendOtpAsync(recipient.Email, recipient.Name, purpose, code, expiresInMinutes, ct);
+        sender.SendAsync(
+            new OtpEmail(purpose, recipient.Email, recipient.Name, code, expiresInMinutes),
+            ct);
 }

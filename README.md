@@ -12,7 +12,7 @@ and assigns `manager` / `staff` / `viewer` roles. One company can never see anot
 
 .NET 10, ASP.NET Core, EF Core 10 with Npgsql, ASP.NET Core Identity, FluentValidation, ErrorOr,
 Serilog. Auth is HS256 access tokens plus rotating refresh tokens, with one-time codes delivered by
-email (Klaviyo).
+email (Resend).
 
 ## Architecture
 
@@ -56,9 +56,15 @@ the `Section__Key` double-underscore convention.
 | `JwtSettings__Issuer`, `JwtSettings__SigningKey` | Token issuer and HMAC-SHA256 key. Rotating the key invalidates every outstanding token. |
 | `ApiKeySettings__Key` | Shared secret required on every `/api/*` request. |
 | `CredentialProtectionSettings__Key` | Base64 32-byte key encrypting stored external credentials. |
-| `KlaviyoSettings__ApiKey`, `KlaviyoSettings__ContactListId` | Transactional email. |
+| `ResendSettings__ApiKey` | Resend API key (required). Rotate in the `STACK_ENV` secret and redeploy; no code change needed. |
+| `ResendSettings__FromAddress` | Sending address on the verified `firearmstudio.com` domain (required). |
+| `ResendSettings__FromName` | Display name for platform emails. Defaults to `Firearm Studio`. |
+| `ResendSettings__ContactInboxEmail` | Inbox address for contact-form copies sent to the business. Blank disables that send. |
+| `ResendSettings__ContactSegmentId` | Resend audience segment id for contact-form subscribers. Blank disables segment add. |
 | `ForwardedHeaders__KnownNetworks__0` | Reverse-proxy or tunnel network to trust. Required for per-IP rate limiting to work. |
 | `NotificationSettings__PublicBaseUrl` | Public origin for absolute links in notification emails. |
+
+Run `RESEND_API_KEY=<key> tools/resend-templates/provision.sh` to create or update all Resend email templates; see `tools/resend-templates/README.md` for details and fragment contracts.
 
 Generate secrets with `openssl rand -base64 48`. Use `SSL Mode=Require` unless the database is on a
 trusted network, and set `Maximum Pool Size` deliberately: Npgsql defaults to 100, which collides

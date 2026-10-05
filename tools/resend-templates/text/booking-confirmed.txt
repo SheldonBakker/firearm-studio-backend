@@ -1,0 +1,18 @@
+Hi {{{CUSTOMER_NAME}}},
+
+Your booking {{{BOOKING_NUMBER}}} is confirmed. See you there!
+
+Date:         {{{BOOKING_DATE}}}
+Time:         {{{START_TIME}}} - {{{END_TIME}}}
+Range:        {{{RANGE_NAME}}}
+Package:      {{{PACKAGE_NAME}}} - {{{PACKAGE_PRICE}}}
+Shooters:     {{{SHOOTER_COUNT}}}
+Deposit:      {{{DEPOSIT_AMOUNT}}} due {{{DEPOSIT_DUE}}}
+Invoice:      {{{INVOICE_NUMBER}}}
+
+{{{CALENDAR_TEXT}}}
+
+Questions? Contact {{{COMPANY_NAME}}} at {{{COMPANY_EMAIL}}} or {{{COMPANY_PHONE}}}.
+
+--
+sent via Firearm Studio

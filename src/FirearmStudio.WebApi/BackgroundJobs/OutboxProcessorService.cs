@@ -45,15 +45,15 @@ public sealed class OutboxProcessorService(
                 switch (message.Type)
                 {
                     case OutboxMessageTypes.BookingRequested:
-                        await dispatcher.DispatchAsync(message.Payload, cancellationToken);
+                        await dispatcher.DispatchAsync(message.Id, message.Payload, cancellationToken);
                         break;
                     case OutboxMessageTypes.LicenceRenewalReminder:
-                        await licenceReminderDispatcher.DispatchAsync(message.Payload, cancellationToken);
+                        await licenceReminderDispatcher.DispatchAsync(message.Id, message.Payload, cancellationToken);
                         break;
                     case OutboxMessageTypes.BookingConfirmed:
                     case OutboxMessageTypes.BookingReminder:
                     case OutboxMessageTypes.BookingCancelled:
-                        await bookingLifecycleDispatcher.DispatchAsync(message.Type, message.Payload, cancellationToken);
+                        await bookingLifecycleDispatcher.DispatchAsync(message.Id, message.Type, message.Payload, cancellationToken);
                         break;
                     default:
                         throw new InvalidOperationException($"Unknown outbox message type '{message.Type}'.");

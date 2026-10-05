@@ -1,0 +1,17 @@
+Hi {{{CUSTOMER_NAME}}},
+
+Your firearm licence {{{LICENCE_NUMBER}}} expires in {{{DAYS_UNTIL_EXPIRY}}} days on {{{EXPIRES_ON}}}. Please arrange renewal as soon as possible to avoid lapsing.
+
+Licence number: {{{LICENCE_NUMBER}}}
+Expires on:     {{{EXPIRES_ON}}}
+Tier:           {{{TIER}}}
+Firearm make:   {{{FIREARM_MAKE}}}
+Firearm model:  {{{FIREARM_MODEL}}}
+Serial number:  {{{SERIAL_NUMBER}}}
+
+To renew, contact your nearest SAPS Central Firearms Registry. Contact {{{COMPANY_NAME}}} if you need any documentation from us to support your application.
+
+Contact {{{COMPANY_NAME}}} at {{{COMPANY_EMAIL}}} or {{{COMPANY_PHONE}}}.
+
+--
+sent via Firearm Studio

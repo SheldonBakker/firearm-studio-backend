@@ -1,53 +1,73 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Application.Abstractions.Email;
 using FirearmStudio.Application.Abstractions.Messaging;
-using FirearmStudio.Application.Model.Options;
 using Microsoft.Extensions.Logging;
 
 namespace FirearmStudio.Application.Contact.SubmitContactForm;
 
 public sealed class SubmitContactFormCommandHandler(
-    ICustomerEngagementClient engagement,
-    CustomerEngagementSettings settings,
+    IContactDirectory contactDirectory,
+    ITransactionalEmailSender emailSender,
     ILogger<SubmitContactFormCommandHandler> logger)
     : ICommandHandler<SubmitContactFormCommand, ErrorOr<Success>>
 {
     public async Task<ErrorOr<Success>> Handle(SubmitContactFormCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
+        var parts = request.FullName.Split((char[])null!, 2,
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var firstName = parts.Length > 0 ? parts[0] : request.FullName.Trim();
+        var lastName = parts.Length > 1 ? parts[1] : null;
 
-        var properties = new Dictionary<string, object?> { ["message"] = request.Message };
-        if (!string.IsNullOrWhiteSpace(request.Company))
-        {
-            properties["company"] = request.Company;
-        }
+        await Task.WhenAll(
+            AddContactAsync(request, firstName, lastName, cancellationToken),
+            SendReceivedEmailAsync(request, cancellationToken),
+            SendAcknowledgementEmailAsync(request, cancellationToken));
 
-        if (!string.IsNullOrWhiteSpace(settings.ContactListId))
-        {
-            try
-            {
-                await engagement.SubscribeProfileAsync(settings.ContactListId, request.Email, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to subscribe contact {Email} to the engagement list.", request.Email);
-            }
-        }
+        return Result.Success;
+    }
 
+    private async Task AddContactAsync(
+        ContactFormRequest request, string firstName, string? lastName, CancellationToken cancellationToken)
+    {
         try
         {
-            await engagement.TrackEventAsync(
-                settings.ContactMetricName,
-                request.Email,
-                request.FullName,
-                properties,
+            await contactDirectory.AddContactAsync(
+                new ContactEntry(request.Email, firstName, lastName),
                 cancellationToken);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to send the contact-form engagement event for {Email}.", request.Email);
+            logger.LogError(ex, "Failed to add contact {Email} to the directory.", request.Email);
         }
+    }
 
-        return Result.Success;
+    private async Task SendReceivedEmailAsync(ContactFormRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await emailSender.SendAsync(
+                new ContactFormReceivedEmail(request.FullName, request.Email, request.Company, request.Message),
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send contact-form-received email for {Email}.", request.Email);
+        }
+    }
+
+    private async Task SendAcknowledgementEmailAsync(ContactFormRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await emailSender.SendAsync(
+                new ContactFormAcknowledgementEmail(request.Email, request.FullName),
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send contact-form-acknowledgement email for {Email}.", request.Email);
+        }
     }
 }

@@ -1,7 +1,7 @@
 using ErrorOr;
 using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Application.Abstractions.Email;
 using FirearmStudio.Application.Abstractions.Messaging;
-using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Entities;
 using FirearmStudio.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -11,8 +11,7 @@ namespace FirearmStudio.Application.Invoices.SendInvoice;
 
 public sealed class SendInvoiceCommandHandler(
     IApplicationDbContext db,
-    ICustomerEngagementClient engagement,
-    CustomerEngagementSettings settings,
+    ITransactionalEmailSender emailSender,
     ILogger<SendInvoiceCommandHandler> logger)
     : ICommandHandler<SendInvoiceCommand, ErrorOr<Updated>>
 {
@@ -36,18 +35,18 @@ public sealed class SendInvoiceCommandHandler(
         invoice.SentAt = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
-        await SendEngagementEventAsync(invoice, cancellationToken);
+        await SendEmailAsync(invoice, cancellationToken);
 
         return Result.Updated;
     }
 
-    private async Task SendEngagementEventAsync(Invoice invoice, CancellationToken cancellationToken)
+    private async Task SendEmailAsync(Invoice invoice, CancellationToken cancellationToken)
     {
         var email = invoice.Customer?.Email;
         if (string.IsNullOrWhiteSpace(email))
         {
             logger.LogWarning(
-                "Skipped invoice-sent engagement event for invoice {InvoiceNumber}: customer has no email.",
+                "Skipped invoice-sent email for invoice {InvoiceNumber}: customer has no email.",
                 invoice.InvoiceNumber);
             return;
         }
@@ -58,94 +57,40 @@ public sealed class SendInvoiceCommandHandler(
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == invoice.CompanyId, cancellationToken);
 
-            var name = invoice.Customer?.FullName ?? invoice.Customer?.CompanyName;
-            var properties = BuildEventProperties(invoice, company);
+            var companyDetails = company is not null
+                ? CompanyEmailDetails.From(company)
+                : CompanyEmailDetails.Empty;
 
-            await engagement.TrackEventAsync(
-                settings.InvoiceSentMetricName,
+            var customerName = invoice.Customer?.FullName ?? invoice.Customer?.CompanyName;
+
+            var lines = invoice.Lines
+                .Select(l => new InvoiceEmailLine(l.Description, l.Quantity, l.UnitPrice, l.LineTotal))
+                .ToList();
+
+            var message = new InvoiceSentEmail(
                 email,
-                name,
-                properties,
-                cancellationToken);
+                customerName,
+                invoice.InvoiceNumber,
+                invoice.InvoiceMonth,
+                invoice.DueOn,
+                invoice.Subtotal,
+                invoice.VatAmount,
+                invoice.Total,
+                lines,
+                companyDetails)
+            {
+                IdempotencyKey = $"invoice-sent:{invoice.Id}:{invoice.SentAt:O}",
+            };
+
+            await emailSender.SendAsync(message, cancellationToken);
         }
         catch (Exception ex)
         {
             logger.LogError(
                 ex,
-                "Failed to send the invoice-sent engagement event for invoice {InvoiceNumber}.",
+                "Failed to send the invoice-sent email for invoice {InvoiceNumber}.",
                 invoice.InvoiceNumber);
         }
-    }
-
-    private static Dictionary<string, object?> BuildEventProperties(Invoice invoice, Company? company)
-    {
-        var properties = new Dictionary<string, object?>
-        {
-            ["invoice_id"] = invoice.Id,
-            ["invoice_number"] = invoice.InvoiceNumber,
-            ["invoice_month"] = invoice.InvoiceMonth.ToString("yyyy-MM-dd"),
-            ["status"] = invoice.Status.ToString(),
-            ["subtotal"] = invoice.Subtotal,
-            ["vat_amount"] = invoice.VatAmount,
-            ["total"] = invoice.Total,
-            ["sent_at"] = invoice.SentAt,
-            ["due_on"] = invoice.DueOn?.ToString("yyyy-MM-dd"),
-            ["lines"] = invoice.Lines
-                .Select(line => new Dictionary<string, object?>
-                {
-                    ["description"] = line.Description,
-                    ["quantity"] = line.Quantity,
-                    ["unit_price"] = line.UnitPrice,
-                    ["line_total"] = line.LineTotal,
-                })
-                .ToList(),
-        };
-
-        if (invoice.Customer is { } customer)
-        {
-            properties["customer"] = new Dictionary<string, object?>
-            {
-                ["id"] = customer.Id,
-                ["type"] = customer.CustomerType.ToString(),
-                ["full_name"] = customer.FullName,
-                ["company_name"] = customer.CompanyName,
-                ["registration_number"] = customer.RegistrationNumber,
-                ["vat_number"] = customer.VatNumber,
-                ["email"] = customer.Email,
-                ["phone"] = customer.Phone,
-                ["address_line1"] = customer.AddressLine1,
-                ["address_line2"] = customer.AddressLine2,
-                ["city"] = customer.City,
-                ["province"] = customer.Province,
-                ["postal_code"] = customer.PostalCode,
-            };
-        }
-
-        if (company is not null)
-        {
-            properties["company"] = new Dictionary<string, object?>
-            {
-                ["id"] = company.Id,
-                ["name"] = company.Name,
-                ["registration_number"] = company.RegistrationNumber,
-                ["vat_number"] = company.VatNumber,
-                ["email"] = company.Email,
-                ["phone"] = company.Phone,
-                ["address_line1"] = company.AddressLine1,
-                ["address_line2"] = company.AddressLine2,
-                ["city"] = company.City,
-                ["province"] = company.Province,
-                ["postal_code"] = company.PostalCode,
-                ["bank_name"] = company.BankName,
-                ["bank_account_holder"] = company.BankAccountHolder,
-                ["bank_account_number"] = company.BankAccountNumber,
-                ["bank_branch_code"] = company.BankBranchCode,
-                ["bank_account_type"] = company.BankAccountType,
-                ["bank_swift_code"] = company.BankSwiftCode,
-            };
-        }
-
-        return properties;
     }
 
     public static class ErrorCodes

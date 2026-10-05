@@ -1,4 +1,5 @@
 using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Application.Abstractions.Email;
 using FirearmStudio.Domain.Enums;
 using FirearmStudio.Infrastructure.Services;
 using Xunit;
@@ -7,15 +8,19 @@ namespace FirearmStudio.Infrastructure.Tests;
 
 public sealed class OtpDispatcherTests
 {
-    private sealed class RecordingEmailSender(bool throws = false) : IEmailSender
+    private sealed class RecordingEmailSender(bool throws = false) : ITransactionalEmailSender
     {
         public int Calls { get; private set; }
-        public string? LastEmail { get; private set; }
+        public OtpEmail? LastOtp { get; private set; }
 
-        public Task SendOtpAsync(string email, string? name, OtpPurpose purpose, string code, int expiresInMinutes, CancellationToken ct)
+        public Task SendAsync(EmailMessage message, CancellationToken cancellationToken)
         {
             Calls++;
-            LastEmail = email;
+            if (message is OtpEmail otp)
+            {
+                LastOtp = otp;
+            }
+
             if (throws)
             {
                 throw new InvalidOperationException("email down");
@@ -25,7 +30,7 @@ public sealed class OtpDispatcherTests
         }
     }
 
-    private static OtpDispatcher Build(RecordingEmailSender email) => new(email);
+    private static OtpDispatcher Build(RecordingEmailSender sender) => new(sender);
 
     [Theory]
     [InlineData(OtpPurpose.EmailConfirmation)]
@@ -34,21 +39,34 @@ public sealed class OtpDispatcherTests
     [InlineData(OtpPurpose.TwoFactor)]
     public async Task Every_purpose_sends_exactly_one_email(OtpPurpose purpose)
     {
-        var email = new RecordingEmailSender();
-        await Build(email).SendAsync(
+        var sender = new RecordingEmailSender();
+        await Build(sender).SendAsync(
             new OtpRecipient("user@example.com", null),
             purpose, "123456", 15, default);
 
-        Assert.Equal(1, email.Calls);
-        Assert.Equal("user@example.com", email.LastEmail);
+        Assert.Equal(1, sender.Calls);
+        Assert.Equal("user@example.com", sender.LastOtp!.Email);
     }
 
     [Fact]
-    public async Task Throwing_email_propagates()
+    public async Task Recipient_name_and_code_are_forwarded()
     {
-        var email = new RecordingEmailSender(throws: true);
+        var sender = new RecordingEmailSender();
+        await Build(sender).SendAsync(
+            new OtpRecipient("user@example.com", "Alice"),
+            OtpPurpose.EmailConfirmation, "654321", 30, default);
+
+        Assert.Equal("Alice", sender.LastOtp!.Name);
+        Assert.Equal("654321", sender.LastOtp.Code);
+        Assert.Equal(30, sender.LastOtp.ExpiresInMinutes);
+    }
+
+    [Fact]
+    public async Task Throwing_sender_propagates()
+    {
+        var sender = new RecordingEmailSender(throws: true);
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            Build(email).SendAsync(
+            Build(sender).SendAsync(
                 new OtpRecipient("user@example.com", null),
                 OtpPurpose.EmailConfirmation, "123456", 15, default));
     }

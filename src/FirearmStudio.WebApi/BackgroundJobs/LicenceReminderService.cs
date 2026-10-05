@@ -27,7 +27,7 @@ public sealed class LicenceReminderService(
             companies = await db.Companies
                 .AsNoTracking()
                 .Where(company => company.IsActive)
-                .Select(company => new LicenceReminderCompany(company.Id, company.Name))
+                .Select(company => new LicenceReminderCompany(company.Id, company.Name, company.Email, company.Phone))
                 .ToListAsync(cancellationToken);
         }
 

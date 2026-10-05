@@ -1,30 +1,32 @@
 using System.Text.Json;
 using FirearmStudio.Application.Abstractions;
-using FirearmStudio.Application.Model.Options;
+using FirearmStudio.Application.Abstractions.Email;
 using Microsoft.Extensions.Logging;
 
 namespace FirearmStudio.Application.Bookings;
 
 internal sealed class BookingRequestedDispatcher(
-    ICustomerEngagementClient engagement,
-    CustomerEngagementSettings settings,
+    ITransactionalEmailSender emailSender,
     ILogger<BookingRequestedDispatcher> logger) : IBookingRequestedDispatcher
 {
-    public async Task DispatchAsync(string payloadJson, CancellationToken cancellationToken)
+    public async Task DispatchAsync(Guid outboxMessageId, string payloadJson, CancellationToken cancellationToken)
     {
         var payload = JsonSerializer.Deserialize<BookingRequestedPayload>(payloadJson, OutboxJson.Options)
             ?? throw new InvalidOperationException("Booking-requested outbox payload deserialized to null.");
 
-        var properties = BookingRequestedNotifier.BuildProperties(payload);
+        if (string.IsNullOrWhiteSpace(payload.Email))
+        {
+            logger.LogWarning(
+                "Skipped booking-requested email for invoice {InvoiceNumber}: customer has no email.",
+                payload.Response.InvoiceNumber);
+            return;
+        }
 
-        await BookingRequestedNotifier.SendAsync(
-            engagement,
-            settings,
-            logger,
-            payload.Email,
-            payload.FullName,
-            properties,
-            $"invoice {payload.Response.InvoiceNumber}",
-            cancellationToken);
+        var message = BookingEmailFactory.BuildRequestedEmail(payload) with
+        {
+            IdempotencyKey = $"outbox:{outboxMessageId}",
+        };
+
+        await emailSender.SendAsync(message, cancellationToken);
     }
 }

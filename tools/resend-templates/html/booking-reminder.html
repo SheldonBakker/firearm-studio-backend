@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reminder: your upcoming booking</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+        <tr>
+          <td style="background:#1f2937;padding:24px 32px;border-radius:8px 8px 0 0;">
+            <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.5px;">{{{COMPANY_NAME}}}</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#ffffff;padding:32px;border-radius:0 0 8px 8px;">
+            <p style="margin:0 0 8px;font-size:16px;color:#111827;">Hi {{{CUSTOMER_NAME}}},</p>
+            <p style="margin:0 0 24px;font-size:16px;color:#111827;">This is a reminder about your upcoming booking <strong>{{{BOOKING_NUMBER}}}</strong>. Please arrive a few minutes early and bring a valid ID.</p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
+              <tr>
+                <td style="padding:10px 16px;background:#f9fafb;font-size:13px;color:#6b7280;width:140px;border-bottom:1px solid #e5e7eb;">Date</td>
+                <td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #e5e7eb;">{{{BOOKING_DATE}}}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;background:#f9fafb;font-size:13px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Time</td>
+                <td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #e5e7eb;">{{{START_TIME}}} - {{{END_TIME}}}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;background:#f9fafb;font-size:13px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Range</td>
+                <td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #e5e7eb;">{{{RANGE_NAME}}}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;background:#f9fafb;font-size:13px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Package</td>
+                <td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #e5e7eb;">{{{PACKAGE_NAME}}} - {{{PACKAGE_PRICE}}}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;background:#f9fafb;font-size:13px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Shooters</td>
+                <td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #e5e7eb;">{{{SHOOTER_COUNT}}}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;background:#f9fafb;font-size:13px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Deposit due</td>
+                <td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #e5e7eb;">{{{DEPOSIT_AMOUNT}}} by {{{DEPOSIT_DUE}}}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;background:#f9fafb;font-size:13px;color:#6b7280;">Invoice</td>
+                <td style="padding:10px 16px;font-size:14px;color:#111827;">{{{INVOICE_NUMBER}}}</td>
+              </tr>
+            </table>
+
+            {{{CALENDAR_HTML}}}
+
+            <p style="margin:24px 0 0;font-size:13px;color:#6b7280;">Questions? Contact {{{COMPANY_NAME}}} at {{{COMPANY_EMAIL}}} or {{{COMPANY_PHONE}}}.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 0;text-align:center;">
+            <span style="color:#9ca3af;font-size:12px;">sent via Firearm Studio</span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

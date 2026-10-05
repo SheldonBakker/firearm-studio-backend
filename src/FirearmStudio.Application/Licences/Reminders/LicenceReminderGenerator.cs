@@ -79,7 +79,9 @@ internal sealed class LicenceReminderGenerator(
                 licence.Firearm.Model,
                 licence.Firearm.SerialNumber,
                 company.Id,
-                company.Name);
+                company.Name,
+                company.Email,
+                company.Phone);
 
             db.LicenceReminders.Add(new LicenceReminder
             {
