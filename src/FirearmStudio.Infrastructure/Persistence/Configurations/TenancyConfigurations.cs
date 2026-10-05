@@ -38,6 +38,8 @@ internal sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
         builder.Property(x => x.BankBranchCode).HasMaxLength(20);
         builder.Property(x => x.BankAccountType).HasMaxLength(20);
         builder.Property(x => x.BankSwiftCode).HasMaxLength(11);
+        builder.Property(x => x.StorefrontKey).HasMaxLength(StorefrontKeyConstants.MaxLength);
+        builder.HasIndex(x => x.StorefrontKey).IsUnique();
         builder.Property(x => x.IsActive).HasDefaultValue(true);
         builder.Property(x => x.DueDays).HasDefaultValue(30);
         builder.Property(x => x.AutoBillingEnabled).HasDefaultValue(true);

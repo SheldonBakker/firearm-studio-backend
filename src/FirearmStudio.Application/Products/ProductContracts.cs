@@ -65,3 +65,18 @@ public sealed record ProductResponse(
         row.Id, row.Name, row.Description, row.Sku, row.Price, row.CostPrice, row.Category,
         row.StockQuantity, imageUrl, row.IsActive, row.CreatedAt, row.UpdatedAt);
 }
+
+public sealed record PublicProductResponse(
+    Guid Id,
+    string Name,
+    string? Description,
+    string? Sku,
+    decimal Price,
+    string? Category,
+    bool InStock,
+    string? ImageUrl)
+{
+    public static PublicProductResponse FromRow(ProductRow row, string? imageUrl) => new(
+        row.Id, row.Name, row.Description, row.Sku, row.Price, row.Category,
+        row.StockQuantity > 0, imageUrl);
+}

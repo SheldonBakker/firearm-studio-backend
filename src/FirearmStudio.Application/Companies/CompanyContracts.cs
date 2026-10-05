@@ -37,6 +37,10 @@ public sealed record CompanyDetailsResponse(
         c.IsActive, c.DepositMode, c.DepositValue, c.DepositWindowHours, c.CreatedAt, c.UpdatedAt);
 }
 
+public sealed record StorefrontKeyResult(Guid CompanyId, string? Key);
+
+public sealed record StorefrontAccessResponse(string? Key, string? ProductsUrl);
+
 public sealed record UpdateCompanyRequest(
     Optional<string> Name,
     Optional<string?> RegistrationNumber,
