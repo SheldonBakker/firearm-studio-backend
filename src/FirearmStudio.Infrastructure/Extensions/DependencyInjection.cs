@@ -82,10 +82,9 @@ public static class DependencyInjection
         services.AddScoped<IOtpService, OtpService>();
         services.AddScoped<ITokenService, TokenService>();
 
-        services.AddScoped<IEmailSender, KlaviyoEmailSender>();
         services.AddScoped<IOtpDispatcher, OtpDispatcher>();
 
-        AddCustomerEngagement(services, configuration);
+        AddResend(services, configuration);
         AddNotificationSettings(services, configuration);
         AddFileStorage(services, configuration);
         AddSageAccounting(services);
@@ -93,44 +92,68 @@ public static class DependencyInjection
         return services;
     }
 
-    private static void AddCustomerEngagement(IServiceCollection services, IConfiguration configuration)
+    private static void AddResend(IServiceCollection services, IConfiguration configuration)
     {
-        var settings = configuration.GetSection(KlaviyoSettings.SectionName).Get<KlaviyoSettings>()
-            ?? new KlaviyoSettings();
+        var settings = configuration.GetSection(ResendSettings.SectionName).Get<ResendSettings>()
+            ?? new ResendSettings();
 
-        if (string.IsNullOrWhiteSpace(settings.ApiKey))
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+            ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+            ?? string.Empty;
+
+        var isDev = string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase);
+
+        if (string.IsNullOrWhiteSpace(settings.ApiKey) || string.IsNullOrWhiteSpace(settings.FromAddress))
         {
-            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
-                ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
-                ?? string.Empty;
-
-            if (!string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+            if (!isDev)
             {
+                var settingName = string.IsNullOrWhiteSpace(settings.ApiKey)
+                    ? $"{ResendSettings.SectionName}:ApiKey"
+                    : $"{ResendSettings.SectionName}:FromAddress";
+
                 throw new InvalidOperationException(
-                    $"Missing required configuration '{KlaviyoSettings.SectionName}:ApiKey'. " +
-                    "Set it via KlaviyoSettings__ApiKey in .env or user-secrets.");
+                    $"Missing required configuration '{settingName}'. " +
+                    $"Set it via environment variable in .env or user-secrets.");
             }
 
             Console.Error.WriteLine(
-                $"[WARNING] {KlaviyoSettings.SectionName}:ApiKey is not configured. " +
-                "Klaviyo integration will not function. Set KlaviyoSettings__ApiKey in .env or user-secrets.");
+                $"[WARNING] {ResendSettings.SectionName}:ApiKey or FromAddress is not configured. " +
+                "Email integration will not function.");
+        }
+
+        if (string.IsNullOrWhiteSpace(settings.ContactInboxEmail))
+        {
+            Console.Error.WriteLine(
+                $"[WARNING] {ResendSettings.SectionName}:ContactInboxEmail is not configured. " +
+                "Contact form inbox delivery will be skipped.");
+        }
+
+        if (string.IsNullOrWhiteSpace(settings.ContactSegmentId))
+        {
+            Console.Error.WriteLine(
+                $"[WARNING] {ResendSettings.SectionName}:ContactSegmentId is not configured. " +
+                "Contact list subscription will be skipped.");
         }
 
         services.AddSingleton(settings);
+        services.AddSingleton<ResendEmailMapper>();
 
-        var engagementSettings = configuration
-            .GetSection(CustomerEngagementSettings.SectionName)
-            .Get<CustomerEngagementSettings>()
-            ?? new CustomerEngagementSettings();
+        var timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
+        var baseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
 
-        services.AddSingleton(engagementSettings);
-
-        services.AddHttpClient<ICustomerEngagementClient, KlaviyoClient>(client =>
+        services.AddHttpClient<ITransactionalEmailSender, ResendEmailSender>(client =>
         {
-            client.Timeout = TimeSpan.FromSeconds(10);
-            client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
-            client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Klaviyo-API-Key {settings.ApiKey}");
-            client.DefaultRequestHeaders.TryAddWithoutValidation("revision", settings.ApiRevision);
+            client.Timeout = timeout;
+            client.BaseAddress = baseAddress;
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer {settings.ApiKey}");
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        });
+
+        services.AddHttpClient<IContactDirectory, ResendContactDirectory>(client =>
+        {
+            client.Timeout = timeout;
+            client.BaseAddress = baseAddress;
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer {settings.ApiKey}");
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         });
     }

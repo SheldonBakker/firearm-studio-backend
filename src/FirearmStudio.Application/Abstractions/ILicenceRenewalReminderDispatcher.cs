@@ -2,5 +2,5 @@ namespace FirearmStudio.Application.Abstractions;
 
 public interface ILicenceRenewalReminderDispatcher
 {
-    Task DispatchAsync(string payloadJson, CancellationToken cancellationToken);
+    Task DispatchAsync(Guid outboxMessageId, string payloadJson, CancellationToken cancellationToken);
 }

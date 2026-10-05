@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using FirearmStudio.Application.Abstractions;
+using FirearmStudio.Application.Abstractions.Email;
 using FirearmStudio.Application.Auth;
 using FirearmStudio.Application.Auth.AcceptInvite;
 using FirearmStudio.Application.Auth.DisableTwoFactor;
@@ -29,22 +30,20 @@ using Xunit;
 
 namespace FirearmStudio.Infrastructure.Tests.Integration;
 
-public sealed class CapturingEmailSender : IEmailSender
+public sealed class CapturingEmailSender : ITransactionalEmailSender
 {
     private readonly List<(string Email, OtpPurpose Purpose, string Code)> _sent = [];
 
     public string LastCodeFor(string email, OtpPurpose purpose) =>
         _sent.Last(s => s.Email == email && s.Purpose == purpose).Code;
 
-    public Task SendOtpAsync(
-        string email,
-        string? name,
-        OtpPurpose purpose,
-        string code,
-        int expiresInMinutes,
-        CancellationToken ct)
+    public Task SendAsync(EmailMessage message, CancellationToken cancellationToken)
     {
-        _sent.Add((email, purpose, code));
+        if (message is OtpEmail otp)
+        {
+            _sent.Add((otp.Email, otp.Purpose, otp.Code));
+        }
+
         return Task.CompletedTask;
     }
 }

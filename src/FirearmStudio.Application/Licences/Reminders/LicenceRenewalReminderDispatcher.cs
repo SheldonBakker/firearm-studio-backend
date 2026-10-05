@@ -1,36 +1,45 @@
 using System.Text.Json;
 using FirearmStudio.Application.Abstractions;
-using FirearmStudio.Application.Model.Options;
+using FirearmStudio.Application.Abstractions.Email;
+using Microsoft.Extensions.Logging;
 
 namespace FirearmStudio.Application.Licences.Reminders;
 
 internal sealed class LicenceRenewalReminderDispatcher(
-    ICustomerEngagementClient engagement,
-    CustomerEngagementSettings settings) : ILicenceRenewalReminderDispatcher
+    ITransactionalEmailSender emailSender,
+    ILogger<LicenceRenewalReminderDispatcher> logger) : ILicenceRenewalReminderDispatcher
 {
-    public async Task DispatchAsync(string payloadJson, CancellationToken cancellationToken)
+    public async Task DispatchAsync(Guid outboxMessageId, string payloadJson, CancellationToken cancellationToken)
     {
         var payload = JsonSerializer.Deserialize<LicenceRenewalReminderPayload>(payloadJson, OutboxJson.Options)
             ?? throw new InvalidOperationException("Licence-renewal-reminder outbox payload deserialized to null.");
 
-        var properties = new Dictionary<string, object?>
+        if (string.IsNullOrWhiteSpace(payload.Email))
         {
-            ["licence_number"] = payload.LicenceNumber,
-            ["expires_on"] = payload.ExpiresOn.ToString("yyyy-MM-dd"),
-            ["days_until_expiry"] = payload.DaysUntilExpiry,
-            ["tier"] = payload.Tier,
-            ["firearm_make"] = payload.FirearmMake,
-            ["firearm_model"] = payload.FirearmModel,
-            ["serial_number"] = payload.SerialNumber,
-            ["company_id"] = payload.CompanyId,
-            ["company_name"] = payload.CompanyName,
-        };
+            logger.LogWarning(
+                "Skipped licence-renewal-reminder email for licence {LicenceNumber}: customer has no email.",
+                payload.LicenceNumber);
+            return;
+        }
 
-        await engagement.TrackEventAsync(
-            settings.LicenceRenewalMetricName,
+        var company = new CompanyEmailDetails(
+            payload.CompanyName, payload.CompanyEmail, payload.CompanyPhone, null, null, null, null, null);
+
+        var message = new LicenceRenewalReminderEmail(
             payload.Email,
             payload.CustomerName,
-            properties,
-            cancellationToken);
+            payload.LicenceNumber,
+            payload.ExpiresOn,
+            payload.DaysUntilExpiry,
+            payload.Tier,
+            payload.FirearmMake,
+            payload.FirearmModel,
+            payload.SerialNumber,
+            company)
+        {
+            IdempotencyKey = $"outbox:{outboxMessageId}",
+        };
+
+        await emailSender.SendAsync(message, cancellationToken);
     }
 }

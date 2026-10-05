@@ -11,4 +11,6 @@ internal sealed record LicenceRenewalReminderPayload(
     string? FirearmModel,
     string SerialNumber,
     Guid CompanyId,
-    string CompanyName);
+    string CompanyName,
+    string? CompanyEmail = null,
+    string? CompanyPhone = null);
