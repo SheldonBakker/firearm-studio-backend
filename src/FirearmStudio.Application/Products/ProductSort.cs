@@ -4,6 +4,17 @@ namespace FirearmStudio.Application.Products;
 
 public static class ProductSort
 {
+    private const string DefaultSortBy = "name";
+
+    private static readonly HashSet<string> PublicSortKeys =
+        new(StringComparer.OrdinalIgnoreCase) { DefaultSortBy, "price", "category", "createdat" };
+
+    public static IOrderedQueryable<Product> ApplyPublic(IQueryable<Product> source, string sortBy, string sortDir)
+    {
+        var allowed = sortBy is not null && PublicSortKeys.Contains(sortBy) ? sortBy : DefaultSortBy;
+        return Apply(source, allowed, sortDir);
+    }
+
     public static IOrderedQueryable<Product> Apply(IQueryable<Product> source, string sortBy, string sortDir)
     {
         var desc = sortDir is not null && sortDir.Equals("desc", StringComparison.OrdinalIgnoreCase);

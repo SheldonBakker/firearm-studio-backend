@@ -4,11 +4,13 @@ using FirearmStudio.Application.Model.Options;
 using FirearmStudio.Domain.Authentication;
 using FirearmStudio.Infrastructure.Extensions;
 using FirearmStudio.WebApi.BackgroundJobs;
+using FirearmStudio.WebApi.Common;
 using FirearmStudio.WebApi.Extensions;
 using FirearmStudio.WebApi.Extensions.Authentication;
 using FirearmStudio.WebApi.Middleware;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Net.Http.Headers;
 using Serilog;
 
 try
@@ -57,6 +59,10 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 builder.Services.AddAppHealthChecks();
+
+builder.Services.AddCors(o =>
+    o.AddPolicy(CorsPolicies.PublicRead, p =>
+        p.AllowAnyOrigin().WithMethods(HttpMethods.Get).WithHeaders(HeaderNames.ContentType)));
 
 builder.Services
     .AddWebApi()
@@ -113,6 +119,15 @@ builder.Services.AddRateLimiter(options =>
                 PermitLimit = 5,
                 Window = TimeSpan.FromMinutes(15),
             }));
+
+    options.AddPolicy(RateLimitPolicies.PublicCatalogue, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+            }));
 });
 
 builder.Services.AddOutputCache(options =>
@@ -133,6 +148,13 @@ builder.Services.AddOutputCache(options =>
             .Expire(TimeSpan.FromSeconds(60))
             .SetVaryByRouteValue("companyId", "rangeId")
             .SetVaryByQuery("year", "month", "packageId"));
+
+    options.AddPolicy(OutputCachePolicies.PublicProducts, policy =>
+        policy
+            .Expire(TimeSpan.FromSeconds(60))
+            .Tag(OutputCachePolicies.PublicProductsTag)
+            .SetVaryByRouteValue("companyId")
+            .SetVaryByQuery("key", "search", "category", "sortBy", "sortDir", "pageNumber", "pageSize"));
 });
 
 var app = builder.Build();
@@ -164,6 +186,8 @@ app.UseExceptionHandler();
 app.UseSerilogRequestLogging();
 
 app.UseRouting();
+
+app.UseCors();
 
 app.UseAuthentication();
 app.UseRateLimiter();

@@ -11,4 +11,11 @@ public static class ProductResponseMapper
             row.ImageKey is null
                 ? null
                 : storage.GetPresignedReadUrl(row.ImageKey, ProductImageConstants.PresignLifetime));
+
+    public static PublicProductResponse MapPublic(ProductRow row, IFileStorage storage) =>
+        PublicProductResponse.FromRow(
+            row,
+            row.ImageKey is null
+                ? null
+                : storage.GetPresignedReadUrl(row.ImageKey, ProductImageConstants.PresignLifetime));
 }

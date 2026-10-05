@@ -13,21 +13,9 @@ public sealed class GetProductsQueryHandler(IApplicationDbContext db, IFileStora
     public async Task<ErrorOr<PaginatedResponse<ProductResponse>>> Handle(
         GetProductsQuery query, CancellationToken cancellationToken)
     {
-        var queryable = db.Products.AsNoTracking();
-
-        if (!string.IsNullOrWhiteSpace(query.Search))
-        {
-            var pattern = SearchPatternHelper.ToILikeContainsPattern(query.Search.Trim());
-            queryable = queryable.Where(p =>
-                EF.Functions.ILike(p.Name, pattern) ||
-                (p.Sku != null && EF.Functions.ILike(p.Sku, pattern)));
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.Category))
-        {
-            var pattern = SearchPatternHelper.ToILikeExactPattern(query.Category.Trim());
-            queryable = queryable.Where(p => p.Category != null && EF.Functions.ILike(p.Category, pattern));
-        }
+        var queryable = db.Products.AsNoTracking()
+            .ApplySearch(query.Search)
+            .ApplyCategory(query.Category);
 
         if (query.IsActive.HasValue)
         {
