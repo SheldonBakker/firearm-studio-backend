@@ -1,0 +1,192 @@
+[
+  {
+    "alias": "otp-signup-verification",
+    "name": "OTP - Signup verification",
+    "subject": "Your Firearm Studio verification code",
+    "variables": [
+      { "key": "RECIPIENT_NAME", "type": "string", "fallback_value": "there" },
+      { "key": "CODE", "type": "string", "fallback_value": "" },
+      { "key": "EXPIRES_MINUTES", "type": "number", "fallback_value": 0 }
+    ]
+  },
+  {
+    "alias": "otp-password-reset",
+    "name": "OTP - Password reset",
+    "subject": "Reset your Firearm Studio password",
+    "variables": [
+      { "key": "RECIPIENT_NAME", "type": "string", "fallback_value": "there" },
+      { "key": "CODE", "type": "string", "fallback_value": "" },
+      { "key": "EXPIRES_MINUTES", "type": "number", "fallback_value": 0 }
+    ]
+  },
+  {
+    "alias": "otp-team-invite",
+    "name": "OTP - Team invite",
+    "subject": "Your Firearm Studio invite code",
+    "variables": [
+      { "key": "RECIPIENT_NAME", "type": "string", "fallback_value": "there" },
+      { "key": "CODE", "type": "string", "fallback_value": "" },
+      { "key": "EXPIRES_MINUTES", "type": "number", "fallback_value": 0 }
+    ]
+  },
+  {
+    "alias": "otp-login-verification",
+    "name": "OTP - Login verification",
+    "subject": "Your Firearm Studio login code",
+    "variables": [
+      { "key": "RECIPIENT_NAME", "type": "string", "fallback_value": "there" },
+      { "key": "CODE", "type": "string", "fallback_value": "" },
+      { "key": "EXPIRES_MINUTES", "type": "number", "fallback_value": 0 }
+    ]
+  },
+  {
+    "alias": "contact-form-received",
+    "name": "Contact form - Received (inbox)",
+    "subject": "New contact form submission",
+    "variables": [
+      { "key": "SUBMITTER_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "SUBMITTER_EMAIL", "type": "string", "fallback_value": "-" },
+      { "key": "SUBMITTER_COMPANY", "type": "string", "fallback_value": "-" },
+      { "key": "MESSAGE_HTML", "type": "string", "fallback_value": "" },
+      { "key": "MESSAGE_TEXT", "type": "string", "fallback_value": "" }
+    ]
+  },
+  {
+    "alias": "contact-form-acknowledgement",
+    "name": "Contact form - Acknowledgement (submitter)",
+    "subject": "We received your message",
+    "variables": [
+      { "key": "RECIPIENT_NAME", "type": "string", "fallback_value": "there" }
+    ]
+  },
+  {
+    "alias": "invoice-sent",
+    "name": "Invoice - Sent",
+    "subject": "Your invoice {{{INVOICE_NUMBER}}}",
+    "variables": [
+      { "key": "COMPANY_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "COMPANY_EMAIL", "type": "string", "fallback_value": "-" },
+      { "key": "COMPANY_PHONE", "type": "string", "fallback_value": "-" },
+      { "key": "CUSTOMER_NAME", "type": "string", "fallback_value": "there" },
+      { "key": "INVOICE_NUMBER", "type": "string", "fallback_value": "-" },
+      { "key": "INVOICE_MONTH", "type": "string", "fallback_value": "-" },
+      { "key": "DUE_ON", "type": "string", "fallback_value": "-" },
+      { "key": "SUBTOTAL", "type": "string", "fallback_value": "R 0.00" },
+      { "key": "VAT_AMOUNT", "type": "string", "fallback_value": "R 0.00" },
+      { "key": "TOTAL", "type": "string", "fallback_value": "R 0.00" },
+      { "key": "LINES_HTML", "type": "string", "fallback_value": "" },
+      { "key": "LINES_TEXT", "type": "string", "fallback_value": "" },
+      { "key": "BANK_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "BANK_ACCOUNT_HOLDER", "type": "string", "fallback_value": "-" },
+      { "key": "BANK_ACCOUNT_NUMBER", "type": "string", "fallback_value": "-" },
+      { "key": "BANK_BRANCH_CODE", "type": "string", "fallback_value": "-" },
+      { "key": "BANK_ACCOUNT_TYPE", "type": "string", "fallback_value": "-" }
+    ]
+  },
+  {
+    "alias": "booking-requested",
+    "name": "Booking - Requested",
+    "subject": "We received your booking request {{{INVOICE_NUMBER}}}",
+    "variables": [
+      { "key": "COMPANY_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "COMPANY_EMAIL", "type": "string", "fallback_value": "-" },
+      { "key": "COMPANY_PHONE", "type": "string", "fallback_value": "-" },
+      { "key": "CUSTOMER_NAME", "type": "string", "fallback_value": "there" },
+      { "key": "INVOICE_NUMBER", "type": "string", "fallback_value": "-" },
+      { "key": "SESSION_COUNT", "type": "number", "fallback_value": 0 },
+      { "key": "SUBTOTAL", "type": "string", "fallback_value": "R 0.00" },
+      { "key": "VAT_AMOUNT", "type": "string", "fallback_value": "R 0.00" },
+      { "key": "TOTAL", "type": "string", "fallback_value": "R 0.00" },
+      { "key": "SESSIONS_HTML", "type": "string", "fallback_value": "" },
+      { "key": "SESSIONS_TEXT", "type": "string", "fallback_value": "" },
+      { "key": "BANK_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "BANK_ACCOUNT_HOLDER", "type": "string", "fallback_value": "-" },
+      { "key": "BANK_ACCOUNT_NUMBER", "type": "string", "fallback_value": "-" },
+      { "key": "BANK_BRANCH_CODE", "type": "string", "fallback_value": "-" },
+      { "key": "BANK_ACCOUNT_TYPE", "type": "string", "fallback_value": "-" }
+    ]
+  },
+  {
+    "alias": "booking-confirmed",
+    "name": "Booking - Confirmed",
+    "subject": "Your booking {{{BOOKING_NUMBER}}} is confirmed",
+    "variables": [
+      { "key": "COMPANY_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "COMPANY_EMAIL", "type": "string", "fallback_value": "-" },
+      { "key": "COMPANY_PHONE", "type": "string", "fallback_value": "-" },
+      { "key": "CUSTOMER_NAME", "type": "string", "fallback_value": "there" },
+      { "key": "BOOKING_NUMBER", "type": "string", "fallback_value": "-" },
+      { "key": "BOOKING_DATE", "type": "string", "fallback_value": "-" },
+      { "key": "START_TIME", "type": "string", "fallback_value": "-" },
+      { "key": "END_TIME", "type": "string", "fallback_value": "-" },
+      { "key": "RANGE_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "PACKAGE_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "PACKAGE_PRICE", "type": "string", "fallback_value": "R 0.00" },
+      { "key": "SHOOTER_COUNT", "type": "number", "fallback_value": 0 },
+      { "key": "CALENDAR_HTML", "type": "string", "fallback_value": "" },
+      { "key": "CALENDAR_TEXT", "type": "string", "fallback_value": "" },
+      { "key": "DEPOSIT_AMOUNT", "type": "string", "fallback_value": "-" },
+      { "key": "DEPOSIT_DUE", "type": "string", "fallback_value": "-" },
+      { "key": "INVOICE_NUMBER", "type": "string", "fallback_value": "-" }
+    ]
+  },
+  {
+    "alias": "booking-reminder",
+    "name": "Booking - Reminder",
+    "subject": "Reminder: your booking {{{BOOKING_NUMBER}}}",
+    "variables": [
+      { "key": "COMPANY_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "COMPANY_EMAIL", "type": "string", "fallback_value": "-" },
+      { "key": "COMPANY_PHONE", "type": "string", "fallback_value": "-" },
+      { "key": "CUSTOMER_NAME", "type": "string", "fallback_value": "there" },
+      { "key": "BOOKING_NUMBER", "type": "string", "fallback_value": "-" },
+      { "key": "BOOKING_DATE", "type": "string", "fallback_value": "-" },
+      { "key": "START_TIME", "type": "string", "fallback_value": "-" },
+      { "key": "END_TIME", "type": "string", "fallback_value": "-" },
+      { "key": "RANGE_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "PACKAGE_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "PACKAGE_PRICE", "type": "string", "fallback_value": "R 0.00" },
+      { "key": "SHOOTER_COUNT", "type": "number", "fallback_value": 0 },
+      { "key": "CALENDAR_HTML", "type": "string", "fallback_value": "" },
+      { "key": "CALENDAR_TEXT", "type": "string", "fallback_value": "" },
+      { "key": "DEPOSIT_AMOUNT", "type": "string", "fallback_value": "-" },
+      { "key": "DEPOSIT_DUE", "type": "string", "fallback_value": "-" },
+      { "key": "INVOICE_NUMBER", "type": "string", "fallback_value": "-" }
+    ]
+  },
+  {
+    "alias": "booking-cancelled",
+    "name": "Booking - Cancelled",
+    "subject": "Your booking {{{BOOKING_NUMBER}}} was cancelled",
+    "variables": [
+      { "key": "COMPANY_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "COMPANY_EMAIL", "type": "string", "fallback_value": "-" },
+      { "key": "COMPANY_PHONE", "type": "string", "fallback_value": "-" },
+      { "key": "CUSTOMER_NAME", "type": "string", "fallback_value": "there" },
+      { "key": "BOOKING_NUMBER", "type": "string", "fallback_value": "-" },
+      { "key": "BOOKING_DATE", "type": "string", "fallback_value": "-" },
+      { "key": "START_TIME", "type": "string", "fallback_value": "-" },
+      { "key": "END_TIME", "type": "string", "fallback_value": "-" },
+      { "key": "RANGE_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "PACKAGE_NAME", "type": "string", "fallback_value": "-" }
+    ]
+  },
+  {
+    "alias": "licence-renewal-reminder",
+    "name": "Licence - Renewal reminder",
+    "subject": "Licence {{{LICENCE_NUMBER}}} renewal reminder",
+    "variables": [
+      { "key": "COMPANY_NAME", "type": "string", "fallback_value": "-" },
+      { "key": "COMPANY_EMAIL", "type": "string", "fallback_value": "-" },
+      { "key": "COMPANY_PHONE", "type": "string", "fallback_value": "-" },
+      { "key": "CUSTOMER_NAME", "type": "string", "fallback_value": "there" },
+      { "key": "LICENCE_NUMBER", "type": "string", "fallback_value": "-" },
+      { "key": "EXPIRES_ON", "type": "string", "fallback_value": "-" },
+      { "key": "DAYS_UNTIL_EXPIRY", "type": "number", "fallback_value": 0 },
+      { "key": "TIER", "type": "string", "fallback_value": "-" },
+      { "key": "FIREARM_MAKE", "type": "string", "fallback_value": "-" },
+      { "key": "FIREARM_MODEL", "type": "string", "fallback_value": "-" },
+      { "key": "SERIAL_NUMBER", "type": "string", "fallback_value": "-" }
+    ]
+  }
+]

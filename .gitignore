@@ -506,7 +506,7 @@ CLAUDE.local.md
 AGENTS.md
 
 # Gun shop scraper (standalone tool)
-tools
+tools/gunshop-scraper/
 
 # Subagent-driven-development scratch (ledger, briefs, review packages)
 .superpowers/

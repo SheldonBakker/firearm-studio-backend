@@ -22,8 +22,12 @@ internal sealed class LicenceRenewalReminderDispatcher(
             return;
         }
 
-        var company = new CompanyEmailDetails(
-            payload.CompanyName, payload.CompanyEmail, payload.CompanyPhone, null, null, null, null, null);
+        var company = CompanyEmailDetails.Empty with
+        {
+            Name = payload.CompanyName,
+            Email = payload.CompanyEmail,
+            Phone = payload.CompanyPhone,
+        };
 
         var message = new LicenceRenewalReminderEmail(
             payload.Email,

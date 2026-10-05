@@ -1,0 +1,12 @@
+Hi {{{RECIPIENT_NAME}}},
+
+You have been invited to join a team on Firearm Studio. Enter the code below to accept your invitation and complete your setup.
+
+  {{{CODE}}}
+
+This code expires in {{{EXPIRES_MINUTES}}} minutes.
+
+If you were not expecting an invitation, you can safely ignore this email.
+
+--
+Firearm Studio

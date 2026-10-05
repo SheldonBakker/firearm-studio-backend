@@ -15,11 +15,22 @@ public sealed class SubmitContactFormCommandHandler(
     public async Task<ErrorOr<Success>> Handle(SubmitContactFormCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
+        var parts = request.FullName.Split((char[])null!, 2,
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var firstName = parts.Length > 0 ? parts[0] : request.FullName.Trim();
+        var lastName = parts.Length > 1 ? parts[1] : null;
 
-        var spaceIndex = request.FullName.IndexOf(' ');
-        var firstName = spaceIndex >= 0 ? request.FullName[..spaceIndex] : request.FullName;
-        var lastName = spaceIndex >= 0 ? request.FullName[(spaceIndex + 1)..] : null;
+        await Task.WhenAll(
+            AddContactAsync(request, firstName, lastName, cancellationToken),
+            SendReceivedEmailAsync(request, cancellationToken),
+            SendAcknowledgementEmailAsync(request, cancellationToken));
 
+        return Result.Success;
+    }
+
+    private async Task AddContactAsync(
+        ContactFormRequest request, string firstName, string? lastName, CancellationToken cancellationToken)
+    {
         try
         {
             await contactDirectory.AddContactAsync(
@@ -30,7 +41,10 @@ public sealed class SubmitContactFormCommandHandler(
         {
             logger.LogError(ex, "Failed to add contact {Email} to the directory.", request.Email);
         }
+    }
 
+    private async Task SendReceivedEmailAsync(ContactFormRequest request, CancellationToken cancellationToken)
+    {
         try
         {
             await emailSender.SendAsync(
@@ -41,7 +55,10 @@ public sealed class SubmitContactFormCommandHandler(
         {
             logger.LogError(ex, "Failed to send contact-form-received email for {Email}.", request.Email);
         }
+    }
 
+    private async Task SendAcknowledgementEmailAsync(ContactFormRequest request, CancellationToken cancellationToken)
+    {
         try
         {
             await emailSender.SendAsync(
@@ -52,7 +69,5 @@ public sealed class SubmitContactFormCommandHandler(
         {
             logger.LogError(ex, "Failed to send contact-form-acknowledgement email for {Email}.", request.Email);
         }
-
-        return Result.Success;
     }
 }

@@ -59,7 +59,7 @@ public sealed class SendInvoiceCommandHandler(
 
             var companyDetails = company is not null
                 ? CompanyEmailDetails.From(company)
-                : new CompanyEmailDetails(null, null, null, null, null, null, null, null);
+                : CompanyEmailDetails.Empty;
 
             var customerName = invoice.Customer?.FullName ?? invoice.Customer?.CompanyName;
 

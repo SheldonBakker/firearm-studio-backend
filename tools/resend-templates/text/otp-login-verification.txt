@@ -1,0 +1,12 @@
+Hi {{{RECIPIENT_NAME}}},
+
+Use the code below to finish signing in to Firearm Studio.
+
+  {{{CODE}}}
+
+This code expires in {{{EXPIRES_MINUTES}}} minutes.
+
+If you did not attempt to sign in, contact our support team immediately - someone may be trying to access your account.
+
+--
+Firearm Studio

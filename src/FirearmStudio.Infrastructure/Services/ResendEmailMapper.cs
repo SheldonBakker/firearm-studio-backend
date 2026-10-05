@@ -25,17 +25,36 @@ internal sealed class ResendEmailMapper(ResendSettings settings)
         _ => throw new ArgumentOutOfRangeException(nameof(message), message.GetType().Name, "Unsupported email message type."),
     };
 
-    private string PlatformFrom() => $"{settings.FromName} <{settings.FromAddress}>";
+    private string PlatformFrom() => $"\"{settings.FromName}\" <{settings.FromAddress}>";
 
     private string TenantFrom(string? companyName) =>
         string.IsNullOrWhiteSpace(companyName)
             ? PlatformFrom()
-            : $"{Sanitize(companyName, settings.FromName)} via {settings.FromName} <{settings.FromAddress}>";
+            : $"\"{Sanitize(companyName, settings.FromName)} via {settings.FromName}\" <{settings.FromAddress}>";
 
     private static string Sanitize(string? value, string fallback = "-") =>
         string.IsNullOrWhiteSpace(value)
             ? fallback
             : value.Replace("<", "").Replace(">", "").Replace("\"", "");
+
+    private static void AddCompanyVariables(Dictionary<string, object> vars, CompanyEmailDetails company)
+    {
+        vars["COMPANY_NAME"] = Sanitize(company.Name);
+        vars["COMPANY_EMAIL"] = Sanitize(company.Email);
+        vars["COMPANY_PHONE"] = Sanitize(company.Phone);
+    }
+
+    private static void AddBankVariables(Dictionary<string, object> vars, CompanyEmailDetails company)
+    {
+        vars["BANK_NAME"] = Sanitize(company.BankName);
+        vars["BANK_ACCOUNT_HOLDER"] = Sanitize(company.BankAccountHolder);
+        vars["BANK_ACCOUNT_NUMBER"] = Sanitize(company.BankAccountNumber);
+        vars["BANK_BRANCH_CODE"] = Sanitize(company.BankBranchCode);
+        vars["BANK_ACCOUNT_TYPE"] = Sanitize(company.BankAccountType);
+    }
+
+    private static string? ReplyToFor(CompanyEmailDetails company) =>
+        string.IsNullOrWhiteSpace(company.Email) ? null : company.Email;
 
     private MappedEmail MapOtp(OtpEmail otp)
     {
@@ -100,59 +119,53 @@ internal sealed class ResendEmailMapper(ResendSettings settings)
 
     private MappedEmail MapInvoiceSent(InvoiceSentEmail inv)
     {
+        var vars = new Dictionary<string, object>
+        {
+            ["CUSTOMER_NAME"] = Sanitize(inv.CustomerName, "there"),
+            ["INVOICE_NUMBER"] = Sanitize(inv.InvoiceNumber),
+            ["INVOICE_MONTH"] = ZarFormatting.FormatDate(inv.InvoiceMonth),
+            ["DUE_ON"] = inv.DueOn.HasValue ? ZarFormatting.FormatDate(inv.DueOn.Value) : "-",
+            ["SUBTOTAL"] = ZarFormatting.FormatMoney(inv.Subtotal),
+            ["VAT_AMOUNT"] = ZarFormatting.FormatMoney(inv.VatAmount),
+            ["TOTAL"] = ZarFormatting.FormatMoney(inv.Total),
+            ["LINES_HTML"] = ResendEmailFragments.LinesHtml(inv.Lines),
+            ["LINES_TEXT"] = ResendEmailFragments.LinesText(inv.Lines),
+        };
+
+        AddCompanyVariables(vars, inv.Company);
+        AddBankVariables(vars, inv.Company);
+
         return new MappedEmail(
             Alias: "invoice-sent",
             To: inv.RecipientEmail,
             From: TenantFrom(inv.Company.Name),
-            ReplyTo: string.IsNullOrWhiteSpace(inv.Company.Email) ? null : inv.Company.Email,
-            Variables: new Dictionary<string, object>
-            {
-                ["COMPANY_NAME"] = Sanitize(inv.Company.Name),
-                ["COMPANY_EMAIL"] = Sanitize(inv.Company.Email),
-                ["COMPANY_PHONE"] = Sanitize(inv.Company.Phone),
-                ["CUSTOMER_NAME"] = Sanitize(inv.CustomerName, "there"),
-                ["INVOICE_NUMBER"] = Sanitize(inv.InvoiceNumber),
-                ["INVOICE_MONTH"] = ZarFormatting.FormatDate(inv.InvoiceMonth),
-                ["DUE_ON"] = inv.DueOn.HasValue ? ZarFormatting.FormatDate(inv.DueOn.Value) : "-",
-                ["SUBTOTAL"] = ZarFormatting.FormatMoney(inv.Subtotal),
-                ["VAT_AMOUNT"] = ZarFormatting.FormatMoney(inv.VatAmount),
-                ["TOTAL"] = ZarFormatting.FormatMoney(inv.Total),
-                ["LINES_HTML"] = ResendEmailFragments.LinesHtml(inv.Lines),
-                ["LINES_TEXT"] = ResendEmailFragments.LinesText(inv.Lines),
-                ["BANK_NAME"] = Sanitize(inv.Company.BankName),
-                ["BANK_ACCOUNT_HOLDER"] = Sanitize(inv.Company.BankAccountHolder),
-                ["BANK_ACCOUNT_NUMBER"] = Sanitize(inv.Company.BankAccountNumber),
-                ["BANK_BRANCH_CODE"] = Sanitize(inv.Company.BankBranchCode),
-                ["BANK_ACCOUNT_TYPE"] = Sanitize(inv.Company.BankAccountType),
-            });
+            ReplyTo: ReplyToFor(inv.Company),
+            Variables: vars);
     }
 
     private MappedEmail MapBookingRequested(BookingRequestedEmail br)
     {
+        var vars = new Dictionary<string, object>
+        {
+            ["CUSTOMER_NAME"] = Sanitize(br.CustomerName, "there"),
+            ["INVOICE_NUMBER"] = Sanitize(br.InvoiceNumber),
+            ["SESSION_COUNT"] = br.Sessions.Count,
+            ["SUBTOTAL"] = ZarFormatting.FormatMoney(br.Subtotal),
+            ["VAT_AMOUNT"] = ZarFormatting.FormatMoney(br.VatAmount),
+            ["TOTAL"] = ZarFormatting.FormatMoney(br.Total),
+            ["SESSIONS_HTML"] = ResendEmailFragments.SessionsHtml(br.Sessions),
+            ["SESSIONS_TEXT"] = ResendEmailFragments.SessionsText(br.Sessions),
+        };
+
+        AddCompanyVariables(vars, br.Company);
+        AddBankVariables(vars, br.Company);
+
         return new MappedEmail(
             Alias: "booking-requested",
             To: br.RecipientEmail,
             From: TenantFrom(br.Company.Name),
-            ReplyTo: string.IsNullOrWhiteSpace(br.Company.Email) ? null : br.Company.Email,
-            Variables: new Dictionary<string, object>
-            {
-                ["COMPANY_NAME"] = Sanitize(br.Company.Name),
-                ["COMPANY_EMAIL"] = Sanitize(br.Company.Email),
-                ["COMPANY_PHONE"] = Sanitize(br.Company.Phone),
-                ["CUSTOMER_NAME"] = Sanitize(br.CustomerName, "there"),
-                ["INVOICE_NUMBER"] = Sanitize(br.InvoiceNumber),
-                ["SESSION_COUNT"] = br.Sessions.Count,
-                ["SUBTOTAL"] = ZarFormatting.FormatMoney(br.Subtotal),
-                ["VAT_AMOUNT"] = ZarFormatting.FormatMoney(br.VatAmount),
-                ["TOTAL"] = ZarFormatting.FormatMoney(br.Total),
-                ["SESSIONS_HTML"] = ResendEmailFragments.SessionsHtml(br.Sessions),
-                ["SESSIONS_TEXT"] = ResendEmailFragments.SessionsText(br.Sessions),
-                ["BANK_NAME"] = Sanitize(br.Company.BankName),
-                ["BANK_ACCOUNT_HOLDER"] = Sanitize(br.Company.BankAccountHolder),
-                ["BANK_ACCOUNT_NUMBER"] = Sanitize(br.Company.BankAccountNumber),
-                ["BANK_BRANCH_CODE"] = Sanitize(br.Company.BankBranchCode),
-                ["BANK_ACCOUNT_TYPE"] = Sanitize(br.Company.BankAccountType),
-            });
+            ReplyTo: ReplyToFor(br.Company),
+            Variables: vars);
     }
 
     private MappedEmail MapBookingLifecycle(BookingLifecycleEmail bl)
@@ -169,9 +182,6 @@ internal sealed class ResendEmailMapper(ResendSettings settings)
 
         var vars = new Dictionary<string, object>
         {
-            ["COMPANY_NAME"] = Sanitize(bl.Company.Name),
-            ["COMPANY_EMAIL"] = Sanitize(bl.Company.Email),
-            ["COMPANY_PHONE"] = Sanitize(bl.Company.Phone),
             ["CUSTOMER_NAME"] = Sanitize(bl.CustomerName, "there"),
             ["BOOKING_NUMBER"] = Sanitize(session.BookingNumber),
             ["BOOKING_DATE"] = ZarFormatting.FormatDate(session.Date),
@@ -180,6 +190,8 @@ internal sealed class ResendEmailMapper(ResendSettings settings)
             ["RANGE_NAME"] = Sanitize(session.RangeName),
             ["PACKAGE_NAME"] = Sanitize(session.PackageName),
         };
+
+        AddCompanyVariables(vars, bl.Company);
 
         if (bl.Kind != BookingLifecycleKind.Cancelled)
         {
@@ -200,30 +212,31 @@ internal sealed class ResendEmailMapper(ResendSettings settings)
             Alias: alias,
             To: bl.RecipientEmail,
             From: TenantFrom(bl.Company.Name),
-            ReplyTo: string.IsNullOrWhiteSpace(bl.Company.Email) ? null : bl.Company.Email,
+            ReplyTo: ReplyToFor(bl.Company),
             Variables: vars);
     }
 
     private MappedEmail MapLicenceRenewalReminder(LicenceRenewalReminderEmail lr)
     {
+        var vars = new Dictionary<string, object>
+        {
+            ["CUSTOMER_NAME"] = Sanitize(lr.CustomerName, "there"),
+            ["LICENCE_NUMBER"] = Sanitize(lr.LicenceNumber),
+            ["EXPIRES_ON"] = ZarFormatting.FormatDate(lr.ExpiresOn),
+            ["DAYS_UNTIL_EXPIRY"] = lr.DaysUntilExpiry,
+            ["TIER"] = Sanitize(lr.Tier),
+            ["FIREARM_MAKE"] = Sanitize(lr.FirearmMake),
+            ["FIREARM_MODEL"] = Sanitize(lr.FirearmModel),
+            ["SERIAL_NUMBER"] = Sanitize(lr.SerialNumber),
+        };
+
+        AddCompanyVariables(vars, lr.Company);
+
         return new MappedEmail(
             Alias: "licence-renewal-reminder",
             To: lr.RecipientEmail,
             From: TenantFrom(lr.Company.Name),
-            ReplyTo: string.IsNullOrWhiteSpace(lr.Company.Email) ? null : lr.Company.Email,
-            Variables: new Dictionary<string, object>
-            {
-                ["COMPANY_NAME"] = Sanitize(lr.Company.Name),
-                ["COMPANY_EMAIL"] = Sanitize(lr.Company.Email),
-                ["COMPANY_PHONE"] = Sanitize(lr.Company.Phone),
-                ["CUSTOMER_NAME"] = Sanitize(lr.CustomerName, "there"),
-                ["LICENCE_NUMBER"] = Sanitize(lr.LicenceNumber),
-                ["EXPIRES_ON"] = ZarFormatting.FormatDate(lr.ExpiresOn),
-                ["DAYS_UNTIL_EXPIRY"] = lr.DaysUntilExpiry,
-                ["TIER"] = Sanitize(lr.Tier),
-                ["FIREARM_MAKE"] = Sanitize(lr.FirearmMake),
-                ["FIREARM_MODEL"] = Sanitize(lr.FirearmModel),
-                ["SERIAL_NUMBER"] = Sanitize(lr.SerialNumber),
-            });
+            ReplyTo: ReplyToFor(lr.Company),
+            Variables: vars);
     }
 }

@@ -6,6 +6,10 @@ using Xunit;
 
 namespace FirearmStudio.Infrastructure.Tests;
 
+[CollectionDefinition("DependencyInjection", DisableParallelization = true)]
+public sealed class DependencyInjectionCollection { }
+
+[Collection("DependencyInjection")]
 public class DependencyInjectionTests
 {
     private static IConfiguration BuildConfiguration(

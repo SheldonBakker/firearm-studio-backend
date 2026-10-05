@@ -1,0 +1,24 @@
+Hi {{{CUSTOMER_NAME}}},
+
+We have received your booking request {{{INVOICE_NUMBER}}} for {{{SESSION_COUNT}}} session(s). We will confirm the details shortly.
+
+Sessions
+--------
+{{{SESSIONS_TEXT}}}
+
+Subtotal: {{{SUBTOTAL}}}
+VAT:      {{{VAT_AMOUNT}}}
+Total:    {{{TOTAL}}}
+
+EFT banking details for deposit
+--------------------------------
+Bank:           {{{BANK_NAME}}}
+Account holder: {{{BANK_ACCOUNT_HOLDER}}}
+Account number: {{{BANK_ACCOUNT_NUMBER}}}
+Branch code:    {{{BANK_BRANCH_CODE}}}
+Account type:   {{{BANK_ACCOUNT_TYPE}}}
+
+Questions? Contact {{{COMPANY_NAME}}} at {{{COMPANY_EMAIL}}} or {{{COMPANY_PHONE}}}.
+
+--
+sent via Firearm Studio

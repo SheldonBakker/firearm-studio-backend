@@ -141,21 +141,17 @@ public static class DependencyInjection
         var timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
         var baseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
 
-        services.AddHttpClient<ITransactionalEmailSender, ResendEmailSender>(client =>
+        void ConfigureResendClient(HttpClient client)
         {
             client.Timeout = timeout;
             client.BaseAddress = baseAddress;
             client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer {settings.ApiKey}");
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        });
+        }
 
-        services.AddHttpClient<IContactDirectory, ResendContactDirectory>(client =>
-        {
-            client.Timeout = timeout;
-            client.BaseAddress = baseAddress;
-            client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer {settings.ApiKey}");
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        });
+        services.AddHttpClient<ITransactionalEmailSender, ResendEmailSender>(ConfigureResendClient);
+
+        services.AddHttpClient<IContactDirectory, ResendContactDirectory>(ConfigureResendClient);
     }
 
     private static void AddNotificationSettings(IServiceCollection services, IConfiguration configuration)

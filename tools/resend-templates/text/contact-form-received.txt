@@ -1,0 +1,14 @@
+New contact form submission
+--------------------------
+
+Name:    {{{SUBMITTER_NAME}}}
+Email:   {{{SUBMITTER_EMAIL}}}
+Company: {{{SUBMITTER_COMPANY}}}
+
+Message:
+{{{MESSAGE_TEXT}}}
+
+You can reply directly to this email - your reply goes to the submitter.
+
+--
+Firearm Studio

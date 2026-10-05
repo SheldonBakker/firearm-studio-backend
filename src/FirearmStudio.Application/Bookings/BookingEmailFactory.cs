@@ -36,7 +36,7 @@ internal static class BookingEmailFactory
             response.VatAmount,
             response.Total,
             sessions,
-            MapCompany(payload.Company));
+            CompanyEmailDetails.From(payload.Company));
     }
 
     internal static BookingLifecycleEmail BuildLifecycleEmail(
@@ -63,19 +63,6 @@ internal static class BookingEmailFactory
             session,
             payload.ShooterCount,
             payload.InvoiceNumber,
-            MapCompany(payload.Company));
+            CompanyEmailDetails.From(payload.Company));
     }
-
-    private static CompanyEmailDetails MapCompany(CompanyNotificationData? company) =>
-        company is null
-            ? new CompanyEmailDetails(null, null, null, null, null, null, null, null)
-            : new CompanyEmailDetails(
-                company.Name,
-                company.Email,
-                company.Phone,
-                company.BankName,
-                company.BankAccountHolder,
-                company.BankAccountNumber,
-                company.BankBranchCode,
-                company.BankAccountType);
 }

@@ -139,7 +139,7 @@ public sealed class ResendEmailSenderTests
             default);
 
         var body = ParseBody(handler.LastRequestBody);
-        Assert.Equal("Firearm Studio <no-reply@firearmstudio.com>", body.GetProperty("from").GetString());
+        Assert.Equal("\"Firearm Studio\" <no-reply@firearmstudio.com>", body.GetProperty("from").GetString());
     }
 
     [Fact]
@@ -159,7 +159,7 @@ public sealed class ResendEmailSenderTests
 
         var body = ParseBody(handler.LastRequestBody);
         Assert.Equal(
-            "Shooting Range SA via Firearm Studio <no-reply@firearmstudio.com>",
+            "\"Shooting Range SA via Firearm Studio\" <no-reply@firearmstudio.com>",
             body.GetProperty("from").GetString());
     }
 
@@ -179,7 +179,78 @@ public sealed class ResendEmailSenderTests
             default);
 
         var body = ParseBody(handler.LastRequestBody);
-        Assert.Equal("Firearm Studio <no-reply@firearmstudio.com>", body.GetProperty("from").GetString());
+        Assert.Equal("\"Firearm Studio\" <no-reply@firearmstudio.com>", body.GetProperty("from").GetString());
+    }
+
+    [Fact]
+    public async Task Company_name_with_comma_and_ampersand_is_quoted_in_from_address()
+    {
+        var (sender, handler) = Build();
+
+        await sender.SendAsync(
+            new InvoiceSentEmail(
+                "customer@example.com", "Customer",
+                "INV-001", new DateOnly(2026, 10, 1), null,
+                100m, 15m, 115m,
+                [],
+                SampleCompany("Smith, Jones & Co"))
+            { IdempotencyKey = "invoice-sent:abc:2026-10-01T00:00:00Z" },
+            default);
+
+        var body = ParseBody(handler.LastRequestBody);
+        Assert.Equal(
+            "\"Smith, Jones & Co via Firearm Studio\" <no-reply@firearmstudio.com>",
+            body.GetProperty("from").GetString());
+    }
+
+    [Fact]
+    public async Task DepositDueAt_is_converted_to_SAST_in_lifecycle_DEPOSIT_DUE()
+    {
+        var (sender, handler) = Build();
+        var depositDueAt = new DateTime(2026, 10, 6, 21, 30, 0, DateTimeKind.Utc);
+        var session = new BookingEmailSession(
+            "BK-001", new DateOnly(2026, 10, 7),
+            new TimeOnly(9, 0), new TimeOnly(11, 0),
+            "Main Range", "Standard Package", 500m,
+            null, null, 250m, depositDueAt);
+
+        await sender.SendAsync(
+            new BookingLifecycleEmail(
+                BookingLifecycleKind.Confirmed, "customer@example.com", "Customer",
+                session, 2, "INV-001", SampleCompany())
+            { IdempotencyKey = "outbox:lifecycle-abc" },
+            default);
+
+        var vars = ParseBody(handler.LastRequestBody)
+            .GetProperty("template").GetProperty("variables");
+
+        Assert.Equal("06 Oct 2026 23:30", vars.GetProperty("DEPOSIT_DUE").GetString());
+    }
+
+    [Fact]
+    public async Task DepositDueAt_is_converted_to_SAST_in_booking_requested_SESSIONS_TEXT()
+    {
+        var (sender, handler) = Build();
+        var depositDueAt = new DateTime(2026, 10, 6, 21, 30, 0, DateTimeKind.Utc);
+        var session = new BookingEmailSession(
+            "BK-001", new DateOnly(2026, 10, 7),
+            new TimeOnly(9, 0), new TimeOnly(11, 0),
+            "Main Range", "Standard Package", 500m,
+            null, null, 250m, depositDueAt);
+
+        await sender.SendAsync(
+            new BookingRequestedEmail(
+                "customer@example.com", "Customer",
+                "INV-001", 500m, 75m, 575m,
+                [session],
+                SampleCompany())
+            { IdempotencyKey = "outbox:session-abc" },
+            default);
+
+        var vars = ParseBody(handler.LastRequestBody)
+            .GetProperty("template").GetProperty("variables");
+
+        Assert.Contains("due 06 Oct 2026 23:30", vars.GetProperty("SESSIONS_TEXT").GetString());
     }
 
     [Fact]

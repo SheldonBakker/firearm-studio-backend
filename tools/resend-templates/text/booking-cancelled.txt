@@ -1,0 +1,15 @@
+Hi {{{CUSTOMER_NAME}}},
+
+Your booking {{{BOOKING_NUMBER}}} has been cancelled. We hope to see you again soon.
+
+Date:    {{{BOOKING_DATE}}}
+Time:    {{{START_TIME}}} - {{{END_TIME}}}
+Range:   {{{RANGE_NAME}}}
+Package: {{{PACKAGE_NAME}}}
+
+If you would like to make a new booking, please get in touch with us.
+
+Contact {{{COMPANY_NAME}}} at {{{COMPANY_EMAIL}}} or {{{COMPANY_PHONE}}}.
+
+--
+sent via Firearm Studio
